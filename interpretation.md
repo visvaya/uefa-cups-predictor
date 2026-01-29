@@ -68,57 +68,15 @@ Lille:        98.91 + 49.85  = 148.76%
 
 The actual lower bound for inconsistent rows is `max(LAST16, KO)`, but for practical purposes (fantasy), we use the capped estimate = 100%.
 
-## 5) P(Top 24) Calculation Algorithm — "Chance of Continuing Play"
+- **Safe Stage Heuristic**: Even if data is inconsistent, the system ensures that `P(Top 24)` is at least equal to `QF%` (since you cannot reach the quarter-final without being in the Top 24).
 
-```python
-def get_top24_probability(
-    last16: float,
-    ko_playoff: float,
-    qf: float,
-    sf: float = 0.0,
-    final: float = 0.0,
-    winner: float = 0.0,
-    safe_mode: bool = False,
-    eps: float = 1e-9
-) -> float:
-    """
-    Calculates P(Top 24) estimate in [0, 100] range.
+## 5) P(Top 24) Calculation Logic
 
-    Hybrid principle:
-    - if LAST16 + KO <= 100: top24 = LAST16 + KO (disjoint interpretation)
-    - if LAST16 + KO > 100: inconsistent data -> top24 = max(LAST16, KO, QF, SF, FINAL, WINNER)
+The system estimates the chance of continuing play using the following logic:
 
-    Stage heuristic:
-    - safe_mode=False: ensure top24 >= QF
-    - safe_mode=True:  ensure top24 >= max(QF, SF, FINAL, WINNER)
-    """
-    # Sanitize to [0,100] (in case of slight deviations/rounding)
-    last16 = min(100.0, max(0.0, float(last16)))
-    ko_playoff = min(100.0, max(0.0, float(ko_playoff)))
-    qf = min(100.0, max(0.0, float(qf)))
-    sf = min(100.0, max(0.0, float(sf)))
-    final = min(100.0, max(0.0, float(final)))
-    winner = min(100.0, max(0.0, float(winner)))
-
-    raw = last16 + ko_playoff
-
-    if raw <= 100.0 + eps:
-        # Disjoint: Top8 ∪ (9–24)
-        top24 = raw
-    else:
-        # Anomaly: don't use sum, use conservative floor of union
-        top24 = max(last16, ko_playoff, qf, sf, final, winner)
-
-    # Floor resulting from knockout stage hierarchy
-    if safe_mode:
-        top24 = max(top24, qf, sf, final, winner)
-    else:
-        top24 = max(top24, qf)
-
-    return min(100.0, max(0.0, top24))
-```
-
-**Use of safe_mode:** Enable `safe_mode` only if inconsistencies `LAST16 + KPO > 100` or stage monotonicity violations in other columns are detected.
+1. **Disjoint Check**: If `LAST 16% + KO P/O%` is less than or equal to 100%, we assume they represent separate finishing positions (1-8 and 9-24) and **sum them**.
+2. **Anomaly Handling**: If the sum exceeds 100%, the data is inconsistent. In this case, we avoid the sum and take the **maximum** value from all available progress columns (`LAST 16`, `KPO`, `QF`, etc.).
+3. **Knockout Floor**: Finally, we apply a "sanity floor": `P(Top 24)` must be **≥ QF%**. This handles cases where a team's reported chance of winning/reaching late stages is higher than the reported chance of surviving the league phase.
 
 ---
 
