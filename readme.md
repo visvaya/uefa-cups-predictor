@@ -16,6 +16,19 @@ System for predicting results, assessing motivation, and rotation risk in Europe
 - **Opponent Dead Bonus (`opp_dead`)**: Automatic attractiveness bonus for a team playing against a rival that is already `OUT` or has nothing left to play for.
 - **International & Excel Ready**: Output format is standardized for international use (comma `,` separator, dot `.` decimal). Polish local format is available via flag.
 
+## How to Get Data
+
+To legally and correctly prepare files for the analyzer, follow these steps:
+
+1. **Visit The Analyst**: Go to the links provided in the [Data Sources](#data-sources) section.
+2. **Select Tabs**: For tables, ensure you select the **'Predicted'** tab.
+3. **Manual Copy-Paste**:
+    - Select the data in the table on the website with your mouse.
+    - Copy (Ctrl+C) and paste (Ctrl+V) into Excel or Google Sheets.
+4. **Save as CSV**:
+    - In Excel, use `File > Save As` and select **CSV UTF-8 (Comma delimited) (*.csv)**.
+    - Ensure the column headers match the requirements below.
+
 ## Data Sources
 
 The script relies on data exported from **The Analyst** (Opta):
@@ -94,3 +107,12 @@ For correct operation, input CSV files must meet these standards:
 - **Separator**: Automatic detection (handles `;` or `,`).
 - **Numbers**: Handles both comma and dot decimal separators.
 - **Audit**: Every run prints a data integrity report checking stage monotonicity (`WINNER ≤ FINAL ≤ ... ≤ QF`) and Top 24 consistency.
+
+## Data Preparation (Manual Alignment)
+
+If you are using the `_example` files as templates:
+
+1. Open the `_example.csv` file in a text editor or Excel.
+2. Replace the placeholder names (Team A, Team B) with actual team names from the source website.
+3. Ensure numerical values use consistent formatting (the script auto-detects either `.` or `,` as a decimal separator, but consistency per file is recommended).
+4. Save the file without the `_example` suffix (e.g., as `cl_fixtures.csv`) in the correct folder for the script to detect it.
