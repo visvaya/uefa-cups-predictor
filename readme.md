@@ -52,9 +52,9 @@ The system interprets source data (*Predicted Table*) as a set of probabilities,
 
 The algorithm uses a hybrid approach to maintain mathematical consistency:
 
-1. **Disjoint Model**: If `LAST 16% + KPO% ≤ 100%`, the chance of Top 24 is the sum of these two values.
-2. **Anomaly Correction**: For inconsistent data (`sum > 100%`), the system takes a conservative estimate `max(LAST16, KPO, QF)`.
-3. **Stage Hierarchy**: We guarantee that `P(Top 24) ≥ QF%`, eliminating transcription and model errors.
+1. **Disjoint Check**: If `LAST 16% + KO P/O%` is less than or equal to 100%, we assume they represent separate finishing positions (1-8 and 9-24) and **sum them**.
+2. **Anomaly Handling**: If the sum exceeds 100%, the data is inconsistent. In this case, we avoid the sum and take the **maximum** value from all available progress columns (`LAST 16`, `KPO`, `QF`, etc.).
+3. **Knockout Floor**: Finally, we apply a "sanity floor": `P(Top 24)` must be **≥ QF%**. This handles cases where a team's reported chance of winning/reaching late stages is higher than the reported chance of surviving the league phase.
 
 ## Report Columns Explained
 
@@ -107,6 +107,29 @@ For correct operation, input CSV files must meet these standards:
 - **Separator**: Automatic detection (handles `;` or `,`).
 - **Numbers**: Handles both comma and dot decimal separators.
 - **Audit**: Every run prints a data integrity report checking stage monotonicity (`WINNER ≤ FINAL ≤ ... ≤ QF`) and Top 24 consistency.
+
+## Troubleshooting & Console Logs
+
+The script performs a "Data Audit" during every run. Here is how to interpret the output:
+
+- **`[AUDIT] CL: OK`**: Data is mathematically consistent.
+- **`[AUDIT] CL: INCONSISTENT (Sums > 100%)`**: The source data has rows where P(Top 8) + P(9-24) > 100%. The script uses the Anomaly Handling logic (maximum value) for these teams.
+- **`[AUDIT] CL: STAGE VIOLATION`**: A team has a higher probability of reaching a later stage than an earlier one (e.g., `FINAL% > SF%`). The script applies the "Safe Stage Heuristic" to fix this.
+- **`ERROR: Team 'X' not found in predicted table`**: A team name in the fixtures file doesn't match the names in the predicted table. Fix this using the `NAME_FIX` dictionary (see below).
+
+## Customizing Team Names (NAME_FIX)
+
+Team names often differ between lists (e.g., "Real" vs "Real Madrid"). To fix this without editing the raw CSV files, modify the `NAME_FIX` dictionary at the top of `analyze.py`:
+
+```python
+NAME_FIX: Dict[str, str] = {
+    "your source name": "target name in table",
+    "real": "real madrid",
+    "nottm forest": "nottingham forest",
+}
+```
+
+The script automatically converts names to lowercase and removes special characters for more robust matching.
 
 ## Data Preparation (Manual Alignment)
 
