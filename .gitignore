@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Tools
+.agent/
+.ruff_cache/
+.mypy_cache/
+
+# Local data & archives
+*.csv
+*.xlsx
+data/*
+!data/champions-league/
+!data/champions-league/cl_fixtures_example.csv
+!data/champions-league/cl_table_predicted_examle.csv
+!data/europa-league/
+!data/europa-league/el_fixtures_example.csv
+!data/europa-league/el_table_predicted_example.csv
