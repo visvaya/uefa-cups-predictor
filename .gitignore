@@ -16,6 +16,7 @@ ENV/
 *.csv
 *.xlsx
 data/*
+data/**/*.{png,jpg,jpeg,gif,webp}
 !data/champions-league/
 !data/champions-league/cl_fixtures_example.csv
 !data/champions-league/cl_table_predicted_examle.csv
