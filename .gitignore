@@ -15,8 +15,18 @@ ENV/
 # Local data & archives
 *.csv
 *.xlsx
+
+# Ignore all image formats in the data directory
+data/**/*.png
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.gif
+data/**/*.webp
+
+# Ignore everything in data by default
 data/*
-data/**/*.{png,jpg,jpeg,gif,webp}
+
+# Exceptions: Allow the directory structures and specific example files
 !data/champions-league/
 !data/champions-league/cl_fixtures_example.csv
 !data/champions-league/cl_table_predicted_examle.csv

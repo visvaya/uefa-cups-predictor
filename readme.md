@@ -2,6 +2,8 @@
 
 System for predicting results, assessing motivation, and rotation risk in European competitions (Champions League and Europa League) under the new league phase format. The system is based on probabilistic forecasts from Monte Carlo simulations ("The Analyst" data).
 
+> **Note**: This tool is specifically designed for analyzing the **final round** of the league phase, where motivation and rotation risks are most critical. For a deeper dive into the mathematical logic used, see [interpretation.md](interpretation.md).
+
 ## Key Features
 
 - **Status Model (UEFA Art. 17 Compliance)**: Classifies clubs based on mathematical progression chances:
@@ -13,6 +15,15 @@ System for predicting results, assessing motivation, and rotation risk in Europe
 - **Rotation Risk (Risk)**: Detects "safe" teams likely to rotate their squad before the knockout phase.
 - **Opponent Dead Bonus (`opp_dead`)**: Automatic attractiveness bonus for a team playing against a rival that is already `OUT` or has nothing left to play for.
 - **International & Excel Ready**: Output format is standardized for international use (comma `,` separator, dot `.` decimal). Polish local format is available via flag.
+
+## Data Sources
+
+The script relies on data exported from **The Analyst** (Opta):
+
+- **CL Table**: [theanalyst.com/competition/uefa-champions-league/table](https://theanalyst.com/competition/uefa-champions-league/table) (use 'Predicted' tab)
+- **CL Fixtures**: [theanalyst.com/competition/uefa-champions-league/fixtures](https://theanalyst.com/competition/uefa-champions-league/fixtures)
+- **EL Table**: [theanalyst.com/competition/uefa-europa-league/table](https://theanalyst.com/competition/uefa-europa-league/table) (use 'Predicted' tab)
+- **EL Fixtures**: [theanalyst.com/competition/uefa-europa-league/fixtures](https://theanalyst.com/competition/uefa-europa-league/fixtures)
 
 ## Data Interpretation Logic
 
