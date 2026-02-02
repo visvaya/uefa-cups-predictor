@@ -1,6 +1,12 @@
 # UEFA Cups Fantasy Predictor & Analyzer (CL & EL)
 
-System for predicting results, assessing motivation, and rotation risk in European competitions (Champions League and Europa League) under the new league phase format. The system is based on probabilistic forecasts from Monte Carlo simulations ("The Analyst" data).
+System for predicting results, assessing motivation, and rotation risk in European competitions (Champions League and Europa League) under the new league phase format. The system is based on probabilistic forecasts from Monte Carlo simulations ("The Analyst" data) and odds data from Soccer-rating. It is specifically designed for analyzing the final rounds of the league phase.
+
+Allows creating a "lock/in_play/out" map:
+
+- **LOCK**: Result already secured (Top 8 or Top 24 guaranteed).
+- **IN_PLAY**: Fighting at the qualification threshold.
+- **OUT**: No mathematical chance of progression.
 
 > **Note**: This tool is specifically designed for analyzing the **final round** of the league phase, where motivation and rotation risks are most critical. For a deeper dive into the mathematical logic used, see [interpretation.md](interpretation.md).
 
@@ -27,7 +33,7 @@ To legally and correctly prepare files for the analyzer, follow these steps:
     - Copy (Ctrl+C) and paste (Ctrl+V) into Excel or Google Sheets.
 4. **Save as CSV**:
     - In Excel, use `File > Save As` and select **CSV UTF-8 (Comma delimited) (*.csv)**.
-    - Ensure the column headers match the requirements below.
+    - Ensure the column headers match the requirements.
 
 ## Data Sources
 
@@ -37,6 +43,10 @@ The script relies on data exported from **The Analyst** (Opta):
 - **CL Fixtures**: [theanalyst.com/competition/uefa-champions-league/fixtures](https://theanalyst.com/competition/uefa-champions-league/fixtures)
 - **EL Table**: [theanalyst.com/competition/uefa-europa-league/table](https://theanalyst.com/competition/uefa-europa-league/table) (use 'Predicted' tab)
 - **EL Fixtures**: [theanalyst.com/competition/uefa-europa-league/fixtures](https://theanalyst.com/competition/uefa-europa-league/fixtures)
+
+Odds (Soccer-rating) data:
+
+- **Soccer-rating**: [https://www.soccer-rating.com/today-prediction](https://www.soccer-rating.com/today-prediction)
 
 ## Data Interpretation Logic
 
@@ -56,29 +66,82 @@ The algorithm uses a hybrid approach to maintain mathematical consistency:
 2. **Anomaly Handling**: If the sum exceeds 100%, the data is inconsistent. In this case, we avoid the sum and take the **maximum** value from all available progress columns (`LAST 16`, `KPO`, `QF`, etc.).
 3. **Knockout Floor**: Finally, we apply a "sanity floor": `P(Top 24)` must be **≥ QF%**. This handles cases where a team's reported chance of winning/reaching late stages is higher than the reported chance of surviving the league phase.
 
-## Report Columns Explained
+### Report Columns (Main Mode)
 
 | Column | Description |
 | :--- | :--- |
-| **Team / Opp** | Analyzed team and its opponent. |
-| **Win%** | Probability of winning. |
-| **EV** | *Expected Value* – expected points (3*Win% + 1*Draw%). |
-| **Mot** | *Motivation Index* (0-100) – internal pressure for result. |
-| **Risk** | *Rotation Risk* (1.0 - 2.3) – higher means greater risk of a backup squad. |
-| **Val** | **Value Index (0-140)** – main ranking parameter. Consolidates sporting strength, team motivation, and rival's lack of motivation. |
-| **OpMot / OpStatus** | Monitoring opponent's motivation and status. |
-| **Recommendation** | Text recommendation (e.g., 🟢 STRONG BUY vs 🟠 CAUTION). |
+| **team / opp** | Analyzed team and its opponent. |
+| **teamWinProb%** | Probability of winning (from predicted table). |
+| **teamMot** | *Motivation Index* (0-100) – internal pressure for result. |
+| **teamRotRisk** | *Rotation Risk* (1.0 - 2.3) – higher means greater risk of squad rotation. |
+| **teamStatus / oppStatus** | Progress status (`IN_PLAY`, `LOCKED`, `OUT`). |
+| **expertScore** | **Synthetic Strength Signal**. Aggregate score from market, ratings, and lineups. If > 0, model favors this team. |
+| **srEdge** | **Probability Edge**: `FairProb - MarketCloseProb`. Positive = Value found by SR model. |
+| **srCompleteness** | **Signal Quality (0.0 - 1.0)**. 1.0 = High Confidence. |
+| **srDropping** | **Market Steam**. Positive = odds are dropping (market confirmation). |
+| **strangeOdds** | Market anomaly detection (>30), suggests insider info or sudden squad changes. |
+| **recommendation** | Final advice (Strong Buy, Consider, Neutral, Caution, Avoid). |
+| **reason** | List of key factors generating the advice. |
+
+### SR-Only Mode
+
+| Column | Description |
+| :--- | :--- |
+| **homeTeam / awayTeam** | Match participants. |
+| **pick** | **Recommended Outcome**: `1` (Home), `X` (Draw), `2` (Away). |
+| **expertScore** | Global match signal strength. |
+| **recommendation** | Advice based purely on market gaps and steam. |
+
+### Understanding the 'Reason' Column
+
+- **Status/Risk (Absolute Priority)**:
+  - `Out of contention`: Team cannot reach Top 24. Always `🔴 AVOID`.
+  - `Status LOCKED...`: Team has secured its spot. Always `🟠 CAUTION` due to high rotation risk.
+  - `High rotation risk`: `teamRotRisk` >= 1.39. Always `🟠 CAUTION`.
+- **Value/Signal**:
+  - `High Val / Good Val`: High mathematical advantage based on motivation and win prob.
+  - `Strong Signal`: `expertScore > 1.50` indicating an elite betting opportunity.
+- **Market Signals**:
+  - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`).
+  - `Steam (+)`: Market odds are dropping for this team.
+  - `(Risk: Rising Odds)`: Mathematical value is high, but the market is betting against the team. Recommendation downgraded.
+
+## Soccer-rating Logic
+
+Odds are used as a **dynamic market signal** to enrich the static predictions from The Analyst. It represents the "live" consensus of bookmakers and professional bettors.
+
+1. **Market Consistency**: If model's favorite also has dropping odds (Steam), motivation and confidence are boosted.
+2. **Strange Odds Anomaly**: If a market rating adjustment is significant (>30), `RotRisk` is automatically increased to account for possible hidden factors (injuries, internal rotation).
+
+## Scraping Data
+
+To update the Soccer-rating data (odds, steam, ratings), run:
+
+```bash
+python -m src.scraping.soccer_rating_cli
+```
+
+- **Default behavior**: Fetches today's predictions from `soccer-rating.com`, scrapes match details, odds history, and team ratings.
+- **Outputs**: Saves CSV files to `data/soccer-rating/`.
+
+### Arguments
+
+- `--limit N`: Process only N matches (useful for quick testing).
+- `--delay N`: Set delay between requests (default 1.5s).
+- `--local`: Use local HTML files (for debugging without network).
+- `--output-dir PATH`: Custom output directory (default `data/soccer-rating`).
+- `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
+- `--separate-snapshots`: Save snapshot to a separate file (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of merging.
+- `--min-start N`: Process matches starting at least N minutes from now.
+- `--max-start N`: Process matches starting at most N minutes from now.
+
+### Workflow
+
+1. **Run Scraper**: `python -m src.scraping.soccer_rating_cli`
+2. **Verify**: Check `data/soccer-rating/match_odds_development.csv` for new data.
+3. **Analyze**: Run `python analyze.py` to generate the report.
 
 ## Usage & Structure
-
-### Requirements
-
-- Python 3.12+
-- `pip install pandas numpy`
-
-### Files & Execution
-
-The system is consolidated into a single script supporting flags:
 
 ```bash
 # Analyze both cups (CL and EL) - default
@@ -94,10 +157,17 @@ python analyze.py --el
 python analyze.py --excel-pl
 ```
 
+### Analyzer Arguments
+
+- `--sr-only`: Run analysis independent of 'The Analyst' data (Market Signals only).
+- `--input-file PATH`: Specify a snapshot file for SR-only mode (e.g., specific date).
+- `--output-dir PATH`: Custom directory for analysis reports.
+
 **Generated Reports:**
 
 - `cl_recommendations.csv` — Results for Champions League.
 - `el_recommendations.csv` — Results for Europa League.
+- `sr_analysis_report.csv` — Results for SR-Only mode.
 
 ## Data Integrity Requirements
 
@@ -139,3 +209,25 @@ If you are using the `_example` files as templates:
 2. Replace the placeholder names (Team A, Team B) with actual team names from the source website.
 3. Ensure numerical values use consistent formatting (the script auto-detects either `.` or `,` as a decimal separator, but consistency per file is recommended).
 4. Save the file without the `_example` suffix (e.g., as `cl_fixtures.csv`) in the correct folder for the script to detect it.
+
+## Future Work
+
+### Automation & Independence
+
+- **Own Monte Carlo Simulation**: Developing an internal simulator to become independent of external providers and have full control over league phase scenarios.
+- **TheAnalyst Scraper**: Automating data collection from Opta/The Analyst to eliminate the manual copy-paste process.
+
+### Script Calibration
+
+- Compare pre-round predictions vs. real outcomes to tune motivation weights.
+- Empirical verification of `LOCKED` and `OUT` thresholds based on historical round 8 behavior.
+- Calculate "expected rank / expected points" vs. actual results.
+
+### Squad Rotation Modeling
+
+- **Weighted Recency**: Using EMA (Exponential Moving Average) of minutes played (last month > season start).
+- **Economic Approach**: Comparing the market value of the starting XI vs. the total squad value (Ratio < 0.60 = heavy rotation).
+
+### Notifications
+
+- Real-time notification system for detected betting opportunities.
