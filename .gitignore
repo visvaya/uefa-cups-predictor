@@ -9,6 +9,9 @@ ENV/
 
 # Tools
 .agent/
+.serena/
+.claude/settings.local.json
+.pytest_cache/
 .ruff_cache/
 .mypy_cache/
 
