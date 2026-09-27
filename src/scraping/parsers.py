@@ -1,8 +1,13 @@
 from __future__ import annotations
+import logging
 import re
+import unicodedata
+import numpy as np
 from bs4 import BeautifulSoup
 from typing import Optional
 from .models import TodayMatch, ClubMeta, ClubCup, OddsDevelopment
+
+logger = logging.getLogger(__name__)
 
 LEAGUES = {
     "CLCUP": "Champions League",
@@ -12,8 +17,10 @@ LEAGUES = {
 RE_TIME_4 = re.compile(r"^\d{4}$")  # 2100
 RE_TIME_COLON = re.compile(r"^\d{1,2}:\d{2}$")  # 21:00
 RE_FLOAT = re.compile(r"(-?\d+(?:\.\d+)?)")
-RE_INT = re.compile(r"(\d+)$")
-# RE_LEAGUE = re.compile(r"\b(CLCUP|ELCUP)\b") # Deprecated: now we capture any 2+ uppercase chars if needed, or rely on logic
+# Trailing lineup rating, e.g. "1.57 ∅ 68"; must be space-separated so "1.12" does not yield 12
+RE_INT = re.compile(r"\s(\d+)$")
+# Letters that NFKD does not decompose into a base letter plus a combining mark
+NON_DECOMPOSING_LETTERS = str.maketrans({"ø": "o", "æ": "ae", "å": "a", "ł": "l", "đ": "d", "ß": "ss"})
 RE_LEAGUE_STRICT = re.compile(r"\b(CLCUP|ELCUP)\b")
 RE_CLIP = re.compile(r"copyToClipboard\('([^']+)'\)")
 RE_TEAM_ID = re.compile(r"/[w]?(\d+)/")
@@ -138,11 +145,16 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
         home_a, away_a = a_tags[0], a_tags[1]
         home_team = home_a.get_text(" ", strip=True)
         away_team = away_a.get_text(" ", strip=True)
-        home_href = home_a["href"]
-        away_href = away_a["href"]
+        home_href = str(home_a["href"])
+        away_href = str(away_a["href"])
 
-        home_id = team_id_from_href(home_href)
-        away_id = team_id_from_href(away_href)
+        try:
+            home_id = team_id_from_href(home_href)
+            away_id = team_id_from_href(away_href)
+        except ValueError:
+            # National teams use "/<name>/n<id>/" links; their IDs are a separate namespace from clubs
+            logger.warning(f"Skipping {home_team} vs {away_team}: unsupported team link ({home_href}, {away_href})")
+            continue
         match_id = make_match_id(snapshot_date, current_league, home_id, away_id)
 
         value_side = None
@@ -157,7 +169,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
 
         lineup_type = None
         row_imgs = tr.find_all("img", src=True)
-        srcs = " ".join(img["src"] for img in row_imgs)
+        srcs = " ".join(str(img["src"]) for img in row_imgs)
         if "shirtgrey.png" in srcs:
             lineup_type = "expected"
         elif re.search(r"/shirt\.png|shirt\.png", srcs):
@@ -219,12 +231,8 @@ def parse_club_page(html: str, team_id: int) -> tuple[ClubMeta, list[ClubCup]]:
     return meta, cups_list
 
 
-import unicodedata
-import numpy as np
-
-
 def norm_team(s: str) -> str:
-    s = s.strip().lower()
+    s = s.strip().lower().translate(NON_DECOMPOSING_LETTERS)
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))  # remove diacritics
     s = re.sub(r"[^a-z0-9 ]+", " ", s)
@@ -281,7 +289,7 @@ def pick_best_payload(match_row: dict, payload_candidates: list[dict]) -> tuple[
 
         vecs = payload_odds_vectors(p)
         stage_scores = {stage: rel_err(today_vec, v) for stage, v in vecs.items()}
-        best_stage = min(stage_scores, key=stage_scores.get)
+        best_stage = min(stage_scores, key=lambda stage: stage_scores[stage])
         best_dist = stage_scores[best_stage]
 
         oo_gap = None
@@ -319,7 +327,7 @@ def parse_clip_payloads(html: str) -> list[list[str]]:
     soup = BeautifulSoup(html, "lxml")
     payloads = []
     for a in soup.find_all("a", href=True):
-        m = RE_CLIP.search(a["href"])
+        m = RE_CLIP.search(str(a["href"]))
         if m:
             payloads.append(m.group(1).split(","))
     return payloads
@@ -331,7 +339,8 @@ def parse_team_ratings(html: str) -> tuple[Optional[float], Optional[float]]:
     HTML format: <tr><td>Team Ratings (H/A)</td><td>2083.96</td><td>2029.40</td></tr>
     """
     soup = BeautifulSoup(html, "lxml")
-    td = soup.find("td", string=re.compile(r"^Team Ratings", re.I))
+    # bs4 stubs do not model the (name, string=Pattern) overload that bs4 supports at runtime
+    td = soup.find("td", string=re.compile(r"^Team Ratings", re.I))  # type: ignore[call-overload]
     if not td:
         return None, None
 
