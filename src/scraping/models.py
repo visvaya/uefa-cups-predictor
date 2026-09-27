@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+
 @dataclass
 class TodayMatch:
     match_id: str
@@ -23,6 +24,7 @@ class TodayMatch:
     lineup_rating_home_today: Optional[float]
     lineup_rating_away_today: Optional[float]
     lineup_type_today: Optional[str]
+
 
 @dataclass
 class OddsDevelopment:
@@ -47,16 +49,17 @@ class OddsDevelopment:
     fair_x: float
     fair_2: float
     source_url: str
-    
+
     # Debug/Diagnostic fields
-    name_match_level: int           # 0, 1, 2
-    matched_odds_stage: str         # "open", "drop", "close", "fair"
-    odds_distance: float            # relative error
+    name_match_level: int  # 0, 1, 2
+    matched_odds_stage: str  # "open", "drop", "close", "fair"
+    odds_distance: float  # relative error
     oo_match_gap: Optional[float]
-    match_confidence: str           # "HIGH", "MEDIUM", "LOW"
+    match_confidence: str  # "HIGH", "MEDIUM", "LOW"
 
     team_rating_home: Optional[float]
     team_rating_away: Optional[float]
+
 
 @dataclass
 class ClubMeta:
@@ -65,6 +68,7 @@ class ClubMeta:
     rating_total: Optional[float]
     rating_home: Optional[float]
     rating_away: Optional[float]
+
 
 @dataclass
 class ClubCup:

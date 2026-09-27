@@ -4,6 +4,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+
 class SoccerRatingFetcher:
     BASE_URL = "https://www.soccer-rating.com"
     HEADERS = {

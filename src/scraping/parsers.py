@@ -9,7 +9,7 @@ LEAGUES = {
     "ELCUP": "Europa League",
 }
 
-RE_TIME_4 = re.compile(r"^\d{4}$")          # 2100
+RE_TIME_4 = re.compile(r"^\d{4}$")  # 2100
 RE_TIME_COLON = re.compile(r"^\d{1,2}:\d{2}$")  # 21:00
 RE_FLOAT = re.compile(r"(-?\d+(?:\.\d+)?)")
 RE_INT = re.compile(r"(\d+)$")
@@ -18,14 +18,17 @@ RE_LEAGUE_STRICT = re.compile(r"\b(CLCUP|ELCUP)\b")
 RE_CLIP = re.compile(r"copyToClipboard\('([^']+)'\)")
 RE_TEAM_ID = re.compile(r"/[w]?(\d+)/")
 
+
 def team_id_from_href(href: str) -> int:
     m = RE_TEAM_ID.search(href)
     if not m:
         raise ValueError(f"Could not extract team_id from href={href}")
     return int(m.group(1))
 
+
 def make_match_id(snapshot_date: str, league_code: str, home_id: int, away_id: int) -> str:
     return f"{snapshot_date}_{league_code}_{home_id}_{away_id}"
+
 
 def _normalize_time(s: str) -> str:
     s = s.strip()
@@ -35,9 +38,11 @@ def _normalize_time(s: str) -> str:
         return f"{s[:2]}:{s[2:]}"
     return s
 
+
 def _extract_float(s: str) -> Optional[float]:
     m = RE_FLOAT.search(s.replace(",", "."))
     return float(m.group(1)) if m else None
+
 
 def _extract_two_numbers(td_text: str) -> tuple[Optional[float], Optional[float]]:
     txt = " ".join(td_text.split())
@@ -50,6 +55,7 @@ def _extract_two_numbers(td_text: str) -> tuple[Optional[float], Optional[float]
             second = float(val)
     return first, second
 
+
 def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = False) -> list[TodayMatch]:
     soup = BeautifulSoup(html, "lxml")
 
@@ -58,7 +64,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
         if t.find(string=re.compile(r"Football Prediction Today", re.I)):
             match_table = t
             break
-    
+
     if match_table is None:
         return []
 
@@ -75,8 +81,8 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
 
         if len(tds) == 1 and (tds[0].get("colspan") in ["7", "8"]):
             txt = " ".join(tds[0].stripped_strings)
-            
-            # Try to extract league code. 
+
+            # Try to extract league code.
             # It usually looks like "Code  League Name" e.g. "AR1  Primera Division"
             # We will use the first word as code data.
             parts = txt.split(maxsplit=1)
@@ -89,7 +95,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
                     continue
                 if len(code_candidate) > 10:
                     continue
-                
+
                 # If checking strict leagues, validation:
                 if not all_leagues:
                     m = RE_LEAGUE_STRICT.search(txt)
@@ -102,7 +108,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
                     current_league = code_candidate
                     # For safety, maybe ensure it looks like a code (uppercase, alphanumeric)
                     # But the site seems consistent: "AR1 ...", "CLCUP ...", etc.
-                    # We might want to populate LEAGUES dict dynamically? 
+                    # We might want to populate LEAGUES dict dynamically?
                     # For now just pass the code through.
                     if current_league not in LEAGUES:
                         # Add dynamic entry to avoid KeyError later if we rely on LEAGUES[code]
@@ -114,7 +120,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
 
         if not current_league:
             continue
-        
+
         if not all_leagues and current_league not in ["CLCUP", "ELCUP"]:
             continue
 
@@ -157,29 +163,32 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
         elif re.search(r"/shirt\.png|shirt\.png", srcs):
             lineup_type = "live"
 
-        out.append(TodayMatch(
-            match_id=match_id,
-            snapshot_date=snapshot_date,
-            league_code=current_league,
-            league_name=LEAGUES[current_league],
-            time_local=time_str,
-            home_id=home_id,
-            away_id=away_id,
-            home_team=home_team,
-            away_team=away_team,
-            home_href=home_href,
-            away_href=away_href,
-            value_side=value_side,
-            odds_rating_oo_today=odds_rating_oo,
-            odd_1_today=odd_1,
-            odd_x_today=odd_x,
-            odd_2_today=odd_2,
-            lineup_rating_home_today=lr_home,
-            lineup_rating_away_today=lr_away,
-            lineup_type_today=lineup_type,
-        ))
+        out.append(
+            TodayMatch(
+                match_id=match_id,
+                snapshot_date=snapshot_date,
+                league_code=current_league,
+                league_name=LEAGUES[current_league],
+                time_local=time_str,
+                home_id=home_id,
+                away_id=away_id,
+                home_team=home_team,
+                away_team=away_team,
+                home_href=home_href,
+                away_href=away_href,
+                value_side=value_side,
+                odds_rating_oo_today=odds_rating_oo,
+                odd_1_today=odd_1,
+                odd_x_today=odd_x,
+                odd_2_today=odd_2,
+                lineup_rating_home_today=lr_home,
+                lineup_rating_away_today=lr_away,
+                lineup_type_today=lineup_type,
+            )
+        )
 
     return out
+
 
 def parse_club_page(html: str, team_id: int) -> tuple[ClubMeta, list[ClubCup]]:
     soup = BeautifulSoup(html, "lxml")
@@ -206,11 +215,13 @@ def parse_club_page(html: str, team_id: int) -> tuple[ClubMeta, list[ClubCup]]:
         rating_home=pick("Rating Home"),
         rating_away=pick("Rating Away"),
     )
-    
+
     return meta, cups_list
+
 
 import unicodedata
 import numpy as np
+
 
 def norm_team(s: str) -> str:
     s = s.strip().lower()
@@ -220,19 +231,22 @@ def norm_team(s: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
+
 def rel_err(a: np.ndarray, b: np.ndarray) -> float:
     # Average relative error; stable for odds > 1
     # Avoid division by zero just in case
     b = np.where(b == 0, 1e-9, b)
     return float(np.mean(np.abs(a - b) / b))
 
+
 def payload_odds_vectors(p: dict) -> dict[str, np.ndarray]:
     return {
-        "open":  np.array([p["open_1"],  p["open_x"],  p["open_2"] ], dtype=float),
-        "drop":  np.array([p["drop_1"],  p["drop_x"],  p["drop_2"] ], dtype=float),
+        "open": np.array([p["open_1"], p["open_x"], p["open_2"]], dtype=float),
+        "drop": np.array([p["drop_1"], p["drop_x"], p["drop_2"]], dtype=float),
         "close": np.array([p["close_1"], p["close_x"], p["close_2"]], dtype=float),
-        "fair":  np.array([p["fair_1"],  p["fair_x"],  p["fair_2"] ], dtype=float),
+        "fair": np.array([p["fair_1"], p["fair_x"], p["fair_2"]], dtype=float),
     }
+
 
 def name_match_score(match_home: str, match_away: str, payload_home: str, payload_away: str) -> int:
     # 2 = perfect match (home-home and away-away)
@@ -245,6 +259,7 @@ def name_match_score(match_home: str, match_away: str, payload_home: str, payloa
     if mh == pa and ma == ph:
         return 1
     return 0
+
 
 def pick_best_payload(match_row: dict, payload_candidates: list[dict]) -> tuple[Optional[dict], dict]:
     """
@@ -261,8 +276,7 @@ def pick_best_payload(match_row: dict, payload_candidates: list[dict]) -> tuple[
             continue
 
         nm = name_match_score(
-            match_row["home_team"], match_row["away_team"], 
-            p["home_team_payload"], p["away_team_payload"]
+            match_row["home_team"], match_row["away_team"], p["home_team_payload"], p["away_team_payload"]
         )
 
         vecs = payload_odds_vectors(p)
@@ -283,7 +297,7 @@ def pick_best_payload(match_row: dict, payload_candidates: list[dict]) -> tuple[
     scored.sort(key=lambda x: (-x[0], x[1], x[2]))
 
     nm, best_dist, oo_gap, best_stage, best = scored[0]
-    
+
     confidence = "HIGH"
     if best_dist > 0.03 or nm < 1:
         confidence = "LOW"
@@ -300,6 +314,7 @@ def pick_best_payload(match_row: dict, payload_candidates: list[dict]) -> tuple[
     }
     return best, debug
 
+
 def parse_clip_payloads(html: str) -> list[list[str]]:
     soup = BeautifulSoup(html, "lxml")
     payloads = []
@@ -308,6 +323,7 @@ def parse_clip_payloads(html: str) -> list[list[str]]:
         if m:
             payloads.append(m.group(1).split(","))
     return payloads
+
 
 def parse_team_ratings(html: str) -> tuple[Optional[float], Optional[float]]:
     """
@@ -318,24 +334,25 @@ def parse_team_ratings(html: str) -> tuple[Optional[float], Optional[float]]:
     td = soup.find("td", string=re.compile(r"^Team Ratings", re.I))
     if not td:
         return None, None
-    
+
     tr = td.find_parent("tr")
     if not tr:
         return None, None
-    
+
     tds = tr.find_all("td")
     if len(tds) < 3:
         return None, None
-    
+
     home_val = _extract_float(tds[1].get_text(" ", strip=True))
     away_val = _extract_float(tds[2].get_text(" ", strip=True))
-    
+
     return home_val, away_val
+
 
 def payload_to_odds_row(parts: list[str]) -> dict:
     if len(parts) < 19:
         return {}
-    
+
     try:
         nums = list(map(float, parts[4:]))
         return {
@@ -343,42 +360,63 @@ def payload_to_odds_row(parts: list[str]) -> dict:
             "away_team_payload": parts[1],
             "some_flag": parts[2],
             "league_code_payload": parts[3],
-            "oo": nums[0], "do": nums[1], "ao": nums[2],
-            "open_1": nums[3], "open_x": nums[4], "open_2": nums[5],
-            "drop_1": nums[6], "drop_x": nums[7], "drop_2": nums[8],
-            "close_1": nums[9], "close_x": nums[10], "close_2": nums[11],
-            "fair_1": nums[12], "fair_x": nums[13], "fair_2": nums[14],
+            "oo": nums[0],
+            "do": nums[1],
+            "ao": nums[2],
+            "open_1": nums[3],
+            "open_x": nums[4],
+            "open_2": nums[5],
+            "drop_1": nums[6],
+            "drop_x": nums[7],
+            "drop_2": nums[8],
+            "close_1": nums[9],
+            "close_x": nums[10],
+            "close_2": nums[11],
+            "fair_1": nums[12],
+            "fair_x": nums[13],
+            "fair_2": nums[14],
         }
     except (ValueError, IndexError):
         return {}
 
+
 def payload_to_odds_development(
-    parts: list[str], 
-    match_id: str, 
-    snapshot_date: str, 
-    league_code: str, 
-    home_id: int, 
-    away_id: int, 
-    source_url: str, 
+    parts: list[str],
+    match_id: str,
+    snapshot_date: str,
+    league_code: str,
+    home_id: int,
+    away_id: int,
+    source_url: str,
     debug: dict,
     team_rating_home: Optional[float] = None,
-    team_rating_away: Optional[float] = None
+    team_rating_away: Optional[float] = None,
 ) -> Optional[OddsDevelopment]:
     row = payload_to_odds_row(parts)
     if not row:
         return None
-    
+
     return OddsDevelopment(
         match_id=match_id,
         snapshot_date=snapshot_date,
         league_code=league_code,
         home_id=home_id,
         away_id=away_id,
-        oo=row["oo"], do=row["do"], ao=row["ao"],
-        open_1=row["open_1"], open_x=row["open_x"], open_2=row["open_2"],
-        drop_1=row["drop_1"], drop_x=row["drop_x"], drop_2=row["drop_2"],
-        close_1=row["close_1"], close_x=row["close_x"], close_2=row["close_2"],
-        fair_1=row["fair_1"], fair_x=row["fair_x"], fair_2=row["fair_2"],
+        oo=row["oo"],
+        do=row["do"],
+        ao=row["ao"],
+        open_1=row["open_1"],
+        open_x=row["open_x"],
+        open_2=row["open_2"],
+        drop_1=row["drop_1"],
+        drop_x=row["drop_x"],
+        drop_2=row["drop_2"],
+        close_1=row["close_1"],
+        close_x=row["close_x"],
+        close_2=row["close_2"],
+        fair_1=row["fair_1"],
+        fair_x=row["fair_x"],
+        fair_2=row["fair_2"],
         team_rating_home=team_rating_home,
         team_rating_away=team_rating_away,
         source_url=source_url,
@@ -386,5 +424,5 @@ def payload_to_odds_development(
         matched_odds_stage=debug["matched_odds_stage"],
         odds_distance=debug["odds_distance"],
         oo_match_gap=debug["oo_match_gap"],
-        match_confidence=debug["match_confidence"]
+        match_confidence=debug["match_confidence"],
     )
