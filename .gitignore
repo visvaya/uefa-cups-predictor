@@ -8,7 +8,6 @@ venv/
 ENV/
 
 # Tools
-.agent/
 .claude/settings.local.json
 .pytest_cache/
 .ruff_cache/
