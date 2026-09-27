@@ -1,0 +1,5 @@
+interface:
+  display_name: "Daily SR run"
+  short_description: "Scrape today's Soccer-rating snapshot and build the SR-only report"
+policy:
+  allow_implicit_invocation: false
