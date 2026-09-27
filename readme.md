@@ -1,5 +1,8 @@
 # UEFA Cups Fantasy Predictor & Analyzer (CL & EL)
 
+[![CI](https://github.com/visvaya/uefa-cups-predictor/actions/workflows/ci.yml/badge.svg)](https://github.com/visvaya/uefa-cups-predictor/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 System for predicting results, assessing motivation, and rotation risk in European competitions (Champions League and Europa League) under the new league phase format. The system is based on probabilistic forecasts from Monte Carlo simulations ("The Analyst" data) and odds data from Soccer-rating. It is specifically designed for analyzing the final rounds of the league phase.
 
 Allows creating a "lock/in_play/out" map:
@@ -10,6 +13,20 @@ Allows creating a "lock/in_play/out" map:
 
 > **Note**: This tool is specifically designed for analyzing the **final round** of the league phase, where motivation and rotation risks are most critical. For a deeper dive into the mathematical logic used, see [interpretation.md](interpretation.md).
 
+## Installation
+
+Requires Python 3.12 or newer.
+
+```bash
+git clone https://github.com/visvaya/uefa-cups-predictor.git
+cd uefa-cups-predictor
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Input data is not included in the repository (see [How to Get Data](#how-to-get-data)); only the `_example.csv` templates are tracked. Run all commands from the repository root.
+
 ## Key Features
 
 - **Status Model (UEFA Art. 17 Compliance)**: Classifies clubs based on mathematical progression chances:
@@ -17,7 +34,7 @@ Allows creating a "lock/in_play/out" map:
   - `LOCKED_DIRECT_RO16`: Guaranteed spot in the top eight (direct qualification).
   - `LOCKED_PLAYOFFS`: Guaranteed progression, but no chance for Top 8 (play-offs).
   - `IN_PLAY`: Fight for key positions continues.
-- **Motivation Index (Mot)**: Proprietary *Pressure Vector* algorithm assessing "win pressure". Peak values occur at qualification thresholds (spots 8/9 and 24/25).
+- **Motivation Index (Mot)**: Custom *Pressure Vector* algorithm assessing "win pressure". Peak values occur at qualification thresholds (spots 8/9 and 24/25).
 - **Rotation Risk (Risk)**: Detects "safe" teams likely to rotate their squad before the knockout phase.
 - **Opponent Dead Bonus (`opp_dead`)**: Automatic attractiveness bonus for a team playing against a rival that is already `OUT` or has nothing left to play for.
 - **International & Excel Ready**: Output format is standardized for international use (comma `,` separator, dot `.` decimal). Polish local format is available via flag.
@@ -58,7 +75,7 @@ The system interprets source data (*Predicted Table*) as a set of probabilities,
 - **KO P/O% / KPO**: Probability of occupying places 9–24 (participation in play-offs).
 - **QF%**: P(quarter-final) – used as a safe *floor* for progression chances.
 
-### Calculating P(Top 24) — "Chance of Continuing Play"
+### Calculating P(Top 24) – "Chance of Continuing Play"
 
 The algorithm uses a hybrid approach to maintain mathematical consistency:
 
@@ -133,12 +150,15 @@ python -m src.scraping.soccer_rating_cli
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
 - `--separate-snapshots`: Save snapshot to a separate file (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of merging.
 - `--min-start N`: Process matches starting at least N minutes from now.
-- `--max-start N`: Process matches starting at most N minutes from now.
+- `--max-start N`: Process matches starting at most N minutes from now. Kickoff times are read in the machine's local timezone; a kickoff more than 12 hours in the past counts as the next day's fixture.
+- `--skip-cups`: Skip matches whose league code contains `CUP` (e.g. `FACUP`); useful together with `--all-leagues`.
+
+National team fixtures are skipped with a warning; only club matches are supported.
 
 ### Workflow
 
 1. **Run Scraper**: `python -m src.scraping.soccer_rating_cli`
-2. **Verify**: Check `data/soccer-rating/match_odds_development.csv` for new data.
+2. **Verify**: Check `data/soccer-rating/match_odds_development.csv` (or the dated snapshot when using `--separate-snapshots`) for new data.
 3. **Analyze**: Run `python analyze.py` to generate the report.
 
 ## Usage & Structure
@@ -165,9 +185,9 @@ python analyze.py --excel-pl
 
 **Generated Reports:**
 
-- `cl_recommendations.csv` — Results for Champions League.
-- `el_recommendations.csv` — Results for Europa League.
-- `sr_analysis_report.csv` — Results for SR-Only mode.
+- `cl_recommendations.csv` – Results for Champions League.
+- `el_recommendations.csv` – Results for Europa League.
+- `sr_analysis_report_YYYY-MM-DD.csv` – Results for SR-Only mode (the date comes from the input snapshot name; without a dated input the file is `sr_analysis_report.csv`).
 
 ## Data Integrity Requirements
 
@@ -231,3 +251,25 @@ If you are using the `_example` files as templates:
 ### Notifications
 
 - Real-time notification system for detected betting opportunities.
+
+Known technical shortcomings are tracked in [docs/tech-debt.md](docs/tech-debt.md).
+
+## Development
+
+```bash
+pip install -r requirements-dev.txt
+pytest                 # unit tests
+ruff check .           # lint
+ruff format --check .  # formatting
+mypy                   # type checking (paths configured in pyproject.toml)
+```
+
+The same checks run in GitHub Actions on every push to `main` and on pull requests.
+
+## Disclaimer
+
+This project is an analytical tool for fantasy football and research. It does not guarantee results and is not financial or betting advice. Data belongs to its respective providers (The Analyst / Opta, Soccer-rating); check their terms of use before collecting or redistributing it.
+
+## License
+
+[MIT](LICENSE) © 2026 visvaya

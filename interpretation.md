@@ -1,4 +1,4 @@
-# Data from The Analyst ("Predicted" table) — Logic Interpretation
+# Data from The Analyst ("Predicted" table) – Logic Interpretation
 
 ## 1) Data Nature
 
@@ -80,7 +80,7 @@ The system estimates the chance of continuing play using the following logic:
 
 ---
 
-## UEFA League Phase Rules — Context
+## UEFA League Phase Rules – Context
 
 ### 1) Format
 
