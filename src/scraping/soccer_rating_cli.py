@@ -1,20 +1,23 @@
-import time
-import pandas as pd
-import logging
 import argparse
+import logging
+import re
+import time
 from datetime import datetime
 from pathlib import Path
+
+import pandas as pd
+
 from .fetcher import SoccerRatingFetcher
+from .models import ClubMeta
 from .parsers import (
-    parse_today_prediction,
+    parse_clip_payloads,
     parse_club_page,
     parse_team_ratings,
-    parse_clip_payloads,
-    payload_to_odds_row,
+    parse_today_prediction,
     payload_to_odds_development,
+    payload_to_odds_row,
     pick_best_payload,
 )
-from .models import ClubMeta
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -22,15 +25,24 @@ logger = logging.getLogger(__name__)
 MINUTES_PER_DAY = 24 * 60
 # A kickoff more than this many minutes in the past is treated as the next day's (after midnight)
 PAST_KICKOFF_ROLLOVER_MINUTES = 12 * 60
+RE_KICKOFF_TIME = re.compile(r"^(\d{1,2}):(\d{2})$")
+
+
+def local_now() -> datetime:
+    """Current time as an aware datetime in the machine's local timezone."""
+    return datetime.now().astimezone()
 
 
 def minutes_until_kickoff(time_local: str, now: datetime) -> float:
-    """Returns minutes from `now` to an "HH:MM" kickoff, rolling over midnight for late-night fixtures.
+    """Returns minutes from `now` to an "HH:MM" kickoff in the same timezone as `now`.
 
-    Raises ValueError when `time_local` is not in HH:MM format.
+    Kickoffs far in the past roll over to the next day (late-night fixtures).
+    Raises ValueError when `time_local` is not a valid HH:MM time.
     """
-    hm = datetime.strptime(time_local, "%H:%M")
-    kickoff = now.replace(hour=hm.hour, minute=hm.minute, second=0, microsecond=0)
+    hm = RE_KICKOFF_TIME.match(time_local)
+    if hm is None:
+        raise ValueError(f"expected HH:MM, got {time_local!r}")
+    kickoff = now.replace(hour=int(hm.group(1)), minute=int(hm.group(2)), second=0, microsecond=0)
     diff_min = (kickoff - now).total_seconds() / 60.0
     if diff_min < -PAST_KICKOFF_ROLLOVER_MINUTES:
         diff_min += MINUTES_PER_DAY
@@ -99,7 +111,7 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    snapshot_date = datetime.now().strftime("%Y-%m-%d")
+    snapshot_date = local_now().strftime("%Y-%m-%d")
     fetcher = SoccerRatingFetcher()
 
     if args.local:
@@ -123,7 +135,7 @@ def main():
     # Time Window Filtering
     if args.min_start is not None or args.max_start is not None:
         filtered_matches = []
-        now = datetime.now()
+        now = local_now()
         for m in matches:
             # Assumes the site shows kickoff times in the machine's local timezone
             try:
@@ -157,7 +169,7 @@ def main():
         diff = len(matches) - len(matches_kept)
         matches = matches_kept
         if diff > 0:
-            logger.info(f"Filtered out {diff} cup matches. Skipped codes: {sorted(list(skipped_codes))}")
+            logger.info(f"Filtered out {diff} cup matches. Skipped codes: {sorted(skipped_codes)}")
 
     if not matches:
         logger.warning("No matches match the criteria. Exiting.")

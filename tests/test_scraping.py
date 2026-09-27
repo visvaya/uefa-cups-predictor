@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -13,7 +13,7 @@ from src.scraping.parsers import (
 )
 from src.scraping.soccer_rating_cli import minutes_until_kickoff
 
-EVENING = datetime(2026, 2, 5, 18, 0)
+EVENING = datetime(2026, 2, 5, 18, 0, tzinfo=UTC)
 
 
 def test_minutes_until_kickoff_same_day() -> None:
