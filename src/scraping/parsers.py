@@ -1,11 +1,13 @@
 from __future__ import annotations
+
 import logging
 import re
 import unicodedata
+
 import numpy as np
 from bs4 import BeautifulSoup
-from typing import Optional
-from .models import TodayMatch, ClubMeta, ClubCup, OddsDevelopment
+
+from .models import ClubCup, ClubMeta, OddsDevelopment, TodayMatch
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +48,12 @@ def _normalize_time(s: str) -> str:
     return s
 
 
-def _extract_float(s: str) -> Optional[float]:
+def _extract_float(s: str) -> float | None:
     m = RE_FLOAT.search(s.replace(",", "."))
     return float(m.group(1)) if m else None
 
 
-def _extract_two_numbers(td_text: str) -> tuple[Optional[float], Optional[float]]:
+def _extract_two_numbers(td_text: str) -> tuple[float | None, float | None]:
     txt = " ".join(td_text.split())
     first = _extract_float(txt)
     second = None
@@ -68,7 +70,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
 
     match_table = None
     for t in soup.find_all("table", class_="bigtable"):
-        if t.find(string=re.compile(r"Football Prediction Today", re.I)):
+        if t.find(string=re.compile(r"Football Prediction Today", re.IGNORECASE)):
             match_table = t
             break
 
@@ -76,7 +78,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
         return []
 
     out: list[TodayMatch] = []
-    current_league: Optional[str] = None
+    current_league: str | None = None
 
     for tr in match_table.find_all("tr"):
         # AD DETECTION: Skip rows with "Live Betting Tips!" or adsbygoogle script
@@ -208,8 +210,8 @@ def parse_club_page(html: str, team_id: int) -> tuple[ClubMeta, list[ClubCup]]:
     team_name = th.get_text(" ", strip=True) if th else "Unknown"
     txt = soup.get_text(" ", strip=True)
 
-    def pick(label: str) -> Optional[float]:
-        m = re.search(rf"{re.escape(label)}[:]?\s*(\d+(?:\.\d+)?)", txt, re.I)
+    def pick(label: str) -> float | None:
+        m = re.search(rf"{re.escape(label)}[:]?\s*(\d+(?:\.\d+)?)", txt, re.IGNORECASE)
         return float(m.group(1)) if m else None
 
     cups_list = []
@@ -269,7 +271,7 @@ def name_match_score(match_home: str, match_away: str, payload_home: str, payloa
     return 0
 
 
-def pick_best_payload(match_row: dict, payload_candidates: list[dict]) -> tuple[Optional[dict], dict]:
+def pick_best_payload(match_row: dict, payload_candidates: list[dict]) -> tuple[dict | None, dict]:
     """
     payload_candidates: list of dicts from payload_to_odds_row() + home_team_payload/away_team_payload/etc.
     Returns: (best_payload_dict, debug_dict)
@@ -333,14 +335,14 @@ def parse_clip_payloads(html: str) -> list[list[str]]:
     return payloads
 
 
-def parse_team_ratings(html: str) -> tuple[Optional[float], Optional[float]]:
+def parse_team_ratings(html: str) -> tuple[float | None, float | None]:
     """
     Extracts Team Ratings (H/A) from the table (e.g., from club-view page).
     HTML format: <tr><td>Team Ratings (H/A)</td><td>2083.96</td><td>2029.40</td></tr>
     """
     soup = BeautifulSoup(html, "lxml")
     # bs4 stubs do not model the (name, string=Pattern) overload that bs4 supports at runtime
-    td = soup.find("td", string=re.compile(r"^Team Ratings", re.I))  # type: ignore[call-overload]
+    td = soup.find("td", string=re.compile(r"^Team Ratings", re.IGNORECASE))  # type: ignore[call-overload]
     if not td:
         return None, None
 
@@ -398,9 +400,9 @@ def payload_to_odds_development(
     away_id: int,
     source_url: str,
     debug: dict,
-    team_rating_home: Optional[float] = None,
-    team_rating_away: Optional[float] = None,
-) -> Optional[OddsDevelopment]:
+    team_rating_home: float | None = None,
+    team_rating_away: float | None = None,
+) -> OddsDevelopment | None:
     row = payload_to_odds_row(parts)
     if not row:
         return None

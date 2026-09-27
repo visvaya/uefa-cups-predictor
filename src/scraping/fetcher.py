@@ -1,13 +1,14 @@
-import requests
 import logging
-from typing import Optional
+from typing import ClassVar
+
+import requests
 
 logger = logging.getLogger(__name__)
 
 
 class SoccerRatingFetcher:
     BASE_URL = "https://www.soccer-rating.com"
-    HEADERS = {
+    HEADERS: ClassVar[dict[str, str]] = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9,pl;q=0.8",
@@ -18,7 +19,7 @@ class SoccerRatingFetcher:
         self.session = requests.Session()
         self.session.headers.update(self.HEADERS)
 
-    def fetch(self, url_path: str) -> Optional[str]:
+    def fetch(self, url_path: str) -> str | None:
         """
         Fetches a page from soccer-rating.com.
         url_path can be a full URL or a relative path.

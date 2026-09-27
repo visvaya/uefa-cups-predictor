@@ -1,17 +1,17 @@
-import pandas as pd
-import numpy as np
-import unicodedata
 import argparse
 import sys
+import unicodedata
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+
+import numpy as np
+import pandas as pd
 
 # ========================================
 # CONFIGURATION & CONSTANTS
 # ========================================
 BASE_DIR: Path = Path(__file__).parent
 
-NAME_FIX: Dict[str, str] = {
+NAME_FIX: dict[str, str] = {
     # Diacritics/Variants
     "boda/glimt": "bodo/glimt",
     "kabenhavn": "kobenhavn",
@@ -62,7 +62,7 @@ NAME_FIX: Dict[str, str] = {
 }
 
 # Status Point Bonuses for Value Calculation
-STATUS_BONUSES: Dict[str, float] = {"OUT": 0.22, "LOCKED_DIRECT_RO16": 0.12, "LOCKED_PLAYOFFS": 0.15}
+STATUS_BONUSES: dict[str, float] = {"OUT": 0.22, "LOCKED_DIRECT_RO16": 0.12, "LOCKED_PLAYOFFS": 0.15}
 
 # Weight for Soccer-rating signal
 
@@ -80,7 +80,7 @@ W_LINEUP = 0.1  # Lineup advantage
 
 def remove_diacritics(s: str) -> str:
     """Removes diacritics and normalizes text to ASCII (includes ø, ł, æ, etc.)."""
-    mapping: Dict[int | str, int | str | None] = {
+    mapping: dict[int | str, int | str | None] = {
         "\u00f8": "o",
         "\u00d8": "O",
         "\u0142": "l",
@@ -121,7 +121,7 @@ def pressure_vector(p: pd.Series, beta: float = 0.35) -> pd.Series:
 # ========================================
 # DATA ENGINE
 # ========================================
-def cast_numeric(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
+def cast_numeric(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     """Utility to clean and cast columns to float. Handles both dot and comma decimals."""
     for c in cols:
         if c in df.columns:
@@ -341,7 +341,7 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
     return f2
 
 
-def load_league_data(prefix: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def load_league_data(prefix: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Loads fixtures and predicted table for a given league prefix (cl/el)."""
     league_dir = "champions-league" if prefix == "cl" else "europa-league"
     data_dir = BASE_DIR / "data" / "theanalyst" / league_dir
@@ -930,7 +930,7 @@ def analyze_league(prefix: str, excel_pl: bool = False):
         print(f"FAILED to save {out_path.name}")
 
 
-def analyze_sr_only(input_file: Optional[Path], output_dir: Optional[Path], excel_pl: bool = False):
+def analyze_sr_only(input_file: Path | None, output_dir: Path | None, excel_pl: bool = False):
     """Execution flow for SR-only analysis (no The Analyst data)."""
 
     # 1. Determine Input File
