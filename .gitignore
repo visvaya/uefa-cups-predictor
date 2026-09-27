@@ -20,6 +20,7 @@ ENV/
 *.xlsx
 *.txt
 !requirements.txt
+!requirements-dev.txt
 *.html
 
 # Ignore all data by default
