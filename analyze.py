@@ -767,7 +767,7 @@ def analyze_sr_only(input_file: Optional[Path], output_dir: Optional[Path], exce
     # BUT wait, the scraping saves `match_odds_development.csv` with just IDs.
     # We NEED team names.
     
-    # Load club_meta to map IDs to Names
+    # Load club_meta to map IDs to Names (Fallback)
     meta_path = BASE_DIR / "data" / "soccer-rating" / "club_meta.csv"
     id_to_name = {}
     if meta_path.exists():
@@ -775,10 +775,35 @@ def analyze_sr_only(input_file: Optional[Path], output_dir: Optional[Path], exce
         # map id -> team_name
         id_to_name = meta.set_index("team_id")["team_name"].to_dict()
     
-    # Map IDs to Names
-    # Note: sr dataframe has 'home_id', 'away_id' (numeric or string)
-    sr["HomeTeamName"] = sr["home_id"].apply(lambda x: id_to_name.get(int(x), f"ID_{x}"))
-    sr["AwayTeamName"] = sr["away_id"].apply(lambda x: id_to_name.get(int(x), f"ID_{x}"))
+    # Load today_matches.csv for Names (Priority)
+    today_path = BASE_DIR / "data" / "soccer-rating" / "today_matches.csv"
+    today_map = {}
+    if today_path.exists():
+        try:
+            today_df = read_smart_csv(today_path)
+            if "match_id" in today_df.columns and "home_team" in today_df.columns and "away_team" in today_df.columns:
+                today_map = today_df.set_index("match_id")[["home_team", "away_team"]].to_dict('index')
+                print(f"INFO: Loaded {len(today_map)} active match names from today_matches.csv")
+        except Exception as e:
+            print(f"WARNING: Could not load today_matches.csv for name mapping: {e}")
+
+    # Map IDs to Names with Priority logic
+    def get_name(row, side):
+        # 1. Try Match ID in Today Matches
+        mid = row.get("match_id")
+        if mid and mid in today_map:
+            return today_map[mid][f"{side}_team"]
+        
+        # 2. Key Fallback: ID from club_meta
+        tid_col = f"{side}_id"
+        tid = row.get(tid_col)
+        if pd.notna(tid):
+            return id_to_name.get(int(tid), f"ID_{tid}")
+        
+        return f"UNK_{side}"
+
+    sr["HomeTeamName"] = sr.apply(lambda r: get_name(r, "home"), axis=1)
+    sr["AwayTeamName"] = sr.apply(lambda r: get_name(r, "away"), axis=1)
     
     # Prepare DataFrame 'f2' compatible structure
     # We need: close_1, fair_1, etc.
