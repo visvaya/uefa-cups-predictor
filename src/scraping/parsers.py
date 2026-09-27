@@ -66,6 +66,11 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
     current_league: Optional[str] = None
 
     for tr in match_table.find_all("tr"):
+        # AD DETECTION: Skip rows with "Live Betting Tips!" or adsbygoogle script
+        tr_str = str(tr)
+        if "Live Betting Tips!" in tr_str or "adsbygoogle" in tr_str:
+            continue
+
         tds = tr.find_all("td")
 
         if len(tds) == 1 and (tds[0].get("colspan") in ["7", "8"]):

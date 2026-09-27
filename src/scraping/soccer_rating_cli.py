@@ -66,6 +66,7 @@ def main():
     parser.add_argument("--separate-snapshots", action="store_true", help="Save match odds to separate daily snapshot files")
     parser.add_argument("--min-start", type=int, default=None, help="Process matches starting at least N minutes from now")
     parser.add_argument("--max-start", type=int, default=None, help="Process matches starting at most N minutes from now")
+    parser.add_argument("--skip-cups", action="store_true", help="Skip matches where league code contains 'CUP' (e.g. FA CUP, CCCUP)")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -120,6 +121,23 @@ def main():
                 
         logger.info(f"Filtered matches: {len(filtered_matches)} (from {len(matches)}) based on time window.")
         matches = filtered_matches
+    
+    # Cup Filtering
+    if args.skip_cups:
+        matches_kept = []
+        skipped_codes = set()
+        for m in matches:
+            # Check if 'CUP' is in the league code (which is the first word)
+            code = m.league_code if m.league_code else ""
+            if "CUP" in code:
+                skipped_codes.add(code)
+            else:
+                matches_kept.append(m)
+        
+        diff = len(matches) - len(matches_kept)
+        matches = matches_kept
+        if diff > 0:
+            logger.info(f"Filtered out {diff} cup matches. Skipped codes: {sorted(list(skipped_codes))}")
     
     if not matches:
         logger.warning("No matches match the criteria. Exiting.")
