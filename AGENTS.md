@@ -35,7 +35,6 @@ Znane długi techniczne są w `docs/tech-debt.md`. Nowy dług dopisuj tam, a sp�
 - `.gitattributes` wymusza LF; ruff formatuje z `line-ending = "lf"`.
 - Etykiety rekomendacji zawierają emoji (`🟢 STRONG BUY` itd.) i służą jako klucze sortowania; to świadomy wyjątek od zakazu emoji, opisany w `docs/tech-debt.md`.
 - Logika modelu (statusy, Mot, RotRisk, progi rekomendacji) jest opisana w `readme.md` i `interpretation.md`; zmiana progów lub wag w kodzie wymaga aktualizacji tych dokumentów.
-- Lokalny, gitignorowany katalog `.agent/` zawiera stare reguły z generycznego szablonu (Next.js, Supabase); nie dotyczą tego repo, obowiązują zasady z tego pliku.
 
 ## Wspólna konfiguracja agentów
 
