@@ -95,8 +95,8 @@ def remove_diacritics(s: str) -> str:
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
 
-def norm_key(s: Optional[str]) -> str:
-    """Creates a normalized key for team names."""
+def norm_key(s: object) -> str:
+    """Creates a normalized key for team names; missing values (None/NaN) map to an empty key."""
     if pd.isna(s) or s is None:
         return ""
     s = remove_diacritics(str(s)).strip().lower()
@@ -366,7 +366,7 @@ def validate_integrity(df: pd.DataFrame, league_name: str) -> None:
     # Range check
     out_of_range = (df[cols_to_check] < 0) | (df[cols_to_check] > 100)
     if out_of_range.any().any():
-        print(f"WARNING: VALUES OUT OF RANGE [0, 100] DETECTED!")
+        print("WARNING: VALUES OUT OF RANGE [0, 100] DETECTED!")
 
     # Monotonicity
     viol = ~(
@@ -392,10 +392,10 @@ def enrich_table(table: pd.DataFrame, league_name: str) -> pd.DataFrame:
     df = table.copy()
     validate_integrity(df, league_name)
 
-    # Normalization helper
-    s = lambda col: df[col].fillna(0.0).clip(0, 100) / 100.0
+    def to_unit(col: str) -> pd.Series:
+        return df[col].fillna(0.0).clip(0, 100) / 100.0
 
-    l16, kpo, qf, sf, fnl, wnr = (s(c) for c in ["LAST 16%", "KO P/0%", "QF%", "SF%", "FINAL%", "WINNER%"])
+    l16, kpo, qf, sf, fnl, wnr = (to_unit(c) for c in ["LAST 16%", "KO P/0%", "QF%", "SF%", "FINAL%", "WINNER%"])
 
     # Survival Probability
     raw_sum = l16 + kpo
@@ -492,7 +492,6 @@ def format_recommendations(ranking: pd.DataFrame, allow_draws: bool = True) -> p
     # SR Edge Support
     sr_edge_col = "SR_edge" if "SR_edge" in ranking.columns else "srEdge"
     sr_edge = ranking.get(sr_edge_col, pd.Series(0, index=ranking.index)).fillna(0)
-    is_high_edge = sr_edge > 0.08
     is_good_edge = sr_edge > 0.04
 
     # Directionality Check
@@ -1009,7 +1008,7 @@ def analyze_sr_only(input_file: Optional[Path], output_dir: Optional[Path], exce
             if "match_id" in today_df.columns and "home_team" in today_df.columns and "away_team" in today_df.columns:
                 today_map = today_df.set_index("match_id")[["home_team", "away_team"]].to_dict("index")
                 print(f"INFO: Loaded {len(today_map)} active match names from today_matches.csv")
-        except Exception as e:
+        except (OSError, UnicodeDecodeError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError) as e:
             print(f"WARNING: Could not load today_matches.csv for name mapping: {e}")
 
     # Map IDs to Names with Priority logic
@@ -1215,7 +1214,7 @@ def analyze_sr_only(input_file: Optional[Path], output_dir: Optional[Path], exce
     ranking = ranking[match_mask].copy()
     ranking = ranking.sort_values(["_sort_rank", "_abs_score"], ascending=[True, False])
 
-    print(f"\n--- SR-ONLY ANALYSIS TOP 10 RECOMMENDATIONS ---")
+    print("\n--- SR-ONLY ANALYSIS TOP 10 RECOMMENDATIONS ---")
 
     result_cols = [
         "homeTeam",
