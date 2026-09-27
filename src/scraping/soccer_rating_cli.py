@@ -19,6 +19,23 @@ from .models import ClubMeta
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+MINUTES_PER_DAY = 24 * 60
+# A kickoff more than this many minutes in the past is treated as the next day's (after midnight)
+PAST_KICKOFF_ROLLOVER_MINUTES = 12 * 60
+
+
+def minutes_until_kickoff(time_local: str, now: datetime) -> float:
+    """Returns minutes from `now` to an "HH:MM" kickoff, rolling over midnight for late-night fixtures.
+
+    Raises ValueError when `time_local` is not in HH:MM format.
+    """
+    hm = datetime.strptime(time_local, "%H:%M")
+    kickoff = now.replace(hour=hm.hour, minute=hm.minute, second=0, microsecond=0)
+    diff_min = (kickoff - now).total_seconds() / 60.0
+    if diff_min < -PAST_KICKOFF_ROLLOVER_MINUTES:
+        diff_min += MINUTES_PER_DAY
+    return diff_min
+
 
 def validate_results(matches, all_odds_dev):
     logger.info("--- Validation Report ---")
@@ -108,26 +125,19 @@ def main():
         filtered_matches = []
         now = datetime.now()
         for m in matches:
-            # Parse time "HH:MM". Assume today's date + local timezone logic (as site seems to follow user expectation)
-            # Warning: this is simplistic. Site timezone might differ.
+            # Assumes the site shows kickoff times in the machine's local timezone
             try:
-                hm = datetime.strptime(m.time_local, "%H:%M")
-                match_dt = now.replace(hour=hm.hour, minute=hm.minute, second=0, microsecond=0)
-                # If match time is much earlier than now (e.g. 00:30 vs 23:00), assume it's next day?
-                # Or if match is 23:00 and now is 00:30, match was yesterday?
-                # For simplicity, just use today's date as base.
-                # Better approach: check diff.
-
-                diff_min = (match_dt - now).total_seconds() / 60.0
-
-                if args.min_start is not None and diff_min < args.min_start:
-                    continue  # Too soon or already started
-                if args.max_start is not None and diff_min > args.max_start:
-                    continue  # Too late
-
-                filtered_matches.append(m)
-            except Exception as e:
+                diff_min = minutes_until_kickoff(m.time_local, now)
+            except (ValueError, TypeError) as e:
                 logger.warning(f"Could not parse time {m.time_local} for {m.match_id}: {e}")
+                continue
+
+            if args.min_start is not None and diff_min < args.min_start:
+                continue  # Too soon or already started
+            if args.max_start is not None and diff_min > args.max_start:
+                continue  # Too late
+
+            filtered_matches.append(m)
 
         logger.info(f"Filtered matches: {len(filtered_matches)} (from {len(matches)}) based on time window.")
         matches = filtered_matches
@@ -269,7 +279,7 @@ def main():
             try:
                 df_old = pd.read_csv(path)
                 df = pd.concat([df_old, df_new], ignore_index=True)
-            except Exception as e:
+            except (OSError, UnicodeDecodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as e:
                 logger.warning(f"Could not read existing {filename}: {e}")
                 df = df_new
         else:
@@ -292,7 +302,6 @@ def main():
         # Define and enforce column order
         id_cols_dev = ["match_id", "snapshot_date", "home_id", "away_id", "league_code", "source_url"]
         rem_cols_dev = [c for c in df_dev.columns if c not in id_cols_dev]
-        df_dev = df_dev[id_cols_dev + rem_cols_dev]
         df_dev = df_dev[id_cols_dev + rem_cols_dev]
 
         if args.separate_snapshots:
