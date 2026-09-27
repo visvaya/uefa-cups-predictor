@@ -26,3 +26,4 @@ jobs:
       - run: ruff format --check .
       - run: mypy
       - run: pytest
+      - run: python .agents/sync-skills.py --check

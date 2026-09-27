@@ -262,6 +262,7 @@ pytest                 # unit tests
 ruff check .           # lint
 ruff format --check .  # formatting
 mypy                   # type checking (paths configured in pyproject.toml)
+python .agents/sync-skills.py --check  # shared agent skills are in sync
 ```
 
 The same checks run in GitHub Actions on every push to `main` and on pull requests.
