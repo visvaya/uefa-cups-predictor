@@ -1,0 +1,36 @@
+version: 2
+
+# Weekly, grouped updates keep the PR count low on a single-maintainer repo.
+# Security updates are not grouped here: they arrive on their own as soon as
+# an advisory lands, independent of this schedule. `cooldown` waits a week
+# after a version is published before proposing it.
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Warsaw
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Warsaw
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ["*"]
