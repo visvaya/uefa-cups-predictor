@@ -36,6 +36,10 @@ Znane długi techniczne są w `docs/tech-debt.md`. Nowy dług dopisuj tam, a sp�
 - Etykiety rekomendacji zawierają emoji (`🟢 STRONG BUY` itd.) i służą jako klucze sortowania; to świadomy wyjątek od zakazu emoji, opisany w `docs/tech-debt.md`.
 - Logika modelu (statusy, Mot, RotRisk, progi rekomendacji) jest opisana w `readme.md` i `interpretation.md`; zmiana progów lub wag w kodzie wymaga aktualizacji tych dokumentów.
 
+## Publikacja
+
+Cel: lokalnie (CLI uruchamiane ręcznie, bez strony WWW i domeny). Opcjonalnie w fazie ligowej pucharów: scraper soccer-rating.com jako rzadki timer systemd na współdzielonym serwerze `vps-waw`, wyniki w `/var/lib`. Propozycja i decyzje: `docs/publikacja.md` (niewdrożone).
+
 ## Wspólna konfiguracja agentów
 
 Codex i Claude Code korzystają z tych samych skilli i hooków; edytuj tylko źródła:
