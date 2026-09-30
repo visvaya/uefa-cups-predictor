@@ -17,6 +17,7 @@ Znane długi techniczne są w `docs/tech-debt.md`. Nowy dług dopisuj tam, a sp�
   - `python analyze.py --excel-pl --sr-only --input-file data/soccer-rating/match_odds_development_<YYYY-MM-DD>.csv --output-dir recommendations`
 - Scraper wysyła prawdziwe zapytania HTTP do soccer-rating.com; do szybkich prób używaj `--limit N` albo `--local`.
 - Bramka jakości (ta sama co w CI, `.github/workflows/ci.yml`): `pytest`, `ruff check .`, `ruff format --check .`, `mypy` (ścieżki są w `pyproject.toml`, uruchamiaj bez argumentów), `python .agents/sync-skills.py --check`. Wszystkie są obecnie czyste; nowe błędy blokują merge.
+- CI uruchamia dodatkowo kontrole bezpieczeństwa (raz, w nodze macierzy 3.13): `pip-audit` na zależnościach runtime z `uv.lock`, `zizmor --persona pedantic .` i `actionlint`. Po zmianie workflowów uruchom lokalnie `uv run zizmor --offline --persona pedantic .`. Akcje są przypięte do SHA z komentarzem wersji, a pobierane narzędzia do sumy kontrolnej; nazwy jobów (`check (3.12)`, `check (3.13)`, `conventional-commit`) są wymaganymi checkami w ochronie `main`, więc ich zmiana wymaga zmiany ustawień repozytorium.
 - Testy pokrywają tylko czyste funkcje. Zmiany w logice rekomendacji dodatkowo weryfikuj, uruchamiając starą i nową wersję `analyze.py` na lokalnych danych i porównując CSV (wyniki są deterministyczne). Tryb standardowy nadpisuje `cl_/el_recommendations.csv` w katalogu głównym, więc najpierw zrób ich kopię.
 
 ## Dane i pliki wynikowe

@@ -8,8 +8,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  ACTIONLINT_VERSION: 1.7.12
+  ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+
 jobs:
   check:
+    # Branch protection requires these exact check names.
+    name: check (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -17,7 +27,9 @@ jobs:
     env:
       UV_PYTHON: ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
@@ -27,3 +39,22 @@ jobs:
       - run: uv run mypy
       - run: uv run pytest
       - run: uv run python .agents/sync-skills.py --check
+
+      # Security checks do not depend on the Python version; run them once.
+      - name: Audit runtime dependencies (pip-audit)
+        if: matrix.python-version == '3.13'
+        run: |
+          uv export --locked --no-dev --no-emit-project --format requirements-txt > "$RUNNER_TEMP/requirements.txt"
+          uv run pip-audit --requirement "$RUNNER_TEMP/requirements.txt" --require-hashes --disable-pip --progress-spinner off
+      - name: Audit workflows (zizmor)
+        if: matrix.python-version == '3.13'
+        run: |
+          uv run zizmor --no-progress --offline --persona pedantic .
+      - name: Lint workflows (actionlint)
+        if: matrix.python-version == '3.13'
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLo "$RUNNER_TEMP/$archive" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
+          echo "${ACTIONLINT_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color

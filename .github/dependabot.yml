@@ -1,9 +1,9 @@
 version: 2
 
 # Weekly, grouped updates keep the PR count low on a single-maintainer repo.
-# Security updates are not grouped here: they arrive on their own as soon as
-# an advisory lands, independent of this schedule. `cooldown` waits a week
-# after a version is published before proposing it.
+# Security updates arrive as soon as an advisory lands, independent of this
+# schedule, as one grouped PR per ecosystem. `cooldown` waits a week after a
+# version is published before proposing it (it does not delay security updates).
 updates:
   - package-ecosystem: uv
     directory: /
@@ -19,7 +19,11 @@ updates:
       include: scope
     groups:
       minor-patch:
+        applies-to: version-updates
         update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -33,4 +37,8 @@ updates:
       include: scope
     groups:
       actions:
+        applies-to: version-updates
+        patterns: ["*"]
+      actions-security:
+        applies-to: security-updates
         patterns: ["*"]

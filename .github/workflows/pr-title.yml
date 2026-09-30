@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   conventional-commit:
+    name: conventional-commit
     runs-on: ubuntu-latest
     steps:
       # Squash merges use the PR title as the commit subject on main.
