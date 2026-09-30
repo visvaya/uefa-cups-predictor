@@ -30,7 +30,7 @@ Znane długi techniczne są w `docs/tech-debt.md`. Nowy dług dopisuj tam, a sp�
 
 ## Konwencje i pułapki
 
-- Python: type hints, PEP 8 (egzekwowane przez ruff), łapanie konkretnych wyjątków zamiast `except Exception`, bez sekretów i ścieżek bezwzględnych w kodzie, bez martwego kodu.
+- Python: type hints, PEP 8 (egzekwowane przez ruff; zestaw reguł w `[tool.ruff.lint]`, m.in. bandit `S`, `BLE`, `PTH`), łapanie konkretnych wyjątków zamiast `except Exception`, `pathlib` zamiast `open()`; każde `noqa` z uzasadnieniem w komentarzu, bez sekretów i ścieżek bezwzględnych w kodzie, bez martwego kodu.
 - Commity: Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`, `ci:`, `chore:`), temat w trybie rozkazującym, po angielsku.
 - PR-y merguje się wyłącznie squashem: tytuł PR-a staje się commitem na `main` (bez opisu), a gałąź jest usuwana automatycznie. Format tytułu sprawdza `.github/workflows/pr-title.yml`. Ochrona `main` obejmuje też administratora, więc zmiany trafiają tam tylko przez PR z zielonym CI.
 - `analyze.py` pisze na konsolę przez `print()` (to wyjście CLI, w tym raport `[AUDIT]` opisany w README); scraper używa `logging`. Trzymaj się konwencji danego pliku.

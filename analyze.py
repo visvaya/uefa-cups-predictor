@@ -134,14 +134,14 @@ def read_smart_csv(path: Path) -> pd.DataFrame:
     """Reads CSV with automatic separator detection (handles ; and ,)."""
     try:
         # Try reading a few lines to detect separator
-        with open(path, "r", encoding="utf-8-sig") as f:
+        with path.open(encoding="utf-8-sig") as f:
             first_line = f.readline()
             sep = ";" if ";" in first_line else ","
 
         return pd.read_csv(path, sep=sep, encoding="utf-8-sig")
     except UnicodeDecodeError:
         # Fallback to standard utf-8
-        with open(path, "r", encoding="utf-8") as f:
+        with path.open(encoding="utf-8") as f:
             first_line = f.readline()
             sep = ";" if ";" in first_line else ","
         return pd.read_csv(path, sep=sep, encoding="utf-8")
@@ -247,7 +247,7 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
     f["srDropping"] = 0.0  # Default, will be overwritten if SR data exists
 
     if sr.empty:
-        for c in edge_cols + ["sr_quality", "steam_diff", "prob_gap_1", "prob_gap_2", "rating_diff", "lineup_adv"]:
+        for c in [*edge_cols, "sr_quality", "steam_diff", "prob_gap_1", "prob_gap_2", "rating_diff", "lineup_adv"]:
             f[c] = 0.0
 
         for side in ["1", "x", "2"]:
@@ -275,7 +275,7 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
     valid_mask = (f2[mkt_cols + fair_cols + open_cols] > 1.0).all(axis=1)
 
     # Initialize defaults
-    for c in edge_cols + ["steam_diff", "prob_gap_1", "prob_gap_2", "rating_diff", "lineup_adv", "sr_quality"]:
+    for c in [*edge_cols, "steam_diff", "prob_gap_1", "prob_gap_2", "rating_diff", "lineup_adv", "sr_quality"]:
         f2[c] = 0.0
 
     # Initialize probabilities and steam to neutral defaults

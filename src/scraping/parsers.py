@@ -108,10 +108,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
                 # If checking strict leagues, validation:
                 if not all_leagues:
                     m = RE_LEAGUE_STRICT.search(txt)
-                    if m:
-                        current_league = m.group(1)
-                    else:
-                        current_league = None
+                    current_league = m.group(1) if m else None
                 else:
                     # Capture whatever is the first token as the league code
                     current_league = code_candidate
