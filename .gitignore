@@ -12,6 +12,9 @@ ENV/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Local data & archives
 *.csv
