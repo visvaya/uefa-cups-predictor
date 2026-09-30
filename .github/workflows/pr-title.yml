@@ -14,6 +14,7 @@ jobs:
   conventional-commit:
     name: conventional-commit
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       # Squash merges use the PR title as the commit subject on main.
       - name: Check Conventional Commits format

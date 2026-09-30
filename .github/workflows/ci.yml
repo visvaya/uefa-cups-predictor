@@ -21,7 +21,10 @@ jobs:
     # Branch protection requires these exact check names.
     name: check (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
+      # Report every Python version, not only the first one that fails.
+      fail-fast: false
       matrix:
         python-version: ["3.12", "3.13"]
     env:
@@ -34,24 +37,29 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
+      # Later checks run even when an earlier one fails, so one run reports everything.
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+        if: ${{ !cancelled() }}
       - run: uv run mypy
+        if: ${{ !cancelled() }}
       - run: uv run pytest --cov --cov-report=term
+        if: ${{ !cancelled() }}
       - run: uv run python .agents/sync-skills.py --check
+        if: ${{ !cancelled() }}
 
       # Security checks do not depend on the Python version; run them once.
       - name: Audit runtime dependencies (pip-audit)
-        if: matrix.python-version == '3.13'
+        if: ${{ !cancelled() && matrix.python-version == '3.13' }}
         run: |
           uv export --locked --no-dev --no-emit-project --format requirements-txt > "$RUNNER_TEMP/requirements.txt"
           uv run pip-audit --requirement "$RUNNER_TEMP/requirements.txt" --require-hashes --disable-pip --progress-spinner off
       - name: Audit workflows (zizmor)
-        if: matrix.python-version == '3.13'
+        if: ${{ !cancelled() && matrix.python-version == '3.13' }}
         run: |
           uv run zizmor --no-progress --offline --persona pedantic .
       - name: Lint workflows (actionlint)
-        if: matrix.python-version == '3.13'
+        if: ${{ !cancelled() && matrix.python-version == '3.13' }}
         run: |
           archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           curl -fsSLo "$RUNNER_TEMP/$archive" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
