@@ -12,7 +12,7 @@ Known shortcomings accepted for now. Each entry states the impact and a suggeste
 
 ## Testing
 
-- **Coverage is limited to pure helpers.** `format_recommendations`, `analyze_league`, `analyze_sr_only` and the scraper's `main()` flow have no automated tests; changes to the analyzer are verified manually by comparing outputs byte for byte. Direction: golden-file tests over the `_example.csv` inputs and a synthetic SR snapshot, plus coverage reporting in CI.
+- **Coverage is limited to pure helpers.** `format_recommendations`, `analyze_league`, `analyze_sr_only` and the scraper's `main()` flow have no automated tests; changes to the analyzer are verified manually by comparing outputs byte for byte. Coverage measured in CI is 26% (2026-09-30, branch coverage) against an 80% goal; `fail_under` in `pyproject.toml` only prevents regressions. Direction: golden-file tests over the `_example.csv` inputs and a synthetic SR snapshot, then raise the threshold.
 - **Parser tests use hand-written HTML.** The fixtures mirror the markup observed on soccer-rating.com on 2026-09-27, but a site change will only surface at runtime. Direction: store a trimmed, anonymised page snapshot as a fixture and add a periodic manual check.
 
 ## Scraper behaviour

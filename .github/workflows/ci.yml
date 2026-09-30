@@ -37,7 +37,7 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
-      - run: uv run pytest
+      - run: uv run pytest --cov --cov-report=term
       - run: uv run python .agents/sync-skills.py --check
 
       # Security checks do not depend on the Python version; run them once.
