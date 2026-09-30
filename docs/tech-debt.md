@@ -24,5 +24,4 @@ Known shortcomings accepted for now. Each entry states the impact and a suggeste
 ## Data and output
 
 - **Recommendation labels contain emoji** (for example `🟢 STRONG BUY`). They are part of the CSV output and are used as sort keys, so changing them is a breaking change for anyone consuming the reports. Direction: plain labels plus a separate display column.
-- **Dependencies are unpinned** in `requirements.txt`, so a new pandas or BeautifulSoup release can change behaviour silently. Direction: a lock file or pinned upper bounds, refreshed deliberately.
 - **The Analyst data is copied manually,** and the model is not calibrated against real outcomes. See "Future Work" in `readme.md`.

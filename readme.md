@@ -15,15 +15,16 @@ Allows creating a "lock/in_play/out" map:
 
 ## Installation
 
-Requires Python 3.12 or newer.
+Requires Python 3.12 or newer and [uv](https://docs.astral.sh/uv/). Dependencies are declared in `pyproject.toml` and pinned in `uv.lock`.
 
 ```bash
 git clone https://github.com/visvaya/uefa-cups-predictor.git
 cd uefa-cups-predictor
-python -m venv .venv
+uv sync --locked --no-dev   # creates .venv with the locked runtime dependencies
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
 ```
+
+Alternatively, prefix commands with `uv run` instead of activating the environment.
 
 Input data is not included in the repository (see [How to Get Data](#how-to-get-data)); only the `_example.csv` templates are tracked. Run all commands from the repository root.
 
@@ -257,7 +258,7 @@ Known technical shortcomings are tracked in [docs/tech-debt.md](docs/tech-debt.m
 ## Development
 
 ```bash
-pip install -r requirements-dev.txt
+uv sync --locked       # runtime and development dependencies
 pytest                 # unit tests
 ruff check .           # lint
 ruff format --check .  # formatting

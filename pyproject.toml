@@ -5,6 +5,29 @@ description = "League phase analyzer for the UEFA Champions League and Europa Le
 readme = "readme.md"
 license = "MIT"
 requires-python = ">=3.12"
+# Lower bounds exclude releases with known advisories; exact versions live in uv.lock.
+dependencies = [
+    "beautifulsoup4>=4.14",
+    "lxml>=6.1",
+    "numpy>=2.3",
+    "pandas>=2.3",
+    "requests>=2.33",
+]
+
+[dependency-groups]
+# Exact versions keep the quality gate stable: new ruff releases change the default rule set.
+dev = [
+    "mypy==2.3.1",
+    "pytest==9.1.1",
+    "ruff==0.16.8",
+    "types-requests==2.33.0.20260906",
+]
+
+[tool.uv]
+# Scripts run from the repository root; there is nothing to build or install.
+package = false
+# Supply-chain guard: ignore releases younger than a week (matches the Dependabot cooldown).
+exclude-newer = "7 days"
 
 [tool.ruff]
 target-version = "py312"
