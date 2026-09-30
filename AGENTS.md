@@ -30,6 +30,7 @@ Znane długi techniczne są w `docs/tech-debt.md`. Nowy dług dopisuj tam, a sp�
 
 - Python: type hints, PEP 8 (egzekwowane przez ruff), łapanie konkretnych wyjątków zamiast `except Exception`, bez sekretów i ścieżek bezwzględnych w kodzie, bez martwego kodu.
 - Commity: Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`, `ci:`, `chore:`), temat w trybie rozkazującym, po angielsku.
+- PR-y merguje się wyłącznie squashem: tytuł PR-a staje się commitem na `main` (bez opisu), a gałąź jest usuwana automatycznie. Format tytułu sprawdza `.github/workflows/pr-title.yml`. Ochrona `main` obejmuje też administratora, więc zmiany trafiają tam tylko przez PR z zielonym CI.
 - `analyze.py` pisze na konsolę przez `print()` (to wyjście CLI, w tym raport `[AUDIT]` opisany w README); scraper używa `logging`. Trzymaj się konwencji danego pliku.
 - Formaty wyjścia: domyślnie `,` i kropka dziesiętna; `--excel-pl` daje `;` i przecinek. Nie zmieniaj domyślnego formatu, README deklaruje go jako międzynarodowy.
 - `.gitattributes` wymusza LF; ruff formatuje z `line-ending = "lf"`.
