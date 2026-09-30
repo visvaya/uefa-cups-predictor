@@ -4,12 +4,13 @@ Wspólne instrukcje dla agentów AI pracujących w tym repozytorium (Codex, Clau
 
 ## Projekt
 
-Skrypty Python 3.12+ (lokalnie 3.13): `analyze.py` (analyzer, jeden duży plik) oraz `src/scraping/` (scraper soccer-rating.com). Zależności runtime są w `requirements.txt`, deweloperskie w `requirements-dev.txt`. `pyproject.toml` zawiera tylko konfigurację narzędzi; projekt nie jest instalowalnym pakietem (`src/` bez `__init__.py`, działa jako namespace package).
+Skrypty Python 3.12+ (lokalnie 3.13): `analyze.py` (analyzer, jeden duży plik) oraz `src/scraping/` (scraper soccer-rating.com). Zależności (runtime i grupa `dev`) są zadeklarowane w `pyproject.toml` i zablokowane w `uv.lock`; środowisko to `.venv` tworzone przez `uv sync --locked`. Zależności zmieniaj przez `uv add`/`uv lock`, nie ręczną edycją `uv.lock`. `exclude-newer = "7 days"` w `[tool.uv]` celowo pomija wydania młodsze niż tydzień; nie usuwaj go bez powodu. Projekt nie jest instalowalnym pakietem (`package = false`, `src/` bez `__init__.py`, działa jako namespace package).
 
 Znane długi techniczne są w `docs/tech-debt.md`. Nowy dług dopisuj tam, a spłacony usuwaj.
 
 ## Komendy
 
+- Komendy poniżej zakładają aktywne `.venv` (albo prefiks `uv run`); globalny Python nie ma zablokowanych wersji.
 - Scraper uruchamiaj jako moduł z katalogu głównego: `python -m src.scraping.soccer_rating_cli` (nie `python src/scraping/soccer_rating_cli.py`, bo importy się nie rozwiążą).
 - Typowy codzienny przebieg (tryb SR-only) opisuje skill `daily-sr`:
   - `python -m src.scraping.soccer_rating_cli --all-leagues --skip-cups --separate-snapshots --min-start 20 --max-start 700`
@@ -20,7 +21,7 @@ Znane długi techniczne są w `docs/tech-debt.md`. Nowy dług dopisuj tam, a sp�
 
 ## Dane i pliki wynikowe
 
-- Wszystkie `*.csv`, `*.xlsx`, `*.txt` (poza `requirements*.txt`) i `*.html` są gitignored, a w `data/` śledzone są tylko pliki `*_example.csv`. Na świeżym klonie analyzer nie ma danych wejściowych; nie commituj danych ani raportów.
+- Wszystkie `*.csv`, `*.xlsx`, `*.txt` i `*.html` są gitignored, a w `data/` śledzone są tylko pliki `*_example.csv`. Na świeżym klonie analyzer nie ma danych wejściowych; nie commituj danych ani raportów.
 - Dane The Analyst (`data/theanalyst/...`) są kopiowane ręcznie; scraper ich nie pobiera.
 - CSV wejściowe mogą mieć `;` lub `,` i przecinek dziesiętny; czytaj je przez `read_smart_csv`, nie przez gołe `pd.read_csv`.
 - Nazwy drużyn różnią się między źródłami: mapowanie w `NAME_FIX` w `analyze.py`; scraper ma osobną normalizację (`norm_team` w `parsers.py`).

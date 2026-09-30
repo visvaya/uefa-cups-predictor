@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 Run the daily SR-only pipeline from the repository root. Extra scraper flags from the user's request (in Claude Code they arrive as `$ARGUMENTS`) override the defaults below, e.g. `--min-start 0 --max-start 300` or `--limit 5`.
 
+Run both commands in the project environment: prefix them with `uv run` (or activate `.venv`), so the locked dependency versions from `uv.lock` are used.
+
 1. Compute today's date as `YYYY-MM-DD` in local time (the scraper names snapshots with `datetime.now()`).
 2. Run the scraper (network access, takes several minutes because of the per-request delay):
    `python -m src.scraping.soccer_rating_cli --all-leagues --skip-cups --separate-snapshots --min-start 20 --max-start 700`

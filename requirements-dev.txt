@@ -1,6 +1,0 @@
--r requirements.txt
-# Exact versions keep the quality gate stable: new ruff releases change the default rule set.
-pytest==9.1.1
-ruff==0.16.8
-mypy==2.3.1
-types-requests==2.33.0.20260906
