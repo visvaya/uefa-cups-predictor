@@ -53,7 +53,8 @@ def touches_shared_skills(paths: list[Path]) -> bool:
 def run_quietly(command: list[str], cwd: Path, timeout_seconds: int) -> None:
     """Runs a helper command; failures are ignored so the hook never blocks an edit."""
     try:
-        subprocess.run(command, cwd=cwd, timeout=timeout_seconds, check=False)
+        # Commands are built in this file from fixed executables and resolved paths, never from a shell string.
+        subprocess.run(command, cwd=cwd, timeout=timeout_seconds, check=False)  # noqa: S603
     except (OSError, subprocess.TimeoutExpired):
         return
 

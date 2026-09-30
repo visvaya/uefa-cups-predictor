@@ -117,8 +117,7 @@ def main():
     if args.local:
         logger.info("Running in LOCAL mode.")
         if Path("today-prediction.html").exists():
-            with open("today-prediction.html", "r", encoding="utf-8") as f:
-                today_html = f.read()
+            today_html = Path("today-prediction.html").read_text(encoding="utf-8")
         else:
             logger.error("today-prediction.html not found.")
             return
@@ -217,8 +216,7 @@ def main():
 
                 if html_path:
                     logger.info(f"Using local file {html_path} for {team_name}")
-                    with open(html_path, "r", encoding="utf-8") as f:
-                        club_html = f.read()
+                    club_html = html_path.read_text(encoding="utf-8")
                 else:
                     logger.warning(f"No local file for {team_name}, skipping.")
                     continue

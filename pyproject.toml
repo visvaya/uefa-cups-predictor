@@ -35,6 +35,14 @@ exclude-newer = "7 days"
 target-version = "py312"
 line-length = 120
 
+[tool.ruff.lint]
+# Defaults (E4, E7, E9, F) plus bug, modernisation, simplification, import order,
+# pathlib, blind-except and security (bandit) rules.
+extend-select = ["B", "BLE", "I", "PTH", "RUF", "S", "SIM", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # pytest assertions
+
 [tool.ruff.format]
 line-ending = "lf"
 
