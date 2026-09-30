@@ -62,5 +62,8 @@ source = ["analyze", "src"]
 branch = true
 
 [tool.coverage.report]
+# Ratchet, not a target. Measured on CI on 2026-09-30 (ubuntu, Python 3.12 and 3.13): 26% with
+# branch coverage in both runs; one point of margin. Raise it when tests are added.
+fail_under = 25
 show_missing = true
 skip_covered = true

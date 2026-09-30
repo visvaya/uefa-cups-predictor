@@ -259,7 +259,7 @@ Known technical shortcomings are tracked in [docs/tech-debt.md](docs/tech-debt.m
 
 ```bash
 uv sync --locked       # runtime and development dependencies
-pytest                 # unit tests
+pytest --cov           # unit tests with the coverage threshold
 ruff check .           # lint
 ruff format --check .  # formatting
 mypy                   # type checking (paths configured in pyproject.toml)
