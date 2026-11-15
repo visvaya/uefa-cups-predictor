@@ -49,6 +49,7 @@ EMOJI = re.compile(
 # Recommendation labels in the report output carry these circles and serve as sort keys (accepted exception).
 LABEL_EMOJI = frozenset({chr(0x26AA), chr(0x1F534), chr(0x1F7E0), chr(0x1F7E1), chr(0x1F7E2)})
 LABEL_FILES = frozenset({"analyze.py", "readme.md", "interpretation.md"})
+LABEL_DIRECTORIES = ("tests/golden/",)  # expected reports, which contain the labels
 IDENT_TIMESTAMP = re.compile(r"\s+\d+\s+[+-]\d{4}$")
 
 
@@ -90,7 +91,7 @@ def message_problems(message: str) -> list[str]:
 
 def text_problems(path: str, text: str) -> list[str]:
     """Em dashes and emoji in a file; the label circles are allowed only in the files that define or document them."""
-    allowed = LABEL_EMOJI if path in LABEL_FILES else frozenset()
+    allowed = LABEL_EMOJI if path in LABEL_FILES or path.startswith(LABEL_DIRECTORIES) else frozenset()
     problems = []
     for number, line in enumerate(text.splitlines(), start=1):
         if EM_DASH in line:
