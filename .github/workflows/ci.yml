@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Weekly run, so new advisories in pip-audit and zizmor surface without a push.
+  schedule:
+    - cron: "41 4 * * 1"
 
 permissions:
   contents: read
