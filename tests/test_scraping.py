@@ -15,6 +15,7 @@ from src.scraping.parsers import (
 )
 from src.scraping.soccer_rating_cli import minutes_until_kickoff
 
+BACKSLASH = chr(92)
 EVENING = datetime(2026, 2, 5, 18, 0, tzinfo=UTC)
 
 
@@ -112,7 +113,9 @@ def test_payload_to_odds_row_requires_full_payload() -> None:
         ("/today-prediction", "https://www.soccer-rating.com/today-prediction"),
         ("Ajax/123/", "https://www.soccer-rating.com/Ajax/123/"),
         ("https://www.soccer-rating.com/Ajax/123/", "https://www.soccer-rating.com/Ajax/123/"),
-        ("https://SOCCER-RATING.com/x", "https://SOCCER-RATING.com/x"),
+        ("https://SOCCER-RATING.com/x", "https://soccer-rating.com/x"),
+        ("https://www.soccer-rating.com:443/x?a=1#top", "https://www.soccer-rating.com/x?a=1"),
+        (" /Ajax/123/" + chr(10), "https://www.soccer-rating.com/Ajax/123/"),
     ],
 )
 def test_resolve_url_accepts_site_urls(url_path: str, expected: str) -> None:
@@ -129,6 +132,11 @@ def test_resolve_url_accepts_site_urls(url_path: str, expected: str) -> None:
         "file:///etc/passwd",
         "http://127.0.0.1:8080/",
         "https://[",
+        "https://user:pass@www.soccer-rating.com/x",
+        "https://www.soccer-rating.com:8443/x",
+        "https://evil.example" + BACKSLASH + "@www.soccer-rating.com/x",
+        "https://www.soccer-rating.com/x y",
+        "https://www.soccer-rating.com/x" + chr(10) + "Host: evil",
     ],
 )
 def test_resolve_url_rejects_other_urls(url_path: str) -> None:

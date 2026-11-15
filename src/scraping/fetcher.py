@@ -1,6 +1,6 @@
 import logging
 from typing import ClassVar
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import requests
 
@@ -14,14 +14,23 @@ MAX_REDIRECTS = 5
 def resolve_url(link: str, base: str = BASE_URL + "/") -> str | None:
     """Turns a page link or redirect target into the URL to fetch, or None when it leaves https://soccer-rating.com.
 
-    Links and redirects come from the fetched pages, so they must not send requests anywhere else.
+    Links and redirects come from the fetched pages, so they must not send requests anywhere else. Characters that
+    URL parsers disagree on are rejected, and the URL is rebuilt from the checked parts, so the HTTP client cannot
+    read a different host than this check did.
     """
+    link = link.strip()  # browsers ignore whitespace around an href
+    if any(char == chr(92) or char.isspace() or not char.isprintable() for char in link):
+        return None
     try:
-        url = urljoin(base, link)
-        parts = urlsplit(url)
-        return url if parts.scheme == "https" and parts.hostname in ALLOWED_HOSTS else None
+        parts = urlsplit(urljoin(base, link))
+        port = parts.port
     except ValueError:
         return None
+    if parts.scheme != "https" or parts.hostname not in ALLOWED_HOSTS or parts.username or parts.password:
+        return None
+    if port not in (None, 443):
+        return None
+    return urlunsplit(("https", parts.hostname, parts.path or "/", parts.query, ""))
 
 
 class SoccerRatingFetcher:
