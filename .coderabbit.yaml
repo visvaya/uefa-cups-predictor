@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  high_level_summary_in_walkthrough: true
+  poem: false
+  commit_status: true
+  fail_commit_status: true
+  path_instructions:
+    - path: "**"
+      instructions: >-
+        Python 3.12+ scripts: analyze.py (recommendation model) and src/scraping (soccer-rating.com scraper).
+        Principles: lean code without speculative options; pathlib instead of open(); specific exceptions
+        instead of broad ones; every noqa states its reason; no secrets or absolute paths; CSV input through
+        read_smart_csv and CSV output through neutralize_formulas; fetched URLs through resolve_url;
+        recommendation output stays deterministic and its default format (comma separator, decimal point)
+        unchanged; a change to model thresholds or weights also updates readme.md and interpretation.md.
+        Prefix comments on problems the pull request did not cause with "Pre-existing:". Do not comment on
+        what the CI gate already enforces: ruff check and format, mypy, pytest with the coverage threshold,
+        pip-audit, zizmor, actionlint and scripts/git_hooks.py tracked.
