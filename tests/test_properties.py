@@ -120,13 +120,16 @@ def test_resolve_url_is_idempotent(link: str, base: str) -> None:
 @example("=1+1")
 @example("-1.5")
 @example("-")
+@example(float("nan"))
 def test_neutralize_cell(value: object) -> None:
     result = neutralize_cell(value)
-    assert neutralize_cell(result) == result
     if not isinstance(value, str):
+        # Identity, not equality: NaN is not equal to itself.
         assert result is value
+        assert neutralize_cell(result) is result
         return
     assert isinstance(result, str)
+    assert neutralize_cell(result) == result
     assert result in (value, "'" + value)
     if result.startswith(FORMULA_PREFIXES):
         assert len(value) < 2 or _is_number(value)
