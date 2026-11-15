@@ -261,11 +261,13 @@ pytest --cov           # unit tests with the coverage threshold
 ruff check .           # lint
 ruff format --check .  # formatting
 mypy                   # type checking (paths configured in pyproject.toml)
-python scripts/git_hooks.py tracked    # no local tool files are tracked
+python scripts/git_hooks.py tracked    # no em dashes, stray emoji or excluded paths in tracked files
 git config core.hooksPath .githooks    # once per checkout: commit message and staged-file checks
 ```
 
-The same checks run in GitHub Actions on every push to `main` and on pull requests.
+The commit hooks check Conventional Commit subjects, attribution trailers, em dashes and emoji, and run ruff on staged Python files. Two optional per-checkout settings stay out of the repository: `hooks.excludedPaths` (file names and `directory/` entries that must never be committed) and `hooks.ownerIdentities` (the only author and committer e-mails `pre-commit` accepts). See `scripts/git_hooks.py`.
+
+The same checks run in GitHub Actions on every push to `main`, on pull requests and weekly.
 
 ## Disclaimer
 
