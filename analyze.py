@@ -1144,7 +1144,8 @@ def analyze_sr_only(input_file: Path | None, output_dir: Path | None, excel_pl: 
 
     # Override for High Draw Value?
     # If edge_x > 0.10 (Huge Draw Value) -> Force X consideration?
-    # Let's rely on default 'X' capturing the 'uncertain' middle, and then Recommendation logic promoting it based on Edge.
+    # Let's rely on default 'X' capturing the 'uncertain' middle,
+    # and then Recommendation logic promoting it based on Edge.
 
     # 6. Build Ranking Table (Standardized for format_recommendations)
     # --------------------------------------------------------------
