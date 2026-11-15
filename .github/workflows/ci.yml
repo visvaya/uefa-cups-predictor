@@ -51,6 +51,9 @@ jobs:
         if: ${{ !cancelled() }}
       - run: uv run python scripts/git_hooks.py tracked
         if: ${{ !cancelled() }}
+        env:
+          # Paths that must never be committed; kept in a repository variable, not in the repository.
+          EXCLUDED_PATHS: ${{ vars.EXCLUDED_PATHS }}
 
       # Security checks do not depend on the Python version; run them once.
       - name: Audit runtime dependencies (pip-audit)
