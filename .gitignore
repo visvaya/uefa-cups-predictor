@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Tools
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local data & archives
+*.csv
+*.xlsx
+*.txt
+*.html
+
+# Ignore all data by default
+data/**/*
+# Unignore only the directory structure
+!data/**/
+# Allow only files ending in _example.csv anywhere in data
+!data/**/*_example.csv
