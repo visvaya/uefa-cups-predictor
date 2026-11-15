@@ -1,0 +1,33 @@
+team_id,team_name,rating_total,rating_home,rating_away
+101,Team A,1700.0,1710.0,1690.0
+102,Team B,1705.0,1715.0,1695.0
+103,Team C,1710.0,1720.0,1700.0
+104,Team D,1715.0,1725.0,1705.0
+107,Team G,1730.0,1740.0,1720.0
+108,Team H,1735.0,1745.0,1725.0
+109,Team I,1740.0,1750.0,1730.0
+110,Team J,1745.0,1755.0,1735.0
+111,Team K,1750.0,1760.0,1740.0
+112,Team L,1755.0,1765.0,1745.0
+115,Team O,1770.0,1780.0,1760.0
+116,Team P,1775.0,1785.0,1765.0
+117,Team Q,1780.0,1790.0,1770.0
+118,Team R,1785.0,1795.0,1775.0
+123,Team W,1810.0,1820.0,1800.0
+124,Team X,1815.0,1825.0,1805.0
+201,Alpha Football Club,,,
+202,Beta United,,,
+203,Gamma SC,,,
+204,Delta Town,,,
+205,Epsilon Club,,,
+206,Zeta Rovers,,,
+207,Eta Athletic,,,
+208,Theta City,,,
+209,Bodø/Glimt,,,
+210,Iota FC,,,
+211,Kappa Sport,,,
+212,Lambda Wanderers,,,
+213,Mu Dynamo,,,
+214,Nu Albion,,,
+215,Xi Rangers,,,
+216,Omicron FC,,,
