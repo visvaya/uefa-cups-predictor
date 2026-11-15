@@ -277,7 +277,8 @@ def main():
             if dev:
                 all_odds_dev.append(dev)
                 logger.info(
-                    f"Matched {match.match_id} (conf={debug['match_confidence']}, stage={debug['matched_odds_stage']}, dist={debug['odds_distance']:.4f})"
+                    f"Matched {match.match_id} (conf={debug['match_confidence']}, "
+                    f"stage={debug['matched_odds_stage']}, dist={debug['odds_distance']:.4f})"
                 )
                 if debug["match_confidence"] == "LOW":
                     logger.warning(f"Low confidence match for {match.match_id}")
