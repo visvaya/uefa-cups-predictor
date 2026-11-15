@@ -1,7 +1,10 @@
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
+import requests
 
+from src.scraping.fetcher import MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
 from src.scraping.parsers import (
     _extract_two_numbers,
     _normalize_time,
@@ -13,6 +16,7 @@ from src.scraping.parsers import (
 )
 from src.scraping.soccer_rating_cli import minutes_until_kickoff
 
+BACKSLASH = chr(92)
 EVENING = datetime(2026, 2, 5, 18, 0, tzinfo=UTC)
 
 
@@ -102,3 +106,97 @@ def test_payload_to_odds_row_requires_full_payload() -> None:
     assert row["league_code_payload"] == "CLCUP"
     assert row["oo"] == 1.0
     assert row["fair_2"] == 15.0
+
+
+@pytest.mark.parametrize(
+    ("url_path", "expected"),
+    [
+        ("/today-prediction", "https://www.soccer-rating.com/today-prediction"),
+        ("Ajax/123/", "https://www.soccer-rating.com/Ajax/123/"),
+        ("https://www.soccer-rating.com/Ajax/123/", "https://www.soccer-rating.com/Ajax/123/"),
+        ("https://SOCCER-RATING.com/x", "https://soccer-rating.com/x"),
+        ("https://www.soccer-rating.com:443/x?a=1#top", "https://www.soccer-rating.com/x?a=1"),
+        (" /Ajax/123/" + chr(10), "https://www.soccer-rating.com/Ajax/123/"),
+    ],
+)
+def test_resolve_url_accepts_site_urls(url_path: str, expected: str) -> None:
+    assert resolve_url(url_path) == expected
+
+
+@pytest.mark.parametrize(
+    "url_path",
+    [
+        "https://evil.example/x",
+        "http://www.soccer-rating.com/x",
+        "https://www.soccer-rating.com@evil.example/x",
+        "https://www.soccer-rating.com.evil.example/x",
+        "file:///etc/passwd",
+        "http://127.0.0.1:8080/",
+        "https://[",
+        "https://user:pass@www.soccer-rating.com/x",
+        "https://www.soccer-rating.com:8443/x",
+        "https://evil.example" + BACKSLASH + "@www.soccer-rating.com/x",
+        "https://www.soccer-rating.com/x y",
+        "https://www.soccer-rating.com/x" + chr(10) + "Host: evil",
+    ],
+)
+def test_resolve_url_rejects_other_urls(url_path: str) -> None:
+    assert resolve_url(url_path) is None
+
+
+def page(text: str = "", location: str | None = None) -> SimpleNamespace:
+    """A stand-in for requests.Response with only what fetch reads."""
+    return SimpleNamespace(
+        is_redirect=location is not None,
+        headers={"location": location} if location else {},
+        text=text,
+        raise_for_status=lambda: None,
+    )
+
+
+def fetcher_with(
+    monkeypatch: pytest.MonkeyPatch, responses: list[SimpleNamespace]
+) -> tuple[SoccerRatingFetcher, list[str]]:
+    fetcher = SoccerRatingFetcher()
+    requested: list[str] = []
+
+    def get(url: str, timeout: int, allow_redirects: bool) -> SimpleNamespace:
+        assert allow_redirects is False
+        requested.append(url)
+        return responses.pop(0)
+
+    monkeypatch.setattr(fetcher.session, "get", get)
+    return fetcher, requested
+
+
+def test_fetch_follows_redirects_on_the_site(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetcher, requested = fetcher_with(monkeypatch, [page(location="/Ajax/123/"), page(text="club")])
+    assert fetcher.fetch("/Ajax/") == "club"
+    assert requested == ["https://www.soccer-rating.com/Ajax/", "https://www.soccer-rating.com/Ajax/123/"]
+
+
+def test_fetch_stops_at_a_redirect_off_the_site(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetcher, requested = fetcher_with(monkeypatch, [page(location="http://127.0.0.1:8080/"), page(text="secret")])
+    assert fetcher.fetch("/Ajax/") is None
+    assert requested == ["https://www.soccer-rating.com/Ajax/"]
+
+
+def test_fetch_stops_after_the_redirect_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    loop = [page(location="/loop/") for _ in range(MAX_REDIRECTS + 2)]
+    fetcher, requested = fetcher_with(monkeypatch, loop)
+    assert fetcher.fetch("/loop/") is None
+    assert len(requested) == MAX_REDIRECTS + 1
+
+
+def test_fetch_survives_a_malformed_redirect_target(monkeypatch: pytest.MonkeyPatch) -> None:
+    def send(adapter: object, request: requests.PreparedRequest, **kwargs: object) -> requests.Response:
+        response = requests.Response()
+        response.status_code = 302
+        response.headers["location"] = "https://["
+        response.url = request.url or ""
+        response.request = request
+        response._content = b""
+        return response
+
+    monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", send)
+    assert SoccerRatingFetcher().fetch("/x") is None
