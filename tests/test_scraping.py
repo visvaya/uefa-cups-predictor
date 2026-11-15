@@ -1,8 +1,9 @@
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
-from src.scraping.fetcher import resolve_url
+from src.scraping.fetcher import MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
 from src.scraping.parsers import (
     _extract_two_numbers,
     _normalize_time,
@@ -127,7 +128,52 @@ def test_resolve_url_accepts_site_urls(url_path: str, expected: str) -> None:
         "https://www.soccer-rating.com.evil.example/x",
         "file:///etc/passwd",
         "http://127.0.0.1:8080/",
+        "https://[",
     ],
 )
 def test_resolve_url_rejects_other_urls(url_path: str) -> None:
     assert resolve_url(url_path) is None
+
+
+def page(text: str = "", location: str | None = None) -> SimpleNamespace:
+    """A stand-in for requests.Response with only what fetch reads."""
+    return SimpleNamespace(
+        is_redirect=location is not None,
+        headers={"location": location} if location else {},
+        text=text,
+        raise_for_status=lambda: None,
+    )
+
+
+def fetcher_with(
+    monkeypatch: pytest.MonkeyPatch, responses: list[SimpleNamespace]
+) -> tuple[SoccerRatingFetcher, list[str]]:
+    fetcher = SoccerRatingFetcher()
+    requested: list[str] = []
+
+    def get(url: str, timeout: int, allow_redirects: bool) -> SimpleNamespace:
+        assert allow_redirects is False
+        requested.append(url)
+        return responses.pop(0)
+
+    monkeypatch.setattr(fetcher.session, "get", get)
+    return fetcher, requested
+
+
+def test_fetch_follows_redirects_on_the_site(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetcher, requested = fetcher_with(monkeypatch, [page(location="/Ajax/123/"), page(text="club")])
+    assert fetcher.fetch("/Ajax/") == "club"
+    assert requested == ["https://www.soccer-rating.com/Ajax/", "https://www.soccer-rating.com/Ajax/123/"]
+
+
+def test_fetch_stops_at_a_redirect_off_the_site(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetcher, requested = fetcher_with(monkeypatch, [page(location="http://127.0.0.1:8080/"), page(text="secret")])
+    assert fetcher.fetch("/Ajax/") is None
+    assert requested == ["https://www.soccer-rating.com/Ajax/"]
+
+
+def test_fetch_stops_after_the_redirect_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    loop = [page(location="/loop/") for _ in range(MAX_REDIRECTS + 2)]
+    fetcher, requested = fetcher_with(monkeypatch, loop)
+    assert fetcher.fetch("/loop/") is None
+    assert len(requested) == MAX_REDIRECTS + 1

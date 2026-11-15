@@ -1,6 +1,6 @@
 import logging
 from typing import ClassVar
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 import requests
 
@@ -8,16 +8,20 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.soccer-rating.com"
 ALLOWED_HOSTS = frozenset({"www.soccer-rating.com", "soccer-rating.com"})
+MAX_REDIRECTS = 5
 
 
-def resolve_url(url_path: str) -> str | None:
-    """Turns a page link into the URL to fetch, or None when it leaves https://soccer-rating.com.
+def resolve_url(link: str, base: str = BASE_URL + "/") -> str | None:
+    """Turns a page link or redirect target into the URL to fetch, or None when it leaves https://soccer-rating.com.
 
-    Links come from the fetched pages, so an absolute URL must not send requests anywhere else.
+    Links and redirects come from the fetched pages, so they must not send requests anywhere else.
     """
-    url = url_path if urlsplit(url_path).scheme else BASE_URL + "/" + url_path.lstrip("/")
-    parts = urlsplit(url)
-    return url if parts.scheme == "https" and parts.hostname in ALLOWED_HOSTS else None
+    try:
+        url = urljoin(base, link)
+        parts = urlsplit(url)
+        return url if parts.scheme == "https" and parts.hostname in ALLOWED_HOSTS else None
+    except ValueError:
+        return None
 
 
 class SoccerRatingFetcher:
@@ -37,16 +41,22 @@ class SoccerRatingFetcher:
         Fetches a page from soccer-rating.com.
         url_path can be a full URL or a relative path.
         """
-        url = resolve_url(url_path)
-        if url is None:
-            logger.warning(f"Skipping {url_path}: not an https URL on soccer-rating.com")
-            return None
-
+        target, url = url_path, resolve_url(url_path)
         try:
-            logger.info(f"Fetching {url}...")
-            response = self.session.get(url, timeout=self.timeout)
-            response.raise_for_status()
-            return response.text
+            # Redirects are followed by hand so that every hop passes the same host check.
+            for _ in range(MAX_REDIRECTS + 1):
+                if url is None:
+                    logger.warning(f"Skipping {target}: not an https URL on soccer-rating.com")
+                    return None
+                logger.info(f"Fetching {url}...")
+                response = self.session.get(url, timeout=self.timeout, allow_redirects=False)
+                if not response.is_redirect:
+                    response.raise_for_status()
+                    return response.text
+                target = response.headers["location"]
+                url = resolve_url(target, base=url)
+            logger.error(f"Too many redirects for {url_path}")
+            return None
         except requests.RequestException as e:
             logger.error(f"Error fetching {url}: {e}")
             return None

@@ -9,7 +9,7 @@ import pandas as pd
 
 from src.csv_safety import neutralize_formulas
 
-from .fetcher import BASE_URL, SoccerRatingFetcher
+from .fetcher import SoccerRatingFetcher, resolve_url
 from .models import ClubMeta
 from .parsers import (
     parse_clip_payloads,
@@ -260,7 +260,8 @@ def main():
         best_row, debug = pick_best_payload(match.__dict__, raw_candidates)
 
         if best_row:
-            source_url = BASE_URL + best_row["_source_href"] if not args.local else best_row["_source_href"]
+            source_href = best_row["_source_href"]
+            source_url = source_href if args.local else resolve_url(source_href) or source_href
             dev = payload_to_odds_development(
                 best_row["_raw_parts"],
                 match.match_id,
