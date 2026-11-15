@@ -1,0 +1,5 @@
+match_id,snapshot_date,league_code,league_name,time_local,home_id,away_id,home_team,away_team,home_href,away_href,value_side,odds_rating_oo_today,odd_1_today,odd_x_today,odd_2_today,lineup_rating_home_today,lineup_rating_away_today,lineup_type_today
+2026-01-28_CLCUP_115_116,2026-01-28,CLCUP,Champions League,21:00,115,116,Team O,Team P,/Team-O/115/,/Team-P/116/,HOME,5.0,1.5,4.2,6.5,40.0,30.0,expected
+2026-01-28_ELCUP_115_116,2026-01-28,ELCUP,Europa League,18:45,115,116,Team O,Team P,/Team-O/115/,/Team-P/116/,HOME,7.0,1.65,3.9,5.2,35.0,38.0,confirmed
+2026-01-28_XX1_201_202,2026-01-28,XX1,Synthetic League,20:00,201,202,Alpha FC,Beta United,/Alpha-FC/201/,/Beta-United/202/,HOME,3.0,1.6,4.0,5.5,36.0,31.0,expected
+2026-01-28_XX2_205_206,2026-01-28,XX2,Synthetic League 2,20:00,205,206,Epsilon Club,Zeta Rovers,/Epsilon-Club/205/,/Zeta-Rovers/206/,NONE,0.0,2.8,3.2,2.8,33.0,33.0,expected

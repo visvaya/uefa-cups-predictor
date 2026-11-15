@@ -1,0 +1,91 @@
+"""Golden-file tests that pin the complete CSV reports of the analyzer.
+
+They cover `analyze_league` for both cups and `analyze_sr_only`, each in the default and the `--excel-pl` format,
+so a refactor of `analyze.py` cannot change a value, label, row order or column order unnoticed.
+
+Inputs: the tracked The Analyst examples (`data/theanalyst/**/*_example.csv`; two rows of the Europa League table
+are edited in `EL_TABLE_EDITS` so that both LOCKED statuses occur) and the synthetic soccer-rating set in
+`tests/fixtures/soccer-rating/`. Line endings are normalised, since pandas writes CRLF on Windows.
+
+Regenerate the golden files only when a change of the reports is intended (a new rule, threshold or column), never
+to make a refactor pass: `UPDATE_GOLDEN=1 uv run pytest tests/test_golden_reports.py`, then review the diff of
+`tests/golden/` before committing it.
+"""
+
+import os
+import shutil
+from pathlib import Path
+
+import pytest
+
+import analyze
+
+TESTS_DIR = Path(__file__).resolve().parent
+EXAMPLES_DIR = TESTS_DIR.parent / "data" / "theanalyst"
+SR_FIXTURES_DIR = TESTS_DIR / "fixtures" / "soccer-rating"
+GOLDEN_DIR = TESTS_DIR / "golden"
+LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league"}
+SR_ONLY_INPUT = "match_odds_development_2026-01-28.csv"
+# Team A reaches LAST 16% 99 (LOCKED_DIRECT_RO16), Team X KO P/0% 97 with LAST 16% 2 (LOCKED_PLAYOFFS).
+EL_TABLE_EDITS = {
+    "1;Team A;18,0;8,0;2,0;90,0;": "1;Team A;18,0;8,0;1,0;99,0;",
+    "24;Team X;8,2;0,0;94,0;": "24;Team X;8,2;0,0;97,0;",
+}
+FORMATS = pytest.mark.parametrize("excel_pl", [False, True], ids=["default", "excel-pl"])
+
+
+@pytest.fixture
+def base_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Lays out the inputs under the names `analyze.py` expects and points `BASE_DIR` at them."""
+    for prefix, league in LEAGUE_DIRS.items():
+        league_dir = tmp_path / "data" / "theanalyst" / league
+        league_dir.mkdir(parents=True)
+        for kind in ("fixtures", "table_predicted"):
+            shutil.copyfile(EXAMPLES_DIR / league / f"{prefix}_{kind}_example.csv", league_dir / f"{prefix}_{kind}.csv")
+
+    el_table = tmp_path / "data" / "theanalyst" / "europa-league" / "el_table_predicted.csv"
+    text = el_table.read_text(encoding="utf-8")
+    for old, new in EL_TABLE_EDITS.items():
+        assert old in text, f"EL example table changed, update EL_TABLE_EDITS: {old}"
+        text = text.replace(old, new)
+    el_table.write_text(text, encoding="utf-8", newline="")
+
+    shutil.copytree(SR_FIXTURES_DIR, tmp_path / "data" / "soccer-rating")
+    monkeypatch.setattr(analyze, "BASE_DIR", tmp_path)
+    return tmp_path
+
+
+def assert_matches_golden(report: Path, golden_name: str) -> None:
+    """Compares the report with its golden file as text (BOM kept, line endings normalised)."""
+    actual = report.read_text(encoding="utf-8")
+    golden = GOLDEN_DIR / golden_name
+    if os.environ.get("UPDATE_GOLDEN") == "1":
+        golden.write_text(actual, encoding="utf-8", newline="")
+    assert golden.exists(), f"Missing {golden}; create it with UPDATE_GOLDEN=1"
+    assert actual == golden.read_text(encoding="utf-8")
+
+
+def golden_suffix(excel_pl: bool) -> str:
+    return "_excel_pl" if excel_pl else ""
+
+
+@FORMATS
+@pytest.mark.parametrize("prefix", ["cl", "el"])
+def test_analyze_league_report_matches_golden(base_dir: Path, prefix: str, excel_pl: bool) -> None:
+    analyze.analyze_league(prefix, excel_pl=excel_pl)
+
+    assert_matches_golden(
+        base_dir / f"{prefix}_recommendations.csv", f"{prefix}_recommendations{golden_suffix(excel_pl)}.csv"
+    )
+
+
+@FORMATS
+def test_analyze_sr_only_report_matches_golden(base_dir: Path, excel_pl: bool) -> None:
+    output_dir = base_dir / "recommendations"
+    output_dir.mkdir()
+
+    analyze.analyze_sr_only(base_dir / "data" / "soccer-rating" / SR_ONLY_INPUT, output_dir, excel_pl=excel_pl)
+
+    assert_matches_golden(
+        output_dir / "sr_analysis_report_2026-01-28.csv", f"sr_analysis_report{golden_suffix(excel_pl)}.csv"
+    )

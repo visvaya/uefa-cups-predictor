@@ -20,6 +20,9 @@ htmlcov/
 *.xlsx
 *.txt
 *.html
+# Synthetic test inputs and expected reports
+!tests/fixtures/**/*.csv
+!tests/golden/*.csv
 
 # Ignore all data by default
 data/**/*
