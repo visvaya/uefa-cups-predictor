@@ -1,0 +1,23 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The command you ran, what you expected and what you got (error output included).
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Steps or a minimal input file. Do not attach large data dumps or anything you are not allowed to share.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit and Python version
+      placeholder: "git rev-parse --short HEAD; python --version"
