@@ -3,6 +3,8 @@
 [![CI](https://github.com/visvaya/uefa-cups-predictor/actions/workflows/ci.yml/badge.svg)](https://github.com/visvaya/uefa-cups-predictor/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**Status:** maintained personal tool, run by hand during the UEFA league phase. There are no releases; `main` is the supported version. Contributions: see [CONTRIBUTING.md](CONTRIBUTING.md); security reports: [SECURITY.md](SECURITY.md).
+
 System for predicting results, assessing motivation, and rotation risk in European competitions (Champions League and Europa League) under the new league phase format. The system is based on probabilistic forecasts from Monte Carlo simulations ("The Analyst" data) and odds data from Soccer-rating. It is specifically designed for analyzing the final rounds of the league phase.
 
 Allows creating a "lock/in_play/out" map:
@@ -261,11 +263,13 @@ pytest --cov           # unit tests with the coverage threshold
 ruff check .           # lint
 ruff format --check .  # formatting
 mypy                   # type checking (paths configured in pyproject.toml)
-python scripts/git_hooks.py tracked    # no local tool files are tracked
+python scripts/git_hooks.py tracked    # no em dashes, stray emoji or excluded paths in tracked files
 git config core.hooksPath .githooks    # once per checkout: commit message and staged-file checks
 ```
 
-The same checks run in GitHub Actions on every push to `main` and on pull requests.
+The commit hooks check Conventional Commit subjects, attribution trailers, em dashes and emoji, and run ruff on staged Python files. Two optional per-checkout settings stay out of the repository: `hooks.excludedPaths` (file names and `directory/` entries that must never be committed) and `hooks.ownerIdentities` (the only author and committer e-mails `pre-commit` accepts). See `scripts/git_hooks.py`.
+
+The same checks run in GitHub Actions on every push to `main`, on pull requests and weekly.
 
 ## Disclaimer
 
