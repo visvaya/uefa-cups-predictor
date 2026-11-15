@@ -431,7 +431,7 @@ def enrich_table(table: pd.DataFrame, league_name: str) -> pd.DataFrame:
 def calculate_values(df: pd.DataFrame) -> pd.DataFrame:
     """Vectorized calculation of Value Indices for home and away teams."""
 
-    def calc_val(pfx, opp, win_col):
+    def calc_val(pfx: str, opp: str, win_col: str) -> pd.Series:
         tm_m, op_m = df[f"Mot_{pfx}"] / 100.0, df[f"Mot_{opp}"] / 100.0
         st_b = df[f"Status_{opp}"].map(STATUS_BONUSES).fillna(0.0)
         mot_b = 0.18 * sigmoid((0.45 - op_m) / 0.08)
@@ -548,7 +548,7 @@ def format_recommendations(ranking: pd.DataFrame, allow_draws: bool = True) -> p
     ranking["recommendation"] = np.select(conditions, choices, default="⚪ NEUTRAL")
 
     # 3. Construct Reasons
-    def r(cond, text):
+    def r(cond: pd.Series, text: str | pd.Series) -> np.ndarray:
         return np.where(cond, text + "; ", "")
 
     reason_s = pd.Series("", index=ranking.index)
@@ -620,7 +620,7 @@ def format_recommendations(ranking: pd.DataFrame, allow_draws: bool = True) -> p
     return ranking
 
 
-def analyze_league(prefix: str, excel_pl: bool = False):
+def analyze_league(prefix: str, excel_pl: bool = False) -> None:
     """Main execution flow for a specific league."""
     l_name = "CHAMPIONS LEAGUE" if prefix == "cl" else "EUROPA LEAGUE"
     out_path = BASE_DIR / f"{prefix}_recommendations.csv"
@@ -868,7 +868,7 @@ def analyze_league(prefix: str, excel_pl: bool = False):
     # Sort
     rec_order = {"🟢 STRONG BUY": 0, "🟡 CONSIDER": 1, "⚪ NEUTRAL": 2, "🟠 CAUTION": 3, "🔴 AVOID": 4}
 
-    def get_sort_rank(status):
+    def get_sort_rank(status: str) -> int:
         for k, v in rec_order.items():
             if status.startswith(k):
                 return v
@@ -932,7 +932,7 @@ def analyze_league(prefix: str, excel_pl: bool = False):
         print(f"FAILED to save {out_path.name}")
 
 
-def analyze_sr_only(input_file: Path | None, output_dir: Path | None, excel_pl: bool = False):
+def analyze_sr_only(input_file: Path | None, output_dir: Path | None, excel_pl: bool = False) -> None:
     """Execution flow for SR-only analysis (no The Analyst data)."""
 
     # 1. Determine Input File
@@ -995,7 +995,7 @@ def analyze_sr_only(input_file: Path | None, output_dir: Path | None, excel_pl: 
 
     # Load club_meta to map IDs to Names (Fallback)
     meta_path = BASE_DIR / "data" / "soccer-rating" / "club_meta.csv"
-    id_to_name = {}
+    id_to_name: dict[int, str] = {}
     if meta_path.exists():
         meta = read_smart_csv(meta_path)
         # map id -> team_name
@@ -1003,7 +1003,7 @@ def analyze_sr_only(input_file: Path | None, output_dir: Path | None, excel_pl: 
 
     # Load today_matches.csv for Names (Priority)
     today_path = BASE_DIR / "data" / "soccer-rating" / "today_matches.csv"
-    today_map = {}
+    today_map: dict[str, dict[str, str]] = {}
     if today_path.exists():
         try:
             today_df = read_smart_csv(today_path)
@@ -1014,7 +1014,7 @@ def analyze_sr_only(input_file: Path | None, output_dir: Path | None, excel_pl: 
             print(f"WARNING: Could not load today_matches.csv for name mapping: {e}")
 
     # Map IDs to Names with Priority logic
-    def get_name(row, side):
+    def get_name(row: pd.Series, side: str) -> str:
         # 1. Try Match ID in Today Matches
         mid = row.get("match_id")
         if mid and mid in today_map:

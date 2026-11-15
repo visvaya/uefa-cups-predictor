@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
+from typing import Any
 
 import numpy as np
 from bs4 import BeautifulSoup
@@ -246,7 +247,7 @@ def rel_err(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.mean(np.abs(a - b) / b))
 
 
-def payload_odds_vectors(p: dict) -> dict[str, np.ndarray]:
+def payload_odds_vectors(p: dict[str, Any]) -> dict[str, np.ndarray]:
     return {
         "open": np.array([p["open_1"], p["open_x"], p["open_2"]], dtype=float),
         "drop": np.array([p["drop_1"], p["drop_x"], p["drop_2"]], dtype=float),
@@ -268,7 +269,9 @@ def name_match_score(match_home: str, match_away: str, payload_home: str, payloa
     return 0
 
 
-def pick_best_payload(match_row: dict, payload_candidates: list[dict]) -> tuple[dict | None, dict]:
+def pick_best_payload(
+    match_row: dict[str, Any], payload_candidates: list[dict[str, Any]]
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """
     payload_candidates: list of dicts from payload_to_odds_row() + home_team_payload/away_team_payload/etc.
     Returns: (best_payload_dict, debug_dict)
@@ -338,8 +341,7 @@ def parse_team_ratings(html: str) -> tuple[float | None, float | None]:
     HTML format: <tr><td>Team Ratings (H/A)</td><td>2083.96</td><td>2029.40</td></tr>
     """
     soup = BeautifulSoup(html, "lxml")
-    # bs4 stubs do not model the (name, string=Pattern) overload that bs4 supports at runtime
-    td = soup.find("td", string=re.compile(r"^Team Ratings", re.IGNORECASE))  # type: ignore[call-overload]
+    td = soup.find("td", string=re.compile(r"^Team Ratings", re.IGNORECASE))
     if not td:
         return None, None
 
@@ -357,7 +359,7 @@ def parse_team_ratings(html: str) -> tuple[float | None, float | None]:
     return home_val, away_val
 
 
-def payload_to_odds_row(parts: list[str]) -> dict:
+def payload_to_odds_row(parts: list[str]) -> dict[str, Any]:
     if len(parts) < 19:
         return {}
 
@@ -396,7 +398,7 @@ def payload_to_odds_development(
     home_id: int,
     away_id: int,
     source_url: str,
-    debug: dict,
+    debug: dict[str, Any],
     team_rating_home: float | None = None,
     team_rating_away: float | None = None,
 ) -> OddsDevelopment | None:
