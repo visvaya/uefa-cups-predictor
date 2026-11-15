@@ -50,8 +50,13 @@ line-ending = "lf"
 [tool.mypy]
 python_version = "3.12"
 files = ["analyze.py", "src", "scripts", "tests"]
-ignore_missing_imports = true
+strict = true
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+# pandas ships no type information (pandas-stubs is not a dependency).
+module = "pandas.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

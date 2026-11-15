@@ -10,7 +10,7 @@ import pandas as pd
 from src.csv_safety import neutralize_formulas
 
 from .fetcher import SoccerRatingFetcher, resolve_url
-from .models import ClubMeta
+from .models import ClubMeta, OddsDevelopment, TodayMatch
 from .parsers import (
     parse_clip_payloads,
     parse_club_page,
@@ -51,7 +51,7 @@ def minutes_until_kickoff(time_local: str, now: datetime) -> float:
     return diff_min
 
 
-def validate_results(matches, all_odds_dev):
+def validate_results(matches: list[TodayMatch], all_odds_dev: list[OddsDevelopment]) -> None:
     logger.info("--- Validation Report ---")
 
     # 1. Duplicates
@@ -89,7 +89,7 @@ def validate_results(matches, all_odds_dev):
     logger.info("--------------------------")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Soccer-Rating ETL Scraper CLI")
     parser.add_argument("--local", action="store_true", help="Use local files for testing")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of matches to process")
@@ -119,7 +119,7 @@ def main():
     if args.local:
         logger.info("Running in LOCAL mode.")
         if Path("today-prediction.html").exists():
-            today_html = Path("today-prediction.html").read_text(encoding="utf-8")
+            today_html: str | None = Path("today-prediction.html").read_text(encoding="utf-8")
         else:
             logger.error("today-prediction.html not found.")
             return
@@ -187,7 +187,7 @@ def main():
 
         logger.info(f"Processing Match: {match.home_team} vs {match.away_team} ({match.match_id})")
 
-        match_team_ratings = {"home": None, "away": None}
+        match_team_ratings: dict[str, float | None] = {"home": None, "away": None}
         raw_candidates = []
 
         # Pre-populate ClubMeta with basic info to ensure mapping exists even if we skip the page logic
@@ -218,7 +218,7 @@ def main():
 
                 if html_path:
                     logger.info(f"Using local file {html_path} for {team_name}")
-                    club_html = html_path.read_text(encoding="utf-8")
+                    club_html: str | None = html_path.read_text(encoding="utf-8")
                 else:
                     logger.warning(f"No local file for {team_name}, skipping.")
                     continue
@@ -287,7 +287,7 @@ def main():
 
         count += 1
 
-    def save_cumulative(df_new, filename, id_cols, sort_col=None):
+    def save_cumulative(df_new: pd.DataFrame, filename: str, id_cols: list[str], sort_col: str | None = None) -> int:
         path = output_dir / filename
         if path.exists():
             try:
