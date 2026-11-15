@@ -66,6 +66,7 @@ class SoccerRatingFetcher:
                 url = resolve_url(target, base=url)
             logger.error(f"Too many redirects for {url_path}")
             return None
-        except requests.RequestException as e:
+        # ValueError: requests parses a redirect target even with allow_redirects=False and fails on malformed ones.
+        except (requests.RequestException, ValueError) as e:
             logger.error(f"Error fetching {url}: {e}")
             return None

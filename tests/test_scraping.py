@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+import requests
 
 from src.scraping.fetcher import MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
 from src.scraping.parsers import (
@@ -185,3 +186,17 @@ def test_fetch_stops_after_the_redirect_limit(monkeypatch: pytest.MonkeyPatch) -
     fetcher, requested = fetcher_with(monkeypatch, loop)
     assert fetcher.fetch("/loop/") is None
     assert len(requested) == MAX_REDIRECTS + 1
+
+
+def test_fetch_survives_a_malformed_redirect_target(monkeypatch: pytest.MonkeyPatch) -> None:
+    def send(adapter: object, request: requests.PreparedRequest, **kwargs: object) -> requests.Response:
+        response = requests.Response()
+        response.status_code = 302
+        response.headers["location"] = "https://["
+        response.url = request.url or ""
+        response.request = request
+        response._content = b""
+        return response
+
+    monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", send)
+    assert SoccerRatingFetcher().fetch("/x") is None
