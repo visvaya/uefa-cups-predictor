@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # edited: the pull request title is checked here too, and a new title must be checked again.
+    types: [opened, edited, synchronize, reopened]
   # Weekly run, so new advisories in pip-audit and zizmor surface without a push.
   schedule:
     - cron: "41 4 * * 1"
@@ -21,7 +23,6 @@ env:
 
 jobs:
   check:
-    # Branch protection requires these exact check names.
     name: check (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -69,3 +70,41 @@ jobs:
           echo "${ACTIONLINT_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check --strict
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color
+
+  conventional-commit:
+    name: conventional-commit
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Squash merges use the PR title as the commit subject on main.
+      - name: Check Conventional Commits format
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: [^ ](.{0,70}[^.])?$'
+          if [[ "$TITLE" =~ $pattern ]]; then
+            echo "OK: $TITLE"
+          else
+            echo "::error::PR title must follow Conventional Commits, e.g. 'fix(scraper): handle empty odds cell' (max 72 chars after the colon, no trailing period). Got: $TITLE"
+            exit 1
+          fi
+
+  # The only check branch protection requires from this workflow: it passes when every job above passed
+  # (the title check is skipped outside pull requests), so job names can change without new settings.
+  gate:
+    name: gate
+    if: ${{ always() }}
+    needs: [check, conventional-commit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to pass
+        env:
+          CHECK: ${{ needs.check.result }}
+          TITLE: ${{ needs.conventional-commit.result }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          echo "check=$CHECK conventional-commit=$TITLE event=$EVENT"
+          [ "$CHECK" = success ] || exit 1
+          if [ "$EVENT" = pull_request ]; then [ "$TITLE" = success ] || exit 1; else [ "$TITLE" = skipped ] || exit 1; fi
