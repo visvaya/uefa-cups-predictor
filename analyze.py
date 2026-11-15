@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.csv_safety import neutralize_formulas
+
 # ========================================
 # CONFIGURATION & CONSTANTS
 # ========================================
@@ -922,9 +924,9 @@ def analyze_league(prefix: str, excel_pl: bool = False):
 
     try:
         if excel_pl:
-            ranking_final.to_csv(out_path, sep=";", index=False, encoding="utf-8-sig", decimal=",")
+            neutralize_formulas(ranking_final).to_csv(out_path, sep=";", index=False, encoding="utf-8-sig", decimal=",")
         else:
-            ranking_final.to_csv(out_path, sep=",", index=False, encoding="utf-8", decimal=".")
+            neutralize_formulas(ranking_final).to_csv(out_path, sep=",", index=False, encoding="utf-8", decimal=".")
         print(f"SUCCESS: Saved: {out_path.name}")
     except PermissionError:
         print(f"FAILED to save {out_path.name}")
@@ -1265,9 +1267,9 @@ def analyze_sr_only(input_file: Path | None, output_dir: Path | None, excel_pl: 
 
     try:
         if excel_pl:
-            final_view.to_csv(out_path, sep=";", index=False, encoding="utf-8-sig", decimal=",")
+            neutralize_formulas(final_view).to_csv(out_path, sep=";", index=False, encoding="utf-8-sig", decimal=",")
         else:
-            final_view.to_csv(out_path, sep=",", index=False, encoding="utf-8", decimal=".")
+            neutralize_formulas(final_view).to_csv(out_path, sep=",", index=False, encoding="utf-8", decimal=".")
         print(f"SUCCESS: Saved SR-Only report to: {out_path}")
     except PermissionError:
         print(f"FAILED to save {out_path}")

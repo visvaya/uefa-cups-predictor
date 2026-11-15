@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from src.scraping.fetcher import resolve_url
 from src.scraping.parsers import (
     _extract_two_numbers,
     _normalize_time,
@@ -102,3 +103,31 @@ def test_payload_to_odds_row_requires_full_payload() -> None:
     assert row["league_code_payload"] == "CLCUP"
     assert row["oo"] == 1.0
     assert row["fair_2"] == 15.0
+
+
+@pytest.mark.parametrize(
+    ("url_path", "expected"),
+    [
+        ("/today-prediction", "https://www.soccer-rating.com/today-prediction"),
+        ("Ajax/123/", "https://www.soccer-rating.com/Ajax/123/"),
+        ("https://www.soccer-rating.com/Ajax/123/", "https://www.soccer-rating.com/Ajax/123/"),
+        ("https://SOCCER-RATING.com/x", "https://SOCCER-RATING.com/x"),
+    ],
+)
+def test_resolve_url_accepts_site_urls(url_path: str, expected: str) -> None:
+    assert resolve_url(url_path) == expected
+
+
+@pytest.mark.parametrize(
+    "url_path",
+    [
+        "https://evil.example/x",
+        "http://www.soccer-rating.com/x",
+        "https://www.soccer-rating.com@evil.example/x",
+        "https://www.soccer-rating.com.evil.example/x",
+        "file:///etc/passwd",
+        "http://127.0.0.1:8080/",
+    ],
+)
+def test_resolve_url_rejects_other_urls(url_path: str) -> None:
+    assert resolve_url(url_path) is None

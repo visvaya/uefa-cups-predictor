@@ -1,13 +1,26 @@
 import logging
 from typing import ClassVar
+from urllib.parse import urlsplit
 
 import requests
 
 logger = logging.getLogger(__name__)
 
+BASE_URL = "https://www.soccer-rating.com"
+ALLOWED_HOSTS = frozenset({"www.soccer-rating.com", "soccer-rating.com"})
+
+
+def resolve_url(url_path: str) -> str | None:
+    """Turns a page link into the URL to fetch, or None when it leaves https://soccer-rating.com.
+
+    Links come from the fetched pages, so an absolute URL must not send requests anywhere else.
+    """
+    url = url_path if urlsplit(url_path).scheme else BASE_URL + "/" + url_path.lstrip("/")
+    parts = urlsplit(url)
+    return url if parts.scheme == "https" and parts.hostname in ALLOWED_HOSTS else None
+
 
 class SoccerRatingFetcher:
-    BASE_URL = "https://www.soccer-rating.com"
     HEADERS: ClassVar[dict[str, str]] = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -24,13 +37,10 @@ class SoccerRatingFetcher:
         Fetches a page from soccer-rating.com.
         url_path can be a full URL or a relative path.
         """
-        if url_path.startswith("http"):
-            url = url_path
-        else:
-            # Ensure relative path starts with /
-            if not url_path.startswith("/"):
-                url_path = "/" + url_path
-            url = self.BASE_URL + url_path
+        url = resolve_url(url_path)
+        if url is None:
+            logger.warning(f"Skipping {url_path}: not an https URL on soccer-rating.com")
+            return None
 
         try:
             logger.info(f"Fetching {url}...")

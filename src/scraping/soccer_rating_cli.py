@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from .fetcher import SoccerRatingFetcher
+from src.csv_safety import neutralize_formulas
+
+from .fetcher import BASE_URL, SoccerRatingFetcher
 from .models import ClubMeta
 from .parsers import (
     parse_clip_payloads,
@@ -258,7 +260,7 @@ def main():
         best_row, debug = pick_best_payload(match.__dict__, raw_candidates)
 
         if best_row:
-            source_url = fetcher.BASE_URL + best_row["_source_href"] if not args.local else best_row["_source_href"]
+            source_url = BASE_URL + best_row["_source_href"] if not args.local else best_row["_source_href"]
             dev = payload_to_odds_development(
                 best_row["_raw_parts"],
                 match.match_id,
@@ -299,13 +301,13 @@ def main():
             df = df.sort_values(sort_col, ascending=True)
 
         df = df.drop_duplicates(subset=id_cols, keep="last")
-        df.to_csv(path, index=False)
+        neutralize_formulas(df).to_csv(path, index=False)
         return len(df)
 
     # Save Results
     if matches:
         df_today = pd.DataFrame([m.__dict__ for m in matches])
-        df_today.to_csv(output_dir / "today_matches.csv", index=False)
+        neutralize_formulas(df_today).to_csv(output_dir / "today_matches.csv", index=False)
 
     if all_odds_dev:
         df_dev = pd.DataFrame([d.__dict__ for d in all_odds_dev])
@@ -326,7 +328,7 @@ def main():
             # Final pass: reload and filter to ensure no legacy columns from concat
             df_final = pd.read_csv(output_dir / "match_odds_development.csv")
             df_final = df_final[id_cols_dev + rem_cols_dev]
-            df_final.to_csv(output_dir / "match_odds_development.csv", index=False)
+            neutralize_formulas(df_final).to_csv(output_dir / "match_odds_development.csv", index=False)
             logger.info(f"Updated match_odds_development.csv (Total records: {total})")
 
     if all_clubs:
@@ -338,7 +340,7 @@ def main():
         # Final pass: reload and filter
         df_final = pd.read_csv(output_dir / "club_meta.csv")
         df_final = df_final[cols_clubs]
-        df_final.to_csv(output_dir / "club_meta.csv", index=False)
+        neutralize_formulas(df_final).to_csv(output_dir / "club_meta.csv", index=False)
         logger.info(f"Updated club_meta.csv (Total records: {total})")
 
     if all_cups:
