@@ -31,8 +31,20 @@ CONVENTIONAL_SUBJECT = re.compile(
 )
 MAX_SUBJECT_CHARS = 72
 GIT_GENERATED_SUBJECTS = ("Merge ", 'Revert "', "fixup! ", "squash! ", "amend! ")
+# Pictographs, symbols and the combining keycap (a digit, U+FE0F and U+20E3 render as an emoji).
 EMOJI = re.compile(
-    "[" + chr(0x1F000) + "-" + chr(0x1FAFF) + chr(0x2600) + "-" + chr(0x27BF) + chr(0x2B00) + "-" + chr(0x2BFF) + "]"
+    "["
+    + chr(0x1F000)
+    + "-"
+    + chr(0x1FAFF)
+    + chr(0x2600)
+    + "-"
+    + chr(0x27BF)
+    + chr(0x2B00)
+    + "-"
+    + chr(0x2BFF)
+    + chr(0x20E3)
+    + "]"
 )
 # Recommendation labels in the report output carry these circles and serve as sort keys (accepted exception).
 LABEL_EMOJI = frozenset({chr(0x26AA), chr(0x1F534), chr(0x1F7E0), chr(0x1F7E1), chr(0x1F7E2)})
@@ -48,8 +60,8 @@ def excluded_paths(paths: list[str], patterns: list[str]) -> list[str]:
 
 
 def subject_problems(text: str) -> list[str]:
-    """Checks the first line that is neither blank nor a comment."""
-    subject = next((line for line in text.splitlines() if line.strip() and not line.startswith("#")), "")
+    """Checks the first non-blank line: `git commit -m` keeps lines starting with `#`, so one can be the subject."""
+    subject = next((line for line in text.splitlines() if line.strip()), "")
     if subject.startswith(GIT_GENERATED_SUBJECTS):
         return []
     if CONVENTIONAL_SUBJECT.match(subject) is None:
@@ -98,9 +110,14 @@ def identity_problems(idents: dict[str, str], owner_emails: list[str]) -> list[s
     ]
 
 
-def run(command: list[str]) -> subprocess.CompletedProcess[str]:
-    """Runs a command built in this file (resolved executable, no shell) and captures its text output."""
-    return subprocess.run(command, capture_output=True, text=True, encoding="utf-8", check=False)  # noqa: S603
+def run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:
+    """Runs a command built in this file (resolved executable, no shell) and captures its UTF-8 output.
+
+    Bytes, not text mode: on Windows text mode turns every newline sent to stdin into CRLF.
+    """
+    data = None if stdin is None else stdin.encode("utf-8")
+    result = subprocess.run(command, input=data, capture_output=True, check=False)  # noqa: S603
+    return subprocess.CompletedProcess(command, result.returncode, result.stdout.decode(), result.stderr.decode())
 
 
 def git(*args: str) -> str:
@@ -132,14 +149,22 @@ def content_problems(paths: list[str], read: Callable[[str], str]) -> list[str]:
     return problems
 
 
-def ruff_problems(python_files: list[str]) -> list[str]:
-    """Fast lint and format check of the staged Python files."""
+def ruff_problems(python_files: list[str], read: Callable[[str], str]) -> list[str]:
+    """Lint and format check of the staged content (not the working tree) of each Python file."""
     commands = (["check", "--quiet"], ["format", "--check", "--quiet"])
     return [
-        f"ruff {command[0]} failed on the staged Python files:\n{result.stdout}{result.stderr}"
+        f"ruff {command[0]} failed on {path}:\n{result.stdout}{result.stderr}"
+        for path in python_files
         for command in commands
-        if python_files and (result := run([sys.executable, "-m", "ruff", *command, *python_files])).returncode != 0
+        if (
+            result := run([sys.executable, "-m", "ruff", *command, "--stdin-filename", path, "-"], read(path))
+        ).returncode
     ]
+
+
+def staged_content(path: str) -> str:
+    """The content of `path` in the index, which is what the commit will hold."""
+    return git("show", f":{path}")
 
 
 def pre_commit_problems() -> list[str]:
@@ -150,8 +175,8 @@ def pre_commit_problems() -> list[str]:
     return (
         identity_problems(idents, config_list("hooks.ownerIdentities"))
         + path_problems(staged, config_list("hooks.excludedPaths"))
-        + content_problems(staged, lambda path: git("show", f":{path}"))
-        + ruff_problems([path for path in staged if path.endswith(".py")])
+        + content_problems(staged, staged_content)
+        + ruff_problems([path for path in staged if path.endswith(".py")], staged_content)
     )
 
 

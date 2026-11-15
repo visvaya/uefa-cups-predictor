@@ -111,3 +111,13 @@ def test_identity_problems_only_when_owner_identities_are_configured() -> None:
     assert identity_problems(idents, []) == []
     assert identity_problems(idents, ["a@example.com", "b@example.com"]) == []
     assert identity_problems(idents, ["A@example.com"]) == ["GIT_COMMITTER_IDENT is B <b@example.com>"]
+
+
+def test_emoji_checks_catch_keycap_sequences() -> None:
+    keycap = "1" + chr(0xFE0F) + chr(0x20E3)
+    assert message_problems("feat: add " + keycap + "\n") != []
+    assert text_problems("docs.md", keycap + "\n") != []
+
+
+def test_message_problems_checks_the_first_line_git_keeps() -> None:
+    assert message_problems("# release notes\n\nfeat: add x\n") != []
