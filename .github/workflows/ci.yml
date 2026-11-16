@@ -39,22 +39,13 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
+          # The uv version locked as a dev dependency, which Dependabot's uv updates bump (with their cooldown).
+          version-file: uv.lock
           enable-cache: true
       - run: uv sync --locked
-      # Later checks run even when an earlier one fails, so one run reports everything.
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-        if: ${{ !cancelled() }}
-      - run: uv run mypy
-        if: ${{ !cancelled() }}
-      - run: uv run vulture
-        if: ${{ !cancelled() }}
-      - run: uv run pylint analyze.py src scripts tests
-        if: ${{ !cancelled() }}
-      - run: uv run pytest --cov --cov-report=term
-        if: ${{ !cancelled() }}
-      - run: uv run python scripts/git_hooks.py tracked
-        if: ${{ !cancelled() }}
+      # The same command as locally (scripts/gate.py): every code check, each one run even after a failure.
+      - name: Gate
+        run: uv run python -m scripts.gate
         env:
           # Paths that must never be committed; kept in a repository variable, not in the repository.
           EXCLUDED_PATHS: ${{ vars.EXCLUDED_PATHS }}
