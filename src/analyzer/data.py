@@ -124,6 +124,12 @@ def load_soccer_rating(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, list[
     sr = cup_rows(read_smart_csv(path), prefix)
     if sr.empty:
         return pd.DataFrame(), []
+    meta_path = sr_dir / "club_meta.csv"
+    if not meta_path.exists():
+        # Without club_meta.csv the team ids cannot be mapped to the fixtures' names
+        return pd.DataFrame(), [
+            f"WARNING: {meta_path.name} not found: team ids cannot be mapped, running without soccer-rating data"
+        ]
 
     warnings = []
     today_path = sr_dir / "today_matches.csv"
@@ -133,10 +139,6 @@ def load_soccer_rating(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, list[
         today = pd.DataFrame()
         warnings.append(f"WARNING: {today_path.name} not found: running without lineups")
     sr = with_lineups(latest_snapshots(sr), today)
-    meta_path = sr_dir / "club_meta.csv"
-    if not meta_path.exists():
-        # No club_meta.csv: no team keys, so this fails with KeyError as before (known debt)
-        return sr.dropna(subset=["HomeKey", "AwayKey"]), warnings
     return with_team_keys(sr, read_smart_csv(meta_path)), warnings
 
 

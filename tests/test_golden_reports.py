@@ -98,3 +98,15 @@ def test_analyze_league_runs_without_lineups(base_dir: Path, capsys: pytest.Capt
     out = capsys.readouterr().out
     assert "WARNING: today_matches.csv not found: running without lineups" in out
     assert "SUCCESS: Saved: el_recommendations.csv" in out
+
+
+def test_analyze_league_runs_without_soccer_rating_when_club_meta_is_missing(
+    base_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (base_dir / "data" / "soccer-rating" / "club_meta.csv").unlink()
+
+    run_league(base_dir, "cl")
+
+    out = capsys.readouterr().out
+    assert "WARNING: club_meta.csv not found: team ids cannot be mapped, running without soccer-rating data" in out
+    assert "SUCCESS: Saved: cl_recommendations.csv" in out
