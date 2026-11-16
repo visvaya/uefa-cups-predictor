@@ -109,7 +109,7 @@ The algorithm uses a hybrid approach to maintain mathematical consistency:
 | :--- | :--- |
 | **homeTeam / awayTeam** | Match participants. |
 | **pick** | **Recommended Outcome**: `1` (Home), `X` (Draw), `2` (Away). |
-| **expertScore** | Global match signal strength. |
+| **expertScore** | Match signal strength from the picked side's view: > 0 favours it (for `X`, the home view). |
 | **recommendation** | Advice based purely on market gaps and steam. |
 
 ### Understanding the 'Reason' Column

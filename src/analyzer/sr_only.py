@@ -68,7 +68,7 @@ def match_features(f2: pd.DataFrame) -> pd.DataFrame:
 
 
 def team_ranking(f2: pd.DataFrame) -> pd.DataFrame:
-    """One row per team and match; away rows flip srDropping and do_drop (expertScore stays the home score)."""
+    """One row per team and match, seen from that team (away rows flip expertScore, srDropping and do_drop)."""
     h = f2.assign(
         Team=f2["HomeTeamName"],
         Opp=f2["AwayTeamName"],
@@ -84,6 +84,7 @@ def team_ranking(f2: pd.DataFrame) -> pd.DataFrame:
         Close=f2["close_2"].fillna(99.0),
         Fair=f2["fair_2"].fillna(99.0),
         SR_edge=f2["edge_2"].fillna(0),
+        expertScore=-f2["expertScore"],
         srDropping=-f2["steam_diff"],
         do_drop=-f2["do_drop"],
         is_home=False,

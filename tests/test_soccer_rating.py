@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 
+from src.analyzer import sr_only
 from src.analyzer.soccer_rating import add_soccer_rating_features
 
 FIXTURES = pd.DataFrame({"HomeKey": ["home"], "AwayKey": ["away"]})
@@ -34,3 +35,26 @@ def test_add_soccer_rating_features_reads_value_ratings_of_the_merged_odds() -> 
 
     assert features.loc[0, "do_drop"] == pytest.approx(0.10)
     assert features.loc[0, "strangeOdds"] == -36.0
+
+
+def test_sr_only_away_row_carries_the_score_of_the_away_team() -> None:
+    match = pd.DataFrame(
+        {
+            "HomeTeamName": ["Home FC"],
+            "AwayTeamName": ["Away FC"],
+            "close_1": [5.0],
+            "close_2": [1.6],
+            "fair_1": [6.5],
+            "fair_2": [1.5],
+            "edge_1": [-0.02],
+            "edge_2": [0.04],
+            "steam_diff": [-0.3],
+            "do_drop": [-0.02],
+            "expertScore": [-0.9],
+        }
+    )
+
+    ranking = sr_only.team_ranking(match).set_index("Team")
+
+    assert ranking.loc["Home FC", "expertScore"] == -0.9
+    assert ranking.loc["Away FC", "expertScore"] == 0.9
