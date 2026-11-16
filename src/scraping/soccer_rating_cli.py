@@ -152,8 +152,10 @@ class ScrapeResult:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Soccer-Rating ETL Scraper CLI")
-    parser.add_argument("--local", action="store_true", help="Use local files for testing")
-    parser.add_argument(
+    # The markup check always reads the live site, so it cannot run on local files
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--local", action="store_true", help="Use local files for testing")
+    mode.add_argument(
         "--check-markup",
         action="store_true",
         help="Fetch the today page and one team page, report whether the parsers find what they expect, write nothing",

@@ -163,6 +163,13 @@ def test_check_markup_exits_with_its_result_and_writes_nothing(monkeypatch: pyte
     assert not output_dir.exists()
 
 
+def test_check_markup_cannot_run_locally(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        run_cli(monkeypatch, tmp_path, tmp_path / "out", "--check-markup", "--local")
+
+    assert exit_info.value.code == 2  # argparse usage error, before any request
+
+
 def test_local_run_without_today_page_writes_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     output_dir = tmp_path / "out"
 
