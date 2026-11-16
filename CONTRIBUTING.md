@@ -33,7 +33,7 @@ step's exit code and duration, and exits 1 if any failed. Add a new code check t
 local runs and CI stay the same.
 
 Changes to the recommendation logic in `src/analyzer/` must keep the reports deterministic. If a change is meant to
-alter the output, say so in the pull request and update `readme.md` and `interpretation.md` when thresholds or
+alter the output, say so in the pull request and update `README.md` and `interpretation.md` when thresholds or
 weights change.
 
 The scraper's parser tests use hand-written HTML. After changing a parser, and as a periodic manual check, run

@@ -48,7 +48,7 @@ EMOJI = re.compile(
 )
 # Recommendation labels in the report output carry these circles and serve as sort keys (accepted exception).
 LABEL_EMOJI = frozenset({chr(0x26AA), chr(0x1F534), chr(0x1F7E0), chr(0x1F7E1), chr(0x1F7E2)})
-LABEL_FILES = frozenset({"src/analyzer/recommendations.py", "readme.md", "interpretation.md"})
+LABEL_FILES = frozenset({"src/analyzer/recommendations.py", "README.md", "interpretation.md"})
 LABEL_DIRECTORIES = ("tests/golden/",)  # expected reports, which contain the labels
 IDENT_TIMESTAMP = re.compile(r"\s+\d+\s+[+-]\d{4}$")
 
