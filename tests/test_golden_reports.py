@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from src.analyzer.cli import run_league, run_sr_only
+from analyzer.cli import run_league, run_sr_only
 
 TESTS_DIR = Path(__file__).resolve().parent
 EXAMPLES_DIR = TESTS_DIR.parent / "data" / "theanalyst"

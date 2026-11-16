@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.analyzer.data import (
+from analyzer.data import (
     ODDS_NUMERIC_COLUMNS,
     cast_numeric,
     load_club_names,
@@ -17,12 +17,12 @@ from src.analyzer.data import (
     read_smart_csv,
     soccer_rating_dir,
 )
-from src.analyzer.errors import AnalyzerInputError
-from src.analyzer.league import LEAGUE_NAMES, league_report, match_frame, validated_inputs
-from src.analyzer.model import calculate_values, enrich_table, integrity_report
-from src.analyzer.soccer_rating import add_soccer_rating_features, coverage_report
-from src.analyzer.sr_only import sr_only_report, valid_odds
-from src.csv_safety import neutralize_formulas
+from analyzer.errors import AnalyzerInputError
+from analyzer.league import LEAGUE_NAMES, league_report, match_frame, validated_inputs
+from analyzer.model import calculate_values, enrich_table, integrity_report
+from analyzer.soccer_rating import add_soccer_rating_features, coverage_report
+from analyzer.sr_only import sr_only_report, valid_odds
+from csv_safety import neutralize_formulas
 
 SNAPSHOT_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
@@ -137,3 +137,8 @@ def main(base_dir: Path, argv: list[str] | None = None) -> None:
     except AnalyzerInputError as err:
         print(f"ERROR: {err}")
         sys.exit(1)
+
+
+def run() -> None:
+    """Console script `analyze`: runs the analyzer on the data under the current directory."""
+    main(Path.cwd())

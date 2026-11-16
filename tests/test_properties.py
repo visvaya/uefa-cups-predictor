@@ -8,9 +8,9 @@ from hypothesis import example, given
 from hypothesis import strategies as st
 from urllib3.util import parse_url
 
-from src.csv_safety import FORMULA_PREFIXES, neutralize_cell
-from src.scraping.fetcher import resolve_url
-from src.scraping.parsers import (
+from csv_safety import FORMULA_PREFIXES, neutralize_cell
+from scraping.fetcher import resolve_url
+from scraping.parsers import (
     _extract_float,
     _extract_two_numbers,
     _normalize_time,

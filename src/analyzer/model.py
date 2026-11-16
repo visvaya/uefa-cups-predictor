@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from src.analyzer.config import (
+from analyzer.config import (
     LOCKED_MIN_PROB,
     LOCKED_PLAYOFFS_MAX_TOP8_PROB,
     MOTIVATION_BASE,

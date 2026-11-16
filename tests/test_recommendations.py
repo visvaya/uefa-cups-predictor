@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.analyzer.recommendations import read_signals, reasons
+from analyzer.recommendations import read_signals, reasons
 
 
 def test_reasons_write_numbers_with_the_given_decimal_separator() -> None:
