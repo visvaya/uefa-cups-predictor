@@ -27,14 +27,20 @@ RE_INT = re.compile(r"\s(\d+)$")
 NON_DECOMPOSING_LETTERS = str.maketrans({"ø": "o", "æ": "ae", "å": "a", "ł": "l", "đ": "d", "ß": "ss"})
 RE_LEAGUE_STRICT = re.compile(r"\b(CLCUP|ELCUP)\b")
 RE_CLIP = re.compile(r"copyToClipboard\('([^']+)'\)")
-RE_TEAM_ID = re.compile(r"/[w]?(\d+)/")
+# Club links end in "/<id>/" or "/w<id>/", national-team links in "/n<id>/"
+RE_TEAM_ID = re.compile(r"/([nw]?)(\d+)/")
 
 
 def team_id_from_href(href: str) -> int:
+    """The team id of a team link; national teams get negative ids, as they are numbered apart from clubs.
+
+    National-team pages carry the same ratings and odds payloads as club pages (checked on 2026-11-16).
+    """
     m = RE_TEAM_ID.search(href)
     if not m:
         raise ValueError(f"Could not extract team_id from href={href}")
-    return int(m.group(1))
+    team_id = int(m.group(2))
+    return -team_id if m.group(1) == "n" else team_id
 
 
 def make_match_id(snapshot_date: str, league_code: str, home_id: int, away_id: int) -> str:
@@ -114,7 +120,7 @@ def _lineup_type(tr: Tag) -> str | None:
 
 
 def _parse_match_row(tr: Tag, league_code: str, league_name: str, snapshot_date: str) -> TodayMatch | None:
-    """A match row with at least 7 cells; None when it lacks two team links or links national teams."""
+    """A match row with at least 7 cells; None when it lacks two team links with readable ids."""
     tds = tr.find_all("td")
     a_tags = tds[3].find_all("a", href=True)
     if len(a_tags) < 2:
@@ -129,7 +135,6 @@ def _parse_match_row(tr: Tag, league_code: str, league_name: str, snapshot_date:
         home_id = team_id_from_href(home_href)
         away_id = team_id_from_href(away_href)
     except ValueError:
-        # National teams use "/<name>/n<id>/" links; their IDs are a separate namespace from clubs
         logger.warning(f"Skipping {home_team} vs {away_team}: unsupported team link ({home_href}, {away_href})")
         return None
 
