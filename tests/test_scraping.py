@@ -74,6 +74,9 @@ def test_minutes_until_kickoff_rejects_bad_format() -> None:
 
 def test_team_id_from_href() -> None:
     assert team_id_from_href("/Sturm-Graz/1294/") == 1294
+    assert team_id_from_href("/UTC-Cajamarca/w3353/") == 3353
+    # National teams have their own id namespace, kept apart from clubs by the sign
+    assert team_id_from_href("/Germany/n28/") == -28
     with pytest.raises(ValueError):
         team_id_from_href("/no-id-here/")
 
@@ -126,12 +129,13 @@ def test_parse_today_prediction_reads_club_match() -> None:
     assert (match.odd_x_today, match.lineup_rating_away_today) == (4.2, 52.0)
 
 
-def test_parse_today_prediction_skips_national_team_links() -> None:
+def test_parse_today_prediction_reads_national_team_links() -> None:
     page = _today_page(
-        _today_row("/Antigua-Barbuda/n206/", "/Other/n300/"), _today_row("/Home-FC/101/", "/Away-FC/202/")
+        _today_row("/Antigua-Barbuda/n206/", "/Other/n300/"), _today_row("/Home-FC/n101/", "/Away-FC/101/")
     )
     matches = parse_today_prediction(page, "2026-02-05")
-    assert [m.home_id for m in matches] == [101]
+    assert [(m.home_id, m.away_id) for m in matches] == [(-206, -300), (-101, 101)]
+    assert matches[0].match_id == "2026-02-05_CLCUP_-206_-300"
 
 
 def test_parse_today_prediction_names_unknown_leagues_without_changing_leagues() -> None:

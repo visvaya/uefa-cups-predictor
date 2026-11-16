@@ -1,7 +1,8 @@
 """Golden-file tests that pin the CSV files written by the scraper CLI, run offline.
 
 `tests/fixtures/scraper/` holds a hand-written today-prediction page (CL, EL, an unknown league, a cup league,
-national teams, ads and malformed rows) and club pages named the way `--local` looks them up (`Home-FC.html`).
+national teams, ads and malformed rows) and club and national-team pages named the way `--local` looks them up
+(`Home-FC.html`).
 Three runs cover the default cumulative files merged with existing ones (`existing/`), separate snapshots with
 `--all-leagues`, the time window and `--skip-cups`, and the remote path with a fake fetcher and `--limit`.
 The clock is frozen, so the snapshot date and the time window do not depend on when the tests run.
@@ -120,10 +121,17 @@ def test_local_snapshot_run_skips_cups(monkeypatch: pytest.MonkeyPatch, tmp_path
 def test_remote_run_fetches_pages_and_resolves_source_urls(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     output_dir = tmp_path / "out"
 
-    calls = run_cli(monkeypatch, tmp_path, output_dir, "--limit", "3", "--delay", "0.5", "--user-agent", "test/1.0")
+    calls = run_cli(monkeypatch, tmp_path, output_dir, "--limit", "4", "--delay", "0.5", "--user-agent", "test/1.0")
 
-    # The today page right away, then a pause before every club page; Home FC's page has the payload, Red Star's not
-    club_pages = ["/Home-FC/101/", "/Red-Star/303/", "/Blue-City/404/", "/Green-Park/505/", "/Old-Town/606/"]
+    # The today page right away, then a pause before every team page; Home FC's page has the payload, Red Star's not
+    club_pages = [
+        "/Home-FC/101/",
+        "/Red-Star/303/",
+        "/Blue-City/404/",
+        "/Land-A/n11/",
+        "/Green-Park/505/",
+        "/Old-Town/606/",
+    ]
     assert calls == [("user_agent", "test/1.0"), ("fetch", TODAY_PATH)] + [
         call for href in club_pages for call in (("sleep", 0.5), ("fetch", href))
     ]
@@ -141,8 +149,8 @@ def test_site_timezone_moves_the_time_window(monkeypatch: pytest.MonkeyPatch, tm
     def kickoffs(run: str) -> list[str]:
         return [str(t) for t in pd.read_csv(tmp_path / run / "today_matches.csv")["time_local"]]
 
-    assert kickoffs("utc") == ["18:30"]
-    assert kickoffs("paris") == ["20:00"]
+    assert kickoffs("utc") == ["18:30", "19:00"]
+    assert kickoffs("paris") == ["19:00", "20:00"]
 
 
 def test_local_run_without_today_page_writes_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -176,13 +184,13 @@ def test_validation_report_flags_duplicates_missing_leagues_and_low_confidence(
     # The ids of the matches without a payload come from a set, in no fixed order
     missing_level, missing_message = records.pop(4)
     assert missing_level == "WARNING"
-    assert missing_message.startswith("Missing payloads for 4 matches: ")
+    assert missing_message.startswith("Missing payloads for 5 matches: ")
     assert all(m.match_id in missing_message for m in [*matches[1:], checked[-1]])
     assert records == [
         ("INFO", "--- Validation Report ---"),
         ("ERROR", "Validation FAILED: Found 1 duplicate match_ids!"),
         ("ERROR", "Validation FAILED: Found 1 matches with missing league codes!"),
-        ("INFO", "Payload Coverage: 20.0% (1/5)"),
+        ("INFO", "Payload Coverage: 16.7% (1/6)"),
         ("WARNING", "Quality Alert: Found 1 LOW confidence matches!"),
         ("INFO", "--------------------------"),
     ]

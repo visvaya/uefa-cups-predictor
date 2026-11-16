@@ -160,7 +160,7 @@ python -m scraping.soccer_rating_cli
 - `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (e.g. `Europe/Paris`); the window then counts real minutes, also across a DST change. Default: the machine's local timezone. The site renders times in the offset chosen in its "Timezone" selector, which defaulted to "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established.
 - `--skip-cups`: Skip cup matches (league code contains `CUP`, e.g. `FACUP`) except the UEFA club competitions `CLCUP`, `ELCUP` and `ECLCUP`; useful together with `--all-leagues`.
 
-National team fixtures are skipped with a warning; only club matches are supported.
+National-team matches (links such as `/Germany/n28/`) are scraped like club matches. Their team ids are stored as negative numbers (`-28`), because the site numbers national teams separately from clubs; the analyzer's CL/EL reports never contain them, so they only show up in the SR-only report.
 
 ### Workflow
 
