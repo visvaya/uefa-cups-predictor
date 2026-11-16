@@ -204,10 +204,10 @@ def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) 
     reason_s += r(s.sr_drop > REASON_MIN_STEAM, "Steam (+)")
     reason_s += r(s.sr_drop < -REASON_MIN_STEAM, "Steam (-)")
 
-    so = ranking.get("strangeOdds", pd.Series(0)).fillna(0)
+    so = column_or(ranking, "strangeOdds", 0).fillna(0)
     reason_s += r(so.abs() > STRANGE_ODDS_MIN_ABS, "Strange Odds (" + so.astype(int).astype(str) + ")")
 
-    reason_s += r(s.sr_edge > REASON_MIN_SR_EDGE, "SR Edge")
+    reason_s += r(s.sr_edge > GOOD_SR_EDGE, "SR Edge")  # the edge that supports CONSIDER
     reason_s += r(s.sr_edge < -REASON_MIN_SR_EDGE, "Market Confidence")
 
     if allow_draws:
