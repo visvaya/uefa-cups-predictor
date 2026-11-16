@@ -1,0 +1,10 @@
+team_id,team_name,rating_total,rating_home,rating_away
+101,Home FC,1850.5,1900.25,1800.75
+202,Away FC,,,
+303,Red Star,1700.0,1720.5,
+404,Blue City,1810.0,1830.0,1790.0
+505,Green Park,,,
+606,Old Town,1650.0,,1600.0
+707,Lake Side,1500.0,,
+808,Hill Rovers,,,
+999,Old Rival,1600.0,,
