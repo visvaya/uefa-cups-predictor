@@ -6,6 +6,10 @@ import pandas as pd
 from src.analyzer.config import (
     DO_DROP_SCALE,
     HIGH_QUALITY_MAX_ODDS_DISTANCE,
+    MIN_STEAM_ODDS,
+    NEUTRAL_DRAW_PROB,
+    NEUTRAL_SIDE_PROB,
+    PARTIAL_SR_QUALITY,
     RATING_DIFF_SCALE,
     STRANGE_ODDS_MIN_ABS,
     W_CLOSE,
@@ -52,8 +56,8 @@ def with_market_signals(df: pd.DataFrame, valid_mask: pd.Series) -> pd.DataFrame
         df.loc[valid_mask, f"prob_gap_{side}"] = p_close - p_fair
 
         # Steam: ln(open / close)
-        open_v = df.loc[valid_mask, f"open_{side}"].clip(lower=1.01)
-        close_v = df.loc[valid_mask, f"close_{side}"].clip(lower=1.01)
+        open_v = df.loc[valid_mask, f"open_{side}"].clip(lower=MIN_STEAM_ODDS)
+        close_v = df.loc[valid_mask, f"close_{side}"].clip(lower=MIN_STEAM_ODDS)
         df.loc[valid_mask, f"steam_{side}"] = np.log(open_v / close_v)
 
     df.loc[valid_mask, "steam_diff"] = df.loc[valid_mask, "steam_1"] - df.loc[valid_mask, "steam_2"]
@@ -69,7 +73,7 @@ def sr_quality(df: pd.DataFrame, valid_mask: pd.Series) -> np.ndarray:
         & (df.get("match_confidence", "LOW") == "HIGH")
         & (df["odds_distance"] <= HIGH_QUALITY_MAX_ODDS_DISTANCE),
         1.0,
-        np.where(has_sr, 0.5, 0.0),
+        np.where(has_sr, PARTIAL_SR_QUALITY, 0.0),
     )
 
 
@@ -86,8 +90,8 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
             f[c] = 0.0
 
         for side in SIDES:
-            f[f"p_close_{side}"] = 0.333 if side != "x" else 0.334
-            f[f"p_fair_{side}"] = 0.333
+            f[f"p_close_{side}"] = NEUTRAL_SIDE_PROB if side != "x" else NEUTRAL_DRAW_PROB
+            f[f"p_fair_{side}"] = NEUTRAL_SIDE_PROB  # also for x (kept as it was)
 
         return f
 
@@ -105,8 +109,8 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
 
     # Initialize probabilities and steam to neutral defaults
     for side in SIDES:
-        f2[f"p_close_{side}"] = 0.334 if side == "x" else 0.333
-        f2[f"p_fair_{side}"] = 0.334 if side == "x" else 0.333
+        f2[f"p_close_{side}"] = NEUTRAL_DRAW_PROB if side == "x" else NEUTRAL_SIDE_PROB
+        f2[f"p_fair_{side}"] = NEUTRAL_DRAW_PROB if side == "x" else NEUTRAL_SIDE_PROB
         f2[f"prob_gap_{side}"] = 0.0
         f2[f"steam_{side}"] = 0.0
 

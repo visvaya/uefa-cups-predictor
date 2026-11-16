@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.analyzer.errors import AnalyzerInputError
 from src.analyzer.names import norm_key
 
 LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league"}
@@ -29,10 +30,6 @@ ODDS_NUMERIC_COLUMNS = [
     "team_rating_home",
     "team_rating_away",
 ]
-
-
-class AnalyzerInputError(Exception):
-    """An input the analyzer cannot work with; the CLI prints it as `ERROR: <message>` and exits with code 1."""
 
 
 def cast_numeric(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
@@ -104,14 +101,10 @@ def with_lineups(sr: pd.DataFrame, today: pd.DataFrame) -> pd.DataFrame:
     return sr
 
 
-def with_team_keys(sr: pd.DataFrame, meta: pd.DataFrame | None) -> pd.DataFrame:
+def with_team_keys(sr: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
     """Maps team ids to name keys through club_meta.csv and keeps one row per mapped pair of keys."""
-    if meta is not None:
-        key_by_id = meta.set_index(meta["team_id"].astype(str))["team_name"].map(norm_key).to_dict()
-        sr = sr.assign(
-            HomeKey=sr["home_id"].astype(str).map(key_by_id), AwayKey=sr["away_id"].astype(str).map(key_by_id)
-        )
-
+    key_by_id = meta.set_index(meta["team_id"].astype(str))["team_name"].map(norm_key).to_dict()
+    sr = sr.assign(HomeKey=sr["home_id"].astype(str).map(key_by_id), AwayKey=sr["away_id"].astype(str).map(key_by_id))
     # Drop records that couldn't be mapped
     sr = sr.dropna(subset=["HomeKey", "AwayKey"])
     # Deduplicate strictly on valid keys to prevent Cartesian products in merge
@@ -134,7 +127,10 @@ def load_soccer_rating(base_dir: Path, prefix: str) -> pd.DataFrame:
     if today_path.exists():
         sr = with_lineups(sr, read_smart_csv(today_path))
     meta_path = sr_dir / "club_meta.csv"
-    return with_team_keys(sr, read_smart_csv(meta_path) if meta_path.exists() else None)
+    if not meta_path.exists():
+        # No club_meta.csv: no team keys, so this fails with KeyError as before (known debt)
+        return sr.dropna(subset=["HomeKey", "AwayKey"])
+    return with_team_keys(sr, read_smart_csv(meta_path))
 
 
 def load_club_names(path: Path) -> dict[int, str]:

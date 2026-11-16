@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 
 from src.analyzer.config import DRAW_ZONE_MAX_SCORE
-from src.analyzer.data import ODDS_NUMERIC_COLUMNS, cast_numeric
 from src.analyzer.recommendations import format_recommendations, recommendation_rank, round_numeric
 from src.analyzer.soccer_rating import expert_score, sr_quality, with_market_signals, with_value_rating_signals
 
@@ -42,12 +41,17 @@ def with_team_names(
     return sr
 
 
+def valid_odds(sr: pd.DataFrame) -> pd.Series:
+    """Rows whose close and fair odds are all above 1.0."""
+    return (sr[["close_1", "close_x", "close_2", "fair_1", "fair_x", "fair_2"]] > 1.0).all(axis=1)
+
+
 def match_features(f2: pd.DataFrame) -> pd.DataFrame:
     """Market signals, value-rating signals, srCompleteness, expertScore and the 1/X/2 pick of every match."""
-    valid_mask = (f2[["close_1", "close_x", "close_2", "fair_1", "fair_x", "fair_2"]] > 1.0).all(axis=1)
+    valid_mask = valid_odds(f2)
 
     f2 = f2.copy()
-    for c in ["edge_1", "edge_x", "edge_2", "steam_diff", "prob_gap_1", "prob_gap_2", "rating_diff", "lineup_adv"]:
+    for c in ["edge_1", "edge_x", "edge_2", "steam_diff", "prob_gap_1", "prob_gap_2", "rating_diff"]:
         f2[c] = 0.0
     if valid_mask.any():
         f2 = with_market_signals(f2, valid_mask)
@@ -103,8 +107,8 @@ def favoured_sides(ranking: pd.DataFrame) -> pd.DataFrame:
 def sr_only_report(
     sr: pd.DataFrame, id_to_name: dict[int, str], today_names: dict[str, dict[str, str]]
 ) -> pd.DataFrame:
-    """The SR-only report rows for a raw soccer-rating snapshot."""
-    matches = match_features(with_team_names(cast_numeric(sr, ODDS_NUMERIC_COLUMNS), id_to_name, today_names))
+    """The SR-only report rows for a soccer-rating snapshot with numeric odds columns."""
+    matches = match_features(with_team_names(sr, id_to_name, today_names))
     ranking = favoured_sides(format_recommendations(team_ranking(matches), allow_draws=True))
 
     report = ranking.rename(columns=REPORT_COLUMNS)

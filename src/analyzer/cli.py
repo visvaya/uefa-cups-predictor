@@ -8,7 +8,8 @@ from pathlib import Path
 import pandas as pd
 
 from src.analyzer.data import (
-    AnalyzerInputError,
+    ODDS_NUMERIC_COLUMNS,
+    cast_numeric,
     load_club_names,
     load_league_data,
     load_soccer_rating,
@@ -16,10 +17,11 @@ from src.analyzer.data import (
     read_smart_csv,
     soccer_rating_dir,
 )
+from src.analyzer.errors import AnalyzerInputError
 from src.analyzer.league import LEAGUE_NAMES, league_report, match_frame, validated_inputs
 from src.analyzer.model import calculate_values, enrich_table, integrity_report
 from src.analyzer.soccer_rating import add_soccer_rating_features, coverage_report
-from src.analyzer.sr_only import sr_only_report
+from src.analyzer.sr_only import sr_only_report, valid_odds
 from src.csv_safety import neutralize_formulas
 
 SNAPSHOT_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
@@ -83,7 +85,9 @@ def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None
 
     m = SNAPSHOT_DATE.search(path.name)
     date_str = f"_{m.group(1)}" if m else ""
-    sr = read_smart_csv(path)
+    sr = cast_numeric(read_smart_csv(path), ODDS_NUMERIC_COLUMNS)
+    if not valid_odds(sr).any():
+        raise AnalyzerInputError(f"No match with valid odds in {path.name}")
     report = sr_only_report(sr, load_club_names(sr_dir / "club_meta.csv"), today_names(sr_dir / "today_matches.csv"))
 
     print("\n--- SR-ONLY ANALYSIS TOP 10 RECOMMENDATIONS ---")

@@ -18,6 +18,31 @@ STATUS_BONUSES: dict[str, float] = {"OUT": 0.22, "LOCKED_DIRECT_RO16": 0.12, "LO
 # Rotation risk factor added to 1.0 for a team with this status
 ROTATION_STATUS_BONUSES: dict[str, float] = {"OUT": 0.95, "LOCKED_DIRECT_RO16": 0.65, "LOCKED_PLAYOFFS": 0.38}
 
+# Motivation index (0..100): base plus pressure at the survival and top 8 thresholds plus a playoff seeding bonus
+MOTIVATION_BASE = 12
+MOTIVATION_SURVIVAL_WEIGHT = 65
+MOTIVATION_TOP8_WEIGHT = 45
+MOTIVATION_SEED_WEIGHT = 22
+SEED_PEAK_XPOS = 12.5  # expected position where the seeding bonus peaks (Gaussian centre)
+SEED_WIDTH_XPOS = 4.0  # width of that Gaussian in positions
+SEED_MIN_XPOS = 7  # the bonus applies from this expected position...
+SEED_MAX_XPOS = 18  # ...to this one
+SEED_MIN_PLAYOFF_PROB = 0.4  # and only with a KO play-off probability above this
+
+# Rotation risk: (1.0 + status bonus) * (ROTATION_BASE - ROTATION_MOTIVATION_RELIEF * motivation / 100), capped
+ROTATION_BASE = 1.15
+ROTATION_MOTIVATION_RELIEF = 0.35
+ROTATION_RISK_MAX = 2.3
+
+# Value index: 100 * win prob * (VALUE_BASE_SHARE + VALUE_MOTIVATION_SHARE * motivation) * opponent factor / risk
+VALUE_BASE_SHARE = 0.60
+VALUE_MOTIVATION_SHARE = 0.40
+VALUE_MAX = 140
+OPP_LOW_MOTIVATION_BONUS = 0.18  # maximum bonus for facing an unmotivated opponent (sigmoid)
+OPP_LOW_MOTIVATION_CENTER = 0.45  # opponent motivation (0..1) where that bonus is half
+OPP_LOW_MOTIVATION_WIDTH = 0.08  # sigmoid width in motivation units
+OPP_FACTOR_MAX = 1.35  # cap of 1.0 + status bonus + motivation bonus
+
 # Expert score weights (pick 1/2)
 W_RATING = 0.2  # Team Rating diff
 W_CLOSE = 0.6  # Close log odds
@@ -28,6 +53,12 @@ RATING_DIFF_SCALE = 300.0  # team rating points per score unit
 LINEUP_DIFF_SCALE = 10.0  # lineup rating points per score unit
 DO_DROP_SCALE = 2.0  # (DO - OO) / 100 is multiplied by this before it joins the steam term
 DRAW_ZONE_MAX_SCORE = 0.1  # SR-only: |expertScore| at or below this picks X
+
+# Soccer-rating defaults and safety
+MIN_STEAM_ODDS = 1.01  # odds are clipped to at least this before ln(open / close)
+PARTIAL_SR_QUALITY = 0.5  # sr_quality of a valid SR row that is not HIGH confidence or close to fair odds
+NEUTRAL_SIDE_PROB = 0.333  # home/away probability without SR data
+NEUTRAL_DRAW_PROB = 0.334  # draw probability without SR data (the merged frame; see add_soccer_rating_features)
 
 # Soccer-rating signals
 STRANGE_ODDS_MIN_ABS = 30  # |AO| above this is reported as strange odds

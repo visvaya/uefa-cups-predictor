@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from src.analyzer.config import LEAGUE_TABLE_TEAMS, LINEUP_DIFF_SCALE, ROUND_FIXTURES, W_LINEUP
-from src.analyzer.data import AnalyzerInputError
+from src.analyzer.errors import AnalyzerInputError
 from src.analyzer.names import norm_key
 from src.analyzer.recommendations import format_recommendations, recommendation_rank, round_numeric
 from src.analyzer.soccer_rating import expert_score
@@ -90,10 +90,10 @@ def with_match_pick(f: pd.DataFrame) -> pd.DataFrame:
     s_lineup = (f["lineup_adv"] / LINEUP_DIFF_SCALE).fillna(0.0)
     f["matchExpertScore"] = expert_score(f) + W_LINEUP * s_lineup
     f["matchPick12"] = np.where(f["matchExpertScore"] > 0, "1", "2")
-    # Without SR data there are no odds: no edge, and odds of 99 (no bet)
-    for col in ["edge_1", "edge_2", "close_1", "close_2", "fair_1", "fair_2"]:
+    # Without SR data there are no odds: 99 (no bet)
+    for col in ["close_1", "close_2", "fair_1", "fair_2"]:
         if col not in f.columns:
-            f[col] = 0.0 if "edge" in col else 99.0
+            f[col] = 99.0
     return f
 
 

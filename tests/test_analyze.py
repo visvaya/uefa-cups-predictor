@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from src.analyzer.cli import main
-from src.analyzer.data import TABLE_NUMERIC_COLUMNS, AnalyzerInputError, cast_numeric, read_smart_csv
+from src.analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, read_smart_csv
+from src.analyzer.errors import AnalyzerInputError
 from src.analyzer.model import enrich_table, pressure_vector
 from src.analyzer.names import norm_key
 
@@ -81,3 +82,17 @@ def test_main_reports_missing_input_and_exits_with_1(
 
     assert exit_info.value.code == 1
     assert capsys.readouterr().out.startswith(message)
+
+
+def test_sr_only_stops_when_no_match_has_valid_odds(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    snapshot = tmp_path / "match_odds_development_2026-02-06.csv"
+    header = "match_id,home_id,away_id,open_1,open_x,open_2,close_1,close_x,close_2,fair_1,fair_x,fair_2,"
+    header += "odds_distance,team_rating_home,team_rating_away"
+    snapshot.write_text(header + "\nm1,1,2,2.0,3.4,3.6,0,0,0,0,0,0,0.0,1500,1450\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(tmp_path, ["--sr-only", "--input-file", str(snapshot), "--output-dir", str(tmp_path)])
+
+    assert exit_info.value.code == 1
+    assert capsys.readouterr().out.splitlines()[-1] == f"ERROR: No match with valid odds in {snapshot.name}"
+    assert not list(tmp_path.glob("sr_analysis_report*.csv"))

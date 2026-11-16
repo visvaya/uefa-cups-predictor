@@ -38,9 +38,7 @@ RECOMMENDATION_ORDER = {STRONG_BUY: 0, CONSIDER: 1, NEUTRAL: 2, CAUTION: 3, AVOI
 
 ROUND_2_COLUMNS = (
     "TeamRotRisk",
-    "teamRotRisk",
     "SR_edge",
-    "srEdge",
     "srDropping",
     "expertScore",
     "Close",
@@ -51,11 +49,8 @@ ROUND_2_COLUMNS = (
 ROUND_1_COLUMNS = (
     "TeamMot",
     "OppMot",
-    "teamMot",
-    "oppMot",
     "Val",
     "ValFinal",
-    "valFinal",
     "strangeOdds",
     "sr_quality",
     "srCompleteness",
@@ -98,7 +93,6 @@ def read_signals(ranking: pd.DataFrame) -> Signals:
     fair = column_or(ranking, "Fair", 99.0).fillna(99.0)
     sr_drop = column_or(ranking, "srDropping", 0).fillna(0)
     do_drop = column_or(ranking, "do_drop", 0).fillna(0)
-    sr_edge_col = "SR_edge" if "SR_edge" in ranking.columns else "srEdge"
 
     return Signals(
         is_out=ranking["TeamStatus"] == "OUT",
@@ -110,7 +104,7 @@ def read_signals(ranking: pd.DataFrame) -> Signals:
         close=close,
         fair=fair,
         sr_drop=sr_drop,
-        sr_edge=column_or(ranking, sr_edge_col, 0).fillna(0),
+        sr_edge=column_or(ranking, "SR_edge", 0).fillna(0),
         is_home=column_or(ranking, "is_home", True),
         steam_aligned=(sr_drop + do_drop) >= STEAM_ALIGNED_MIN,
         is_sure_bet=(close < SURE_BET_MAX_CLOSE) & (fair < SURE_BET_MAX_FAIR) & (sr_drop > SURE_BET_MIN_STEAM),
