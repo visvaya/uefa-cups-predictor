@@ -6,6 +6,7 @@ import requests
 
 from src.scraping.fetcher import MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
 from src.scraping.parsers import (
+    LEAGUES,
     _extract_two_numbers,
     _normalize_time,
     name_match_score,
@@ -97,6 +98,24 @@ def test_parse_today_prediction_skips_national_team_links() -> None:
     )
     matches = parse_today_prediction(page, "2026-02-05")
     assert [m.home_id for m in matches] == [101]
+
+
+def test_parse_today_prediction_names_unknown_leagues_without_changing_leagues() -> None:
+    page = _today_page(_today_row("/Home-FC/101/", "/Away-FC/202/")).replace(
+        "</table>",
+        '<tr><td colspan="8">AR1 Primera Division</td></tr>'
+        + _today_row("/Home-AR/301/", "/Away-AR/402/")
+        + "</table>",
+    )
+    leagues_before = dict(LEAGUES)
+
+    matches = parse_today_prediction(page, "2026-02-05", all_leagues=True)
+
+    assert [(m.league_code, m.league_name) for m in matches] == [
+        ("CLCUP", "Champions League"),
+        ("AR1", "Primera Division"),
+    ]
+    assert leagues_before == LEAGUES
 
 
 def test_payload_to_odds_row_requires_full_payload() -> None:
