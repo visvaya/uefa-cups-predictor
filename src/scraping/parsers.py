@@ -3,12 +3,13 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
+from collections.abc import Iterator
 from typing import Any
 
 import numpy as np
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
-from .models import ClubCup, ClubMeta, OddsDevelopment, TodayMatch
+from .models import ClubCup, ClubMeta, OddsDevelopment, PayloadSource, TodayMatch
 
 logger = logging.getLogger(__name__)
 
@@ -66,136 +67,128 @@ def _extract_two_numbers(td_text: str) -> tuple[float | None, float | None]:
     return first, second
 
 
-def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = False) -> list[TodayMatch]:
-    soup = BeautifulSoup(html, "lxml")
-
-    match_table = None
+def _find_match_table(soup: BeautifulSoup) -> Tag | None:
     for t in soup.find_all("table", class_="bigtable"):
         if t.find(string=re.compile(r"Football Prediction Today", re.IGNORECASE)):
-            match_table = t
-            break
+            return t
+    return None
 
-    if match_table is None:
-        return []
 
-    out: list[TodayMatch] = []
+def _header_league(txt: str, all_leagues: bool) -> tuple[str | None, str] | None:
+    """League code and name from a league header row like "AR1  Primera Division".
+
+    None when the row is noise (e.g. "Top Football Prediction Today") and the current league stays. Without
+    `all_leagues` the code is None, so the rows below are skipped, unless the header names the CL or EL.
+    """
+    parts = txt.split(maxsplit=1)
+    if not parts:
+        return None
+    code_candidate = parts[0]
+    # League codes are short and mostly uppercase or digits (e.g., AR1, CLCUP)
+    if not code_candidate.isupper() and not any(c.isdigit() for c in code_candidate):
+        return None
+    if len(code_candidate) > 10:
+        return None
+    if not all_leagues:
+        m = RE_LEAGUE_STRICT.search(txt)
+        return (m.group(1), LEAGUES[m.group(1)]) if m else (None, "")
+    # The site is consistent ("AR1 ...", "CLCUP ..."); the rest of the header names the league
+    return code_candidate, parts[1] if len(parts) > 1 else code_candidate
+
+
+def _value_side(home_a: Tag, away_a: Tag) -> str | None:
+    """The side the site marks in bold as the value bet."""
+    if home_a.find_parent("b") is not None:
+        return "HOME"
+    if away_a.find_parent("b") is not None:
+        return "AWAY"
+    return None
+
+
+def _lineup_type(tr: Tag) -> str | None:
+    srcs = " ".join(str(img["src"]) for img in tr.find_all("img", src=True))
+    if "shirtgrey.png" in srcs:
+        return "expected"
+    if re.search(r"/shirt\.png|shirt\.png", srcs):
+        return "live"
+    return None
+
+
+def _parse_match_row(tr: Tag, league_code: str, league_name: str, snapshot_date: str) -> TodayMatch | None:
+    """A match row with at least 7 cells; None when it lacks two team links or links national teams."""
+    tds = tr.find_all("td")
+    a_tags = tds[3].find_all("a", href=True)
+    if len(a_tags) < 2:
+        return None
+
+    home_a, away_a = a_tags[0], a_tags[1]
+    home_team = home_a.get_text(" ", strip=True)
+    away_team = away_a.get_text(" ", strip=True)
+    home_href = str(home_a["href"])
+    away_href = str(away_a["href"])
+    try:
+        home_id = team_id_from_href(home_href)
+        away_id = team_id_from_href(away_href)
+    except ValueError:
+        # National teams use "/<name>/n<id>/" links; their IDs are a separate namespace from clubs
+        logger.warning(f"Skipping {home_team} vs {away_team}: unsupported team link ({home_href}, {away_href})")
+        return None
+
+    odd_1, lr_home = _extract_two_numbers(tds[4].get_text(" ", strip=True))
+    odd_x, _ = _extract_two_numbers(tds[5].get_text(" ", strip=True))
+    odd_2, lr_away = _extract_two_numbers(tds[6].get_text(" ", strip=True))
+    return TodayMatch(
+        match_id=make_match_id(snapshot_date, league_code, home_id, away_id),
+        snapshot_date=snapshot_date,
+        league_code=league_code,
+        league_name=league_name,
+        time_local=_normalize_time(" ".join(tds[0].stripped_strings)),
+        home_id=home_id,
+        away_id=away_id,
+        home_team=home_team,
+        away_team=away_team,
+        home_href=home_href,
+        away_href=away_href,
+        value_side=_value_side(home_a, away_a),
+        odds_rating_oo_today=_extract_float(" ".join(tds[1].stripped_strings)),
+        odd_1_today=odd_1,
+        odd_x_today=odd_x,
+        odd_2_today=odd_2,
+        lineup_rating_home_today=lr_home,
+        lineup_rating_away_today=lr_away,
+        lineup_type_today=_lineup_type(tr),
+    )
+
+
+def _league_rows(match_table: Tag, all_leagues: bool) -> Iterator[tuple[Tag, str, str]]:
+    """Rows of 7+ cells under a league header, with that league's code and name; ads and other rows skipped."""
     current_league: str | None = None
     # Names of the leagues met on this page; a local copy, so unknown leagues never leak into LEAGUES
     league_names = dict(LEAGUES)
-
     for tr in match_table.find_all("tr"):
-        # AD DETECTION: Skip rows with "Live Betting Tips!" or adsbygoogle script
+        # Ads: rows with "Live Betting Tips!" or an adsbygoogle script
         tr_str = str(tr)
         if "Live Betting Tips!" in tr_str or "adsbygoogle" in tr_str:
             continue
-
         tds = tr.find_all("td")
-
         if len(tds) == 1 and (tds[0].get("colspan") in ["7", "8"]):
-            txt = " ".join(tds[0].stripped_strings)
+            header = _header_league(" ".join(tds[0].stripped_strings), all_leagues)
+            if header is not None:
+                current_league = header[0]
+                if current_league is not None:
+                    league_names.setdefault(current_league, header[1])
+        elif current_league and len(tds) >= 7:
+            yield tr, current_league, league_names[current_league]
 
-            # Try to extract league code.
-            # It usually looks like "Code  League Name" e.g. "AR1  Primera Division"
-            # We will use the first word as code data.
-            parts = txt.split(maxsplit=1)
-            if parts:
-                code_candidate = parts[0]
-                # Validation: League code should be short and mostly uppercase/numbers (e.g., AR1, CLCUP)
-                # Skip noise like "Top Football Prediction Today"
-                if not code_candidate.isupper() and not any(c.isdigit() for c in code_candidate):
-                    # If it's something like "Top", skip it
-                    continue
-                if len(code_candidate) > 10:
-                    continue
 
-                # If checking strict leagues, validation:
-                if not all_leagues:
-                    m = RE_LEAGUE_STRICT.search(txt)
-                    current_league = m.group(1) if m else None
-                else:
-                    # Capture whatever is the first token as the league code
-                    current_league = code_candidate
-                    # The site is consistent ("AR1 ...", "CLCUP ..."); the rest of the header names the league
-                    if current_league not in league_names:
-                        league_names[current_league] = parts[1] if len(parts) > 1 else current_league
-
-            continue
-
-        if not current_league:
-            continue
-
-        if not all_leagues and current_league not in ["CLCUP", "ELCUP"]:
-            continue
-
-        if len(tds) < 7:
-            continue
-
-        time_str = _normalize_time(" ".join(tds[0].stripped_strings))
-        odds_rating_oo = _extract_float(" ".join(tds[1].stripped_strings))
-
-        teams_td = tds[3]
-        a_tags = teams_td.find_all("a", href=True)
-        if len(a_tags) < 2:
-            continue
-
-        home_a, away_a = a_tags[0], a_tags[1]
-        home_team = home_a.get_text(" ", strip=True)
-        away_team = away_a.get_text(" ", strip=True)
-        home_href = str(home_a["href"])
-        away_href = str(away_a["href"])
-
-        try:
-            home_id = team_id_from_href(home_href)
-            away_id = team_id_from_href(away_href)
-        except ValueError:
-            # National teams use "/<name>/n<id>/" links; their IDs are a separate namespace from clubs
-            logger.warning(f"Skipping {home_team} vs {away_team}: unsupported team link ({home_href}, {away_href})")
-            continue
-        match_id = make_match_id(snapshot_date, current_league, home_id, away_id)
-
-        value_side = None
-        if home_a.find_parent("b") is not None:
-            value_side = "HOME"
-        elif away_a.find_parent("b") is not None:
-            value_side = "AWAY"
-
-        odd_1, lr_home = _extract_two_numbers(tds[4].get_text(" ", strip=True))
-        odd_x, _ = _extract_two_numbers(tds[5].get_text(" ", strip=True))
-        odd_2, lr_away = _extract_two_numbers(tds[6].get_text(" ", strip=True))
-
-        lineup_type = None
-        row_imgs = tr.find_all("img", src=True)
-        srcs = " ".join(str(img["src"]) for img in row_imgs)
-        if "shirtgrey.png" in srcs:
-            lineup_type = "expected"
-        elif re.search(r"/shirt\.png|shirt\.png", srcs):
-            lineup_type = "live"
-
-        out.append(
-            TodayMatch(
-                match_id=match_id,
-                snapshot_date=snapshot_date,
-                league_code=current_league,
-                league_name=league_names[current_league],
-                time_local=time_str,
-                home_id=home_id,
-                away_id=away_id,
-                home_team=home_team,
-                away_team=away_team,
-                home_href=home_href,
-                away_href=away_href,
-                value_side=value_side,
-                odds_rating_oo_today=odds_rating_oo,
-                odd_1_today=odd_1,
-                odd_x_today=odd_x,
-                odd_2_today=odd_2,
-                lineup_rating_home_today=lr_home,
-                lineup_rating_away_today=lr_away,
-                lineup_type_today=lineup_type,
-            )
-        )
-
-    return out
+def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = False) -> list[TodayMatch]:
+    match_table = _find_match_table(BeautifulSoup(html, "lxml"))
+    if match_table is None:
+        return []
+    rows = (
+        _parse_match_row(tr, code, name, snapshot_date) for tr, code, name in _league_rows(match_table, all_leagues)
+    )
+    return [match for match in rows if match is not None]
 
 
 def parse_club_page(html: str, team_id: int) -> tuple[ClubMeta, list[ClubCup]]:
@@ -387,27 +380,18 @@ def payload_to_odds_row(parts: list[str]) -> dict[str, Any]:
 
 
 def payload_to_odds_development(
-    parts: list[str],
-    match_id: str,
-    snapshot_date: str,
-    league_code: str,
-    home_id: int,
-    away_id: int,
-    source_url: str,
-    debug: dict[str, Any],
-    team_rating_home: float | None = None,
-    team_rating_away: float | None = None,
+    parts: list[str], match: TodayMatch, source: PayloadSource, debug: dict[str, Any]
 ) -> OddsDevelopment | None:
     row = payload_to_odds_row(parts)
     if not row:
         return None
 
     return OddsDevelopment(
-        match_id=match_id,
-        snapshot_date=snapshot_date,
-        league_code=league_code,
-        home_id=home_id,
-        away_id=away_id,
+        match_id=match.match_id,
+        snapshot_date=match.snapshot_date,
+        league_code=match.league_code,
+        home_id=match.home_id,
+        away_id=match.away_id,
         oo=row["oo"],
         do=row["do"],
         ao=row["ao"],
@@ -423,9 +407,9 @@ def payload_to_odds_development(
         fair_1=row["fair_1"],
         fair_x=row["fair_x"],
         fair_2=row["fair_2"],
-        team_rating_home=team_rating_home,
-        team_rating_away=team_rating_away,
-        source_url=source_url,
+        team_rating_home=source.team_rating_home,
+        team_rating_away=source.team_rating_away,
+        source_url=source.source_url,
         name_match_level=debug["name_match_level"],
         matched_odds_stage=debug["matched_odds_stage"],
         odds_distance=debug["odds_distance"],
