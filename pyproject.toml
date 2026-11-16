@@ -101,7 +101,7 @@ forbidden_modules = ["analyzer.data", "analyzer.cli", "scraping", "requests"]
 [[tool.importlinter.contracts]]
 name = "Scraper parsing and filters do no I/O"
 type = "forbidden"
-source_modules = ["scraping.parsers", "scraping.models", "scraping.match_filters"]
+source_modules = ["scraping.parsers", "scraping.models", "scraping.match_filters", "scraping.robots"]
 forbidden_modules = ["scraping.fetcher", "scraping.soccer_rating_cli", "requests"]
 
 [tool.vulture]

@@ -1,9 +1,10 @@
 import logging
 from typing import ClassVar
 from urllib.parse import urljoin, urlsplit, urlunsplit
-from urllib.robotparser import RobotFileParser
 
 import requests
+
+from .robots import ALLOW_ALL, DISALLOW_ALL, Rules, is_allowed, parse_robots
 
 logger = logging.getLogger(__name__)
 
@@ -13,16 +14,6 @@ MAX_REDIRECTS = 5
 ROBOTS_PATH = "/robots.txt"
 # Names the tool and where to read about it, so the site can tell who sends the requests
 DEFAULT_USER_AGENT = "uefa-cups-predictor/0.1 (+https://github.com/visvaya/uefa-cups-predictor)"
-
-
-DISALLOW_ALL = "User-agent: *" + chr(10) + "Disallow: /"
-
-
-def robots_rules(robots_txt: str) -> RobotFileParser:
-    """Parsed robots.txt rules; an empty text allows everything."""
-    rules = RobotFileParser()
-    rules.parse(robots_txt.splitlines())
-    return rules
 
 
 def resolve_url(link: str, base: str = BASE_URL + "/") -> str | None:
@@ -58,7 +49,7 @@ class SoccerRatingFetcher:
         self.user_agent = user_agent
         self.session = requests.Session()
         self.session.headers.update({**self.HEADERS, "User-Agent": user_agent})
-        self.robots: RobotFileParser | None = None
+        self.robots: Rules | None = None
 
     def fetch(self, url_path: str) -> str | None:
         """Fetches a page from soccer-rating.com (a full URL or a relative path) unless robots.txt disallows it.
@@ -75,16 +66,16 @@ class SoccerRatingFetcher:
             return None
         return response.text
 
-    def _read_robots(self) -> RobotFileParser:
+    def _read_robots(self) -> Rules:
         """Rules as RFC 9309 reads them: a 4xx answer allows everything; a server error, a network error or a
         redirect that cannot be followed disallows everything, so the run fetches nothing more."""
-        response = self._response(ROBOTS_PATH, robots_rules(""))
+        response = self._response(ROBOTS_PATH, ALLOW_ALL)
         if response is not None and response.status_code < 500:
-            return robots_rules(response.text if response.status_code < 400 else "")
+            return parse_robots(response.text, self.user_agent) if response.status_code < 400 else ALLOW_ALL
         logger.error("robots.txt is unreachable; fetching nothing from soccer-rating.com in this run")
-        return robots_rules(DISALLOW_ALL)
+        return DISALLOW_ALL
 
-    def _response(self, url_path: str, robots: RobotFileParser) -> requests.Response | None:
+    def _response(self, url_path: str, robots: Rules) -> requests.Response | None:
         """The final answer after following redirects on the site, or None when the request fails or is not allowed."""
         target, url = url_path, resolve_url(url_path)
         try:
@@ -93,7 +84,7 @@ class SoccerRatingFetcher:
                 if url is None:
                     logger.warning(f"Skipping {target}: not an https URL on soccer-rating.com")
                     return None
-                if not robots.can_fetch(self.user_agent, url):
+                if not is_allowed(robots, url):
                     logger.warning(f"Skipping {url}: disallowed by robots.txt")
                     return None
                 logger.info(f"Fetching {url}...")
