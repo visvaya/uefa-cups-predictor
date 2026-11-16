@@ -23,6 +23,7 @@ from types import SimpleNamespace
 import pytest
 
 from scraping import soccer_rating_cli
+from scraping.fetcher import DEFAULT_USER_AGENT
 from scraping.models import PayloadSource
 from scraping.parsers import parse_today_prediction, payload_to_odds_development
 
@@ -41,7 +42,7 @@ def fetch_fixture(url_path: str) -> str | None:
 
 
 def run_cli(monkeypatch: pytest.MonkeyPatch, workdir: Path, output_dir: Path, *args: str) -> list[tuple[str, object]]:
-    """Runs the CLI offline; returns the fetches and sleeps in the order they happened."""
+    """Runs the CLI offline; returns the fetcher's User-Agent, the fetches and the sleeps in the order they happened."""
     calls: list[tuple[str, object]] = []
 
     def fetch(url_path: str) -> str | None:
@@ -50,7 +51,12 @@ def run_cli(monkeypatch: pytest.MonkeyPatch, workdir: Path, output_dir: Path, *a
 
     monkeypatch.chdir(workdir)
     monkeypatch.setattr(soccer_rating_cli, "local_now", lambda: FROZEN_NOW)
-    monkeypatch.setattr(soccer_rating_cli, "SoccerRatingFetcher", lambda: SimpleNamespace(fetch=fetch))
+
+    def fetcher(user_agent: str) -> SimpleNamespace:
+        calls.append(("user_agent", user_agent))
+        return SimpleNamespace(fetch=fetch)
+
+    monkeypatch.setattr(soccer_rating_cli, "SoccerRatingFetcher", fetcher)
     monkeypatch.setattr(time, "sleep", lambda seconds: calls.append(("sleep", seconds)))
     monkeypatch.setattr(sys, "argv", ["soccer_rating_cli", "--output-dir", str(output_dir), *args])
     soccer_rating_cli.main()
@@ -87,7 +93,7 @@ def test_local_cumulative_run_merges_existing_files(monkeypatch: pytest.MonkeyPa
 
     calls = run_cli(monkeypatch, local_workdir(tmp_path), output_dir, "--local")
 
-    assert calls == []  # local mode neither fetches nor waits
+    assert calls == [("user_agent", DEFAULT_USER_AGENT)]  # local mode neither fetches nor waits
     assert_matches_golden(output_dir, "cumulative")
 
 
@@ -113,11 +119,11 @@ def test_local_snapshot_run_skips_cups(monkeypatch: pytest.MonkeyPatch, tmp_path
 def test_remote_run_fetches_pages_and_resolves_source_urls(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     output_dir = tmp_path / "out"
 
-    calls = run_cli(monkeypatch, tmp_path, output_dir, "--limit", "3", "--delay", "0.5")
+    calls = run_cli(monkeypatch, tmp_path, output_dir, "--limit", "3", "--delay", "0.5", "--user-agent", "test/1.0")
 
     # The today page right away, then a pause before every club page; Home FC's page has the payload, Red Star's not
     club_pages = ["/Home-FC/101/", "/Red-Star/303/", "/Blue-City/404/", "/Green-Park/505/", "/Old-Town/606/"]
-    assert calls == [("fetch", TODAY_PATH)] + [
+    assert calls == [("user_agent", "test/1.0"), ("fetch", TODAY_PATH)] + [
         call for href in club_pages for call in (("sleep", 0.5), ("fetch", href))
     ]
     assert_matches_golden(output_dir, "remote")

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 import requests
 
-from scraping.fetcher import MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
+from scraping.fetcher import DEFAULT_USER_AGENT, MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
 from scraping.parsers import (
     LEAGUES,
     _extract_two_numbers,
@@ -19,6 +19,7 @@ from scraping.parsers import (
 from scraping.soccer_rating_cli import minutes_until_kickoff, without_cups
 
 BACKSLASH = chr(92)
+ROBOTS_URL = "https://www.soccer-rating.com/robots.txt"
 EVENING = datetime(2026, 2, 5, 18, 0, tzinfo=UTC)
 
 
@@ -185,10 +186,12 @@ def page(text: str = "", location: str | None = None) -> SimpleNamespace:
 
 
 def fetcher_with(
-    monkeypatch: pytest.MonkeyPatch, responses: list[SimpleNamespace]
+    monkeypatch: pytest.MonkeyPatch, responses: list[SimpleNamespace], robots: str = ""
 ) -> tuple[SoccerRatingFetcher, list[str]]:
+    """A fetcher whose requests get `responses` in order, after `robots` as robots.txt (empty allows everything)."""
     fetcher = SoccerRatingFetcher()
     requested: list[str] = []
+    responses = [page(text=robots), *responses]
 
     def get(url: str, timeout: int, allow_redirects: bool) -> SimpleNamespace:
         assert allow_redirects is False
@@ -202,20 +205,54 @@ def fetcher_with(
 def test_fetch_follows_redirects_on_the_site(monkeypatch: pytest.MonkeyPatch) -> None:
     fetcher, requested = fetcher_with(monkeypatch, [page(location="/Ajax/123/"), page(text="club")])
     assert fetcher.fetch("/Ajax/") == "club"
-    assert requested == ["https://www.soccer-rating.com/Ajax/", "https://www.soccer-rating.com/Ajax/123/"]
+    assert requested == [ROBOTS_URL, "https://www.soccer-rating.com/Ajax/", "https://www.soccer-rating.com/Ajax/123/"]
 
 
 def test_fetch_stops_at_a_redirect_off_the_site(monkeypatch: pytest.MonkeyPatch) -> None:
     fetcher, requested = fetcher_with(monkeypatch, [page(location="http://127.0.0.1:8080/"), page(text="secret")])
     assert fetcher.fetch("/Ajax/") is None
-    assert requested == ["https://www.soccer-rating.com/Ajax/"]
+    assert requested == [ROBOTS_URL, "https://www.soccer-rating.com/Ajax/"]
 
 
 def test_fetch_stops_after_the_redirect_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     loop = [page(location="/loop/") for _ in range(MAX_REDIRECTS + 2)]
     fetcher, requested = fetcher_with(monkeypatch, loop)
     assert fetcher.fetch("/loop/") is None
-    assert len(requested) == MAX_REDIRECTS + 1
+    assert len(requested) == 1 + MAX_REDIRECTS + 1
+
+
+def test_fetch_sends_an_honest_user_agent() -> None:
+    user_agent = SoccerRatingFetcher().session.headers["User-Agent"]
+    assert user_agent == DEFAULT_USER_AGENT
+    assert "uefa-cups-predictor" in user_agent
+    assert "https://github.com/visvaya/uefa-cups-predictor" in user_agent
+    assert SoccerRatingFetcher("custom/1.0").session.headers["User-Agent"] == "custom/1.0"
+
+
+def test_fetch_reads_robots_once_and_skips_disallowed_paths(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    robots = "User-Agent: *" + chr(10) + "Disallow: /chart.pl" + chr(10)
+    fetcher, requested = fetcher_with(monkeypatch, [page(text="today"), page(text="club")], robots=robots)
+
+    assert fetcher.fetch("/today-prediction") == "today"
+    assert fetcher.fetch("/chart.pl?id=1") is None
+    assert fetcher.fetch("/Ajax/123/") == "club"
+
+    assert requested == [
+        ROBOTS_URL,
+        "https://www.soccer-rating.com/today-prediction",
+        "https://www.soccer-rating.com/Ajax/123/",
+    ]
+    assert "disallowed by robots.txt" in caplog.text
+
+
+def test_fetch_skips_a_redirect_into_a_disallowed_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    robots = "User-Agent: *" + chr(10) + "Disallow: /private/" + chr(10)
+    fetcher, requested = fetcher_with(monkeypatch, [page(location="/private/x")], robots=robots)
+
+    assert fetcher.fetch("/Ajax/") is None
+    assert requested == [ROBOTS_URL, "https://www.soccer-rating.com/Ajax/"]
 
 
 def test_fetch_survives_a_malformed_redirect_target(monkeypatch: pytest.MonkeyPatch) -> None:

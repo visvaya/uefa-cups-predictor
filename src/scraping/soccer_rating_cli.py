@@ -12,7 +12,7 @@ import pandas as pd
 
 from csv_safety import neutralize_formulas
 
-from .fetcher import SoccerRatingFetcher, resolve_url
+from .fetcher import DEFAULT_USER_AGENT, SoccerRatingFetcher, resolve_url
 from .models import ClubCup, ClubMeta, OddsDevelopment, PayloadSource, TodayMatch
 from .parsers import (
     parse_clip_payloads,
@@ -135,6 +135,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--local", action="store_true", help="Use local files for testing")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of matches to process")
     parser.add_argument("--delay", type=float, default=1.5, help="Delay between requests in seconds")
+    parser.add_argument(
+        "--user-agent",
+        default=DEFAULT_USER_AGENT,
+        help="User-Agent header (default: names this tool and its repository)",
+    )
     parser.add_argument("--output-dir", type=str, default="data/soccer-rating", help="Output directory")
     parser.add_argument("--all-leagues", action="store_true", help="Capture matches from ALL leagues, not just CL/EL")
     parser.add_argument(
@@ -396,7 +401,7 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     snapshot_date = local_now().strftime("%Y-%m-%d")
-    fetcher = SoccerRatingFetcher()
+    fetcher = SoccerRatingFetcher(args.user_agent)
 
     today_html = read_today_page(args.local, fetcher.fetch)
     if today_html is None:
