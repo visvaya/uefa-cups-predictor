@@ -264,16 +264,15 @@ If you are using the `_example` files as templates:
 ## Development
 
 ```bash
-uv sync --locked       # runtime and development dependencies
-pytest --cov           # unit tests with the coverage threshold
-ruff check .           # lint
-ruff format --check .  # formatting
-mypy                   # type checking (paths configured in pyproject.toml)
-vulture                # dead code
-pylint analyze.py src scripts tests    # duplicated code
-python scripts/git_hooks.py tracked    # no em dashes, stray emoji or excluded paths in tracked files
-git config core.hooksPath .githooks    # once per checkout: commit message and staged-file checks
+uv sync --locked                     # runtime and development dependencies
+uv run python -m scripts.gate        # every code check CI runs, with a summary
+git config core.hooksPath .githooks  # once per checkout: commit message and staged-file checks
 ```
+
+The gate (`scripts/gate.py`) runs lint and formatting (ruff), type checking (mypy), layer boundaries (import-linter,
+contracts in `pyproject.toml`), dead code (vulture), duplicated code (pylint), the unit tests with the coverage
+threshold (pytest) and a scan of tracked files for em dashes, stray emoji and excluded paths. It runs every step even
+after a failure and exits 1 if any failed.
 
 The commit hooks check Conventional Commit subjects, attribution trailers, em dashes and emoji, and run ruff on staged Python files. Two optional per-checkout settings stay out of the repository: `hooks.excludedPaths` (file names and `directory/` entries that must never be committed) and `hooks.ownerIdentities` (the only author and committer e-mails `pre-commit` accepts). See `scripts/git_hooks.py`.
 
