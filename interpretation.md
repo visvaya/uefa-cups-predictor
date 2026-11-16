@@ -101,3 +101,7 @@ The league phase is a single table for **36 teams**. Each plays 8 matches (CL/EL
 | **Top 8** | Avoiding risky play-offs |
 | **Top 16** | Seeding in play-offs (9–16 seeded vs 17–24 unseeded) |
 | **Top 24** | Survival in the tournament |
+
+### 4) Rotation Risk
+
+The analyzer turns each team's status and motivation into a rotation risk (`teamRotRisk`, 1.0 to 2.3; at 1.39 or above the row becomes CAUTION). When the soccer-rating market adjustment for a match is strange (|AO| above 30), both teams' rotation risk is multiplied by `STRANGE_ODDS_ROTATION_FACTOR` (1.10, in `src/analyzer/config.py`) and capped at 2.3, because such an adjustment often reflects hidden squad news and does not say which side it concerns. The raised risk also lowers the team's value index. The factor is a conservative choice, not a calibrated one: the model has not been fitted to match outcomes.
