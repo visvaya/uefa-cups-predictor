@@ -109,7 +109,7 @@ The algorithm uses a hybrid approach to maintain mathematical consistency:
 | :--- | :--- |
 | **homeTeam / awayTeam** | Match participants. |
 | **pick** | **Recommended Outcome**: `1` (Home), `X` (Draw), `2` (Away). |
-| **expertScore** | Global match signal strength. |
+| **expertScore** | Match signal strength from the picked side's view: > 0 favours it (for `X`, the home view). |
 | **recommendation** | Advice based purely on market gaps and steam. |
 
 ### Understanding the 'Reason' Column
@@ -119,8 +119,8 @@ The algorithm uses a hybrid approach to maintain mathematical consistency:
   - `Status LOCKED...`: Team has secured its spot. Always `🟠 CAUTION` due to high rotation risk.
   - `High rotation risk`: `teamRotRisk` >= 1.39. Always `🟠 CAUTION`.
 - **Value/Signal**:
-  - `High Val / Good Val`: High mathematical advantage based on motivation and win prob.
-  - `Strong Signal`: `expertScore > 1.50` indicating an elite betting opportunity.
+  - `High Value / Good Value`: High mathematical advantage based on motivation and win prob.
+  - `Strong Expert Signal`: `|expertScore| > 1.50`, a strong model signal for either side; `Positive Signal` is the same for `|expertScore| > 0.50`. Apart from the `Sure Bet Pattern` and SR-only `X` picks, a row reaches `🟡 CONSIDER` or `🟢 STRONG BUY` only with a positive score (this row's team favoured).
 - **Market Signals**:
   - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`).
   - `Steam (+)`: Market odds are dropping for this team.
@@ -203,12 +203,16 @@ For correct operation, input CSV files must meet these standards:
 
 ## Troubleshooting & Console Logs
 
-The script performs a "Data Audit" during every run. Here is how to interpret the output:
+In standard mode every run prints a data integrity report for each cup's predicted table, headed `--- CHAMPIONS LEAGUE DATA INTEGRITY REPORT ---` (or `EUROPA LEAGUE`). Here is how to interpret the output:
 
-- **`[AUDIT] CL: OK`**: Data is mathematically consistent.
-- **`[AUDIT] CL: INCONSISTENT (Sums > 100%)`**: The source data has rows where P(Top 8) + P(9-24) > 100%. The script uses the Anomaly Handling logic (maximum value) for these teams.
-- **`[AUDIT] CL: STAGE VIOLATION`**: A team has a higher probability of reaching a later stage than an earlier one (e.g., `FINAL% > SF%`). The script applies the "Safe Stage Heuristic" to fix this.
-- **`ERROR: Team 'X' not found in predicted table`**: A team name in the fixtures file doesn't match the names in the predicted table. Fix this using the `NAME_FIX` dictionary (see below).
+- **`OK: Monotonicity (W<=F<=SF<=Q)`** and **`OK: Top 24 Consistency`**: Data is mathematically consistent.
+- **`WARNING: INCONSISTENT TOP 24 (Sum > 100% for N teams)`**: The source data has rows where P(Top 8) + P(9-24) > 100%. The script uses the Anomaly Handling logic (maximum value) for these teams.
+- **`WARNING: MONOTONICITY VIOLATIONS (N teams)`**: A team has a higher probability of reaching a later stage than an earlier one (e.g., `FINAL% > SF%`). The values are used as they are; only the Knockout Floor above applies.
+- **`WARNING: VALUES OUT OF RANGE [0, 100] DETECTED!`**: A stage probability lies outside 0-100; it is clipped to that range.
+- **`ERROR: Missing teams in cl_table: [...]`**: A team name in the fixtures file doesn't match the names in the predicted table, and the run stops with exit code 1. Fix this using the `NAME_FIX` dictionary (see below).
+- **`WARNING: today_matches.csv not found: running without lineups`**: The soccer-rating odds are used without the lineup term.
+- **`WARNING: club_meta.csv not found: team ids cannot be mapped, running without soccer-rating data`**: The cup is analysed from The Analyst data alone.
+- **`ERROR: Input file not found: <path>`** (SR-only): the file named with `--input-file`, or `data/soccer-rating/match_odds_development.csv` when none is named, does not exist; the run stops with exit code 1.
 
 ## Customizing Team Names (NAME_FIX)
 
