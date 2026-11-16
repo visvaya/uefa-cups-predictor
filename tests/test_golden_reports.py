@@ -88,3 +88,13 @@ def test_analyze_sr_only_report_matches_golden(base_dir: Path, excel_pl: bool) -
     assert_matches_golden(
         output_dir / "sr_analysis_report_2026-01-28.csv", f"sr_analysis_report{golden_suffix(excel_pl)}.csv"
     )
+
+
+def test_analyze_league_runs_without_lineups(base_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (base_dir / "data" / "soccer-rating" / "today_matches.csv").unlink()
+
+    run_league(base_dir, "el")
+
+    out = capsys.readouterr().out
+    assert "WARNING: today_matches.csv not found: running without lineups" in out
+    assert "SUCCESS: Saved: el_recommendations.csv" in out

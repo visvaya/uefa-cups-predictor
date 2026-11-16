@@ -93,12 +93,12 @@ def latest_snapshots(sr: pd.DataFrame) -> pd.DataFrame:
 
 
 def with_lineups(sr: pd.DataFrame, today: pd.DataFrame) -> pd.DataFrame:
-    """Adds today's lineup ratings and type (today_matches.csv) by match_id."""
+    """Adds today's lineup ratings and type (today_matches.csv) by match_id; empty lineups without a match_id."""
     today = cast_numeric(today, ["lineup_rating_home_today", "lineup_rating_away_today"])
     if "match_id" in sr.columns and "match_id" in today.columns:
         lineup_cols = ["match_id", "lineup_rating_home_today", "lineup_rating_away_today", "lineup_type_today"]
         return sr.merge(today[lineup_cols], on="match_id", how="left")
-    return sr
+    return sr.assign(lineup_rating_home_today=float("nan"), lineup_rating_away_today=float("nan"), lineup_type_today="")
 
 
 def with_team_keys(sr: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
@@ -111,26 +111,33 @@ def with_team_keys(sr: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
     return sr.drop_duplicates(subset=["HomeKey", "AwayKey"], keep="last")
 
 
-def load_soccer_rating(base_dir: Path, prefix: str) -> pd.DataFrame:
-    """Latest soccer-rating odds of the cup with lineups and team keys; empty when there is nothing to merge."""
+def load_soccer_rating(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, list[str]]:
+    """Latest soccer-rating odds of the cup with lineups and team keys, and warnings on missing optional files.
+
+    The frame is empty when there is nothing to merge.
+    """
     sr_dir = soccer_rating_dir(base_dir)
     path = sr_dir / "match_odds_development.csv"
     if not path.exists():
-        return pd.DataFrame()
+        return pd.DataFrame(), []
 
     sr = cup_rows(read_smart_csv(path), prefix)
     if sr.empty:
-        return pd.DataFrame()
+        return pd.DataFrame(), []
 
-    sr = latest_snapshots(sr)
+    warnings = []
     today_path = sr_dir / "today_matches.csv"
     if today_path.exists():
-        sr = with_lineups(sr, read_smart_csv(today_path))
+        today = read_smart_csv(today_path)
+    else:
+        today = pd.DataFrame()
+        warnings.append(f"WARNING: {today_path.name} not found: running without lineups")
+    sr = with_lineups(latest_snapshots(sr), today)
     meta_path = sr_dir / "club_meta.csv"
     if not meta_path.exists():
         # No club_meta.csv: no team keys, so this fails with KeyError as before (known debt)
-        return sr.dropna(subset=["HomeKey", "AwayKey"])
-    return with_team_keys(sr, read_smart_csv(meta_path))
+        return sr.dropna(subset=["HomeKey", "AwayKey"]), warnings
+    return with_team_keys(sr, read_smart_csv(meta_path)), warnings
 
 
 def load_club_names(path: Path) -> dict[int, str]:
