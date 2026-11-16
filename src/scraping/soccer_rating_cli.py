@@ -4,9 +4,10 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pandas as pd
 
@@ -27,7 +28,6 @@ from .parsers import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-MINUTES_PER_DAY = 24 * 60
 # A kickoff more than this many minutes in the past is treated as the next day's (after midnight)
 PAST_KICKOFF_ROLLOVER_MINUTES = 12 * 60
 RE_KICKOFF_TIME = re.compile(r"^(\d{1,2}):(\d{2})$")
@@ -40,8 +40,21 @@ def local_now() -> datetime:
     return datetime.now().astimezone()
 
 
+def timezone_arg(name: str) -> ZoneInfo:
+    """An IANA timezone name such as Europe/Paris, for argparse."""
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError) as e:
+        raise argparse.ArgumentTypeError(f"unknown timezone {name!r}") from e
+
+
+def site_clock(now: datetime, site_tz: ZoneInfo | None) -> datetime:
+    """`now` on the clock the site shows kickoffs in; `now` itself when the site's timezone is not given."""
+    return now if site_tz is None else now.astimezone(site_tz)
+
+
 def minutes_until_kickoff(time_local: str, now: datetime) -> float:
-    """Returns minutes from `now` to an "HH:MM" kickoff in the same timezone as `now`.
+    """Returns real minutes from `now` to an "HH:MM" kickoff on the clock of `now`'s timezone (DST-aware with zoneinfo).
 
     Kickoffs far in the past roll over to the next day (late-night fixtures).
     Raises ValueError when `time_local` is not a valid HH:MM time.
@@ -50,9 +63,15 @@ def minutes_until_kickoff(time_local: str, now: datetime) -> float:
     if hm is None:
         raise ValueError(f"expected HH:MM, got {time_local!r}")
     kickoff = now.replace(hour=int(hm.group(1)), minute=int(hm.group(2)), second=0, microsecond=0)
-    diff_min = (kickoff - now).total_seconds() / 60.0
+
+    def minutes_to(moment: datetime) -> float:
+        # Differences between datetimes of the same tzinfo ignore DST, so both are compared in UTC
+        return (moment.astimezone(UTC) - now.astimezone(UTC)).total_seconds() / 60.0
+
+    diff_min = minutes_to(kickoff)
     if diff_min < -PAST_KICKOFF_ROLLOVER_MINUTES:
-        diff_min += MINUTES_PER_DAY
+        # Adding a day keeps the wall-clock time, so the next day's offset applies
+        diff_min = minutes_to(kickoff + timedelta(days=1))
     return diff_min
 
 
@@ -152,6 +171,12 @@ def parse_args() -> argparse.Namespace:
         "--max-start", type=int, default=None, help="Process matches starting at most N minutes from now"
     )
     parser.add_argument(
+        "--site-timezone",
+        type=timezone_arg,
+        default=None,
+        help="IANA timezone the site shows kickoff times in, e.g. Europe/Paris (default: this machine's timezone)",
+    )
+    parser.add_argument(
         "--skip-cups",
         action="store_true",
         help="Skip cup matches (league code contains 'CUP', e.g. FACUP) except CLCUP, ELCUP and ECLCUP",
@@ -177,10 +202,12 @@ def read_today_page(local: bool, fetch: Callable[[str], str | None]) -> str | No
 def in_time_window(
     matches: list[TodayMatch], now: datetime, min_start: int | None, max_start: int | None
 ) -> list[TodayMatch]:
-    """Matches kicking off between `min_start` and `max_start` minutes after `now`; unreadable times are dropped."""
+    """Matches kicking off between `min_start` and `max_start` minutes after `now`; unreadable times are dropped.
+
+    `now` must be on the clock the site shows kickoffs in (see `site_clock`).
+    """
     kept = []
     for m in matches:
-        # Assumes the site shows kickoff times in the machine's local timezone
         try:
             diff_min = minutes_until_kickoff(m.time_local, now)
         except (ValueError, TypeError) as e:
@@ -407,7 +434,7 @@ def main() -> None:
     if today_html is None:
         return
     filters = MatchFilters(args.all_leagues, args.min_start, args.max_start, args.skip_cups)
-    matches = select_matches(filters, today_html, snapshot_date, local_now())
+    matches = select_matches(filters, today_html, snapshot_date, site_clock(local_now(), args.site_timezone))
     if not matches:
         logger.warning("No matches match the criteria. Exiting.")
         return

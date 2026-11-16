@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 
 from scraping import soccer_rating_cli
@@ -127,6 +128,21 @@ def test_remote_run_fetches_pages_and_resolves_source_urls(monkeypatch: pytest.M
         call for href in club_pages for call in (("sleep", 0.5), ("fetch", href))
     ]
     assert_matches_golden(output_dir, "remote")
+
+
+def test_site_timezone_moves_the_time_window(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    window = ("--local", "--all-leagues", "--min-start", "0", "--max-start", "60")
+
+    workdir = local_workdir(tmp_path)
+    run_cli(monkeypatch, workdir, tmp_path / "utc", *window)
+    run_cli(monkeypatch, workdir, tmp_path / "paris", *window, "--site-timezone", "Europe/Paris")
+
+    # 18:00 UTC is 19:00 in Paris: the window covers 18:00-19:00 on UTC clocks and 19:00-20:00 on Paris clocks
+    def kickoffs(run: str) -> list[str]:
+        return [str(t) for t in pd.read_csv(tmp_path / run / "today_matches.csv")["time_local"]]
+
+    assert kickoffs("utc") == ["18:30"]
+    assert kickoffs("paris") == ["20:00"]
 
 
 def test_local_run_without_today_page_writes_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

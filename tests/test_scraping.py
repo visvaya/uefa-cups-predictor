@@ -1,6 +1,8 @@
+import argparse
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 import requests
@@ -16,11 +18,12 @@ from scraping.parsers import (
     payload_to_odds_row,
     team_id_from_href,
 )
-from scraping.soccer_rating_cli import minutes_until_kickoff, without_cups
+from scraping.soccer_rating_cli import minutes_until_kickoff, site_clock, timezone_arg, without_cups
 
 BACKSLASH = chr(92)
 ROBOTS_URL = "https://www.soccer-rating.com/robots.txt"
 EVENING = datetime(2026, 2, 5, 18, 0, tzinfo=UTC)
+WARSAW = ZoneInfo("Europe/Warsaw")
 
 
 def test_minutes_until_kickoff_same_day() -> None:
@@ -33,6 +36,35 @@ def test_minutes_until_kickoff_rolls_over_midnight() -> None:
 
 def test_minutes_until_kickoff_keeps_recent_past_negative() -> None:
     assert minutes_until_kickoff("17:30", EVENING) == -30
+
+
+def test_minutes_until_kickoff_counts_real_minutes_across_spring_dst() -> None:
+    # Warsaw skips 02:00-03:00 on 2026-03-29: 01:00 CET to 04:00 CEST is two hours
+    assert minutes_until_kickoff("04:00", datetime(2026, 3, 29, 1, 0, tzinfo=WARSAW)) == 120
+
+
+def test_minutes_until_kickoff_counts_real_minutes_across_autumn_dst() -> None:
+    # Warsaw repeats 02:00-03:00 on 2026-10-25: 01:00 CEST to 04:00 CET is four hours
+    assert minutes_until_kickoff("04:00", datetime(2026, 10, 25, 1, 0, tzinfo=WARSAW)) == 240
+
+
+def test_minutes_until_kickoff_rolls_over_into_a_dst_change() -> None:
+    # 23:30 CET on 2026-03-28 to 11:00 CEST the next day is 10.5 hours, not 11.5
+    assert minutes_until_kickoff("11:00", datetime(2026, 3, 28, 23, 30, tzinfo=WARSAW)) == 630
+
+
+def test_site_clock_reads_kickoffs_in_the_site_timezone() -> None:
+    now = site_clock(EVENING, ZoneInfo("Europe/Paris"))
+    assert now.utcoffset() == timedelta(hours=1)
+    assert minutes_until_kickoff("21:00", now) == 120
+    assert site_clock(EVENING, None) is EVENING
+
+
+def test_timezone_arg_rejects_unknown_names() -> None:
+    assert timezone_arg("Europe/Warsaw") == WARSAW
+    for name in ["Mars/Base", "../etc", ""]:
+        with pytest.raises(argparse.ArgumentTypeError):
+            timezone_arg(name)
 
 
 def test_minutes_until_kickoff_rejects_bad_format() -> None:

@@ -156,7 +156,8 @@ python -m scraping.soccer_rating_cli
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
 - `--separate-snapshots`: Save snapshot to a separate file (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of merging.
 - `--min-start N`: Process matches starting at least N minutes from now.
-- `--max-start N`: Process matches starting at most N minutes from now. Kickoff times are read in the machine's local timezone; a kickoff more than 12 hours in the past counts as the next day's fixture.
+- `--max-start N`: Process matches starting at most N minutes from now. A kickoff more than 12 hours in the past counts as the next day's fixture.
+- `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (e.g. `Europe/Paris`); the window then counts real minutes, also across a DST change. Default: the machine's local timezone. The site renders times in the offset chosen in its "Timezone" selector, which defaulted to "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established.
 - `--skip-cups`: Skip cup matches (league code contains `CUP`, e.g. `FACUP`) except the UEFA club competitions `CLCUP`, `ELCUP` and `ECLCUP`; useful together with `--all-leagues`.
 
 National team fixtures are skipped with a warning; only club matches are supported.
