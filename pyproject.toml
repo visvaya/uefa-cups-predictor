@@ -32,6 +32,7 @@ sources = ["src"]
 # Exact versions keep the quality gate stable: new ruff releases change the default rule set.
 dev = [
     "hypothesis==6.170.15",
+    "mutmut==3.8.1",
     "mypy==2.4.1",
     "pip-audit==2.10.1",
     "pylint==4.1.3",
@@ -114,3 +115,10 @@ branch = true
 fail_under = 93
 show_missing = true
 skip_covered = true
+
+[tool.mutmut]
+# Scheduled mutation testing (.github/workflows/mutation.yml) of the model rules; Linux only.
+source_paths = ["src"]
+only_mutate = ["src/analyzer/recommendations.py", "src/analyzer/model.py", "src/analyzer/soccer_rating.py"]
+also_copy = ["analyze.py", "data", "scripts"]
+mutate_only_covered_lines = true
