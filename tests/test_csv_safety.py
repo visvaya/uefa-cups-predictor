@@ -5,7 +5,7 @@ from src.csv_safety import neutralize_cell, neutralize_formulas
 
 TAB = chr(9)
 CR = chr(13)
-STRONG_BUY = chr(0x1F7E2) + " STRONG BUY"  # recommendation label as written by analyze.py
+STRONG_BUY = chr(0x1F7E2) + " STRONG BUY"  # recommendation label as written by the analyzer
 
 
 @pytest.mark.parametrize("value", ["=1+1", "+cmd", "-2+3", "@SUM(A1)", TAB + "=1", CR + "=1", "=HYPERLINK(x)"])
