@@ -150,15 +150,37 @@ python -m scraping.soccer_rating_cli
 
 - `--limit N`: Process only N matches (useful for quick testing).
 - `--delay N`: Set delay between requests (default 1.5s).
+- `--user-agent TEXT`: Override the User-Agent header. By default the scraper identifies itself as `uefa-cups-predictor` with a link to this repository. It reads the site's `robots.txt` once per run and skips paths it disallows; a missing `robots.txt` (4xx) allows everything, while a server or network error fetching it stops all requests of the run (RFC 9309).
 - `--local`: Use local HTML files (for debugging without network).
 - `--output-dir PATH`: Custom output directory (default `data/soccer-rating`).
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
 - `--separate-snapshots`: Save snapshot to a separate file (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of merging.
 - `--min-start N`: Process matches starting at least N minutes from now.
-- `--max-start N`: Process matches starting at most N minutes from now. Kickoff times are read in the machine's local timezone; a kickoff more than 12 hours in the past counts as the next day's fixture.
-- `--skip-cups`: Skip matches whose league code contains `CUP` (e.g. `FACUP`); useful together with `--all-leagues`.
+- `--max-start N`: Process matches starting at most N minutes from now. A kickoff more than 12 hours in the past counts as the next day's fixture.
+- `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (default `Europe/Paris`); the time window counts real minutes, also across a DST change. The default follows the site's "Timezone" selector, which showed "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established, so override it if the site shows times in another zone.
 
-National team fixtures are skipped with a warning; only club matches are supported.
+Match filters (combinable, applied after the time window; each logs what it dropped):
+
+- `--skip-cups`: Skip every cup (league code contains `CUP`, e.g. `FACUP`, `CLCUP`).
+- `--skip-domestic-cups`: Skip cups that are neither UEFA nor other continental club cups. A `CUP` code not listed as continental counts as domestic.
+- `--skip-uefa-cups`: Skip the UEFA club competitions `CLCUP`, `ELCUP` and `ECLCUP`.
+- `--skip-other-continental-cups`: Skip continental club cups outside UEFA (`CLICUP`, `AFCCUP`, `CCCUP`, the codes seen so far; the list is `OTHER_CONTINENTAL_CLUB_CUPS` in `src/scraping/match_filters.py`).
+- `--skip-national-teams`: Skip matches of national teams.
+- `--leagues CODE[,CODE...]`: Keep only the listed league codes (e.g. `CLCUP,ELCUP,AR1`); implies reading all leagues of the page.
+
+With `--all-leagues`, `--skip-domestic-cups --skip-other-continental-cups` keeps the leagues and the UEFA cups.
+
+National-team matches (links such as `/Germany/n28/`) are scraped like club matches. Their team ids are stored as negative numbers (`-28`), because the site numbers national teams separately from clubs; the analyzer's CL/EL reports never contain them, so they only show up in the SR-only report.
+
+### Checking the site's markup
+
+The parser tests run on hand-written HTML, so they do not notice when soccer-rating.com changes its markup. Run this manual check now and then (and after any parser change):
+
+```bash
+soccer-rating --check-markup
+```
+
+It fetches the today page and the first match's home team page (two requests plus `robots.txt`, with the usual delay), runs the parsers and logs the number of matches, matches with 1/X/2 odds, odds payloads and whether the team ratings were found. It stores nothing and exits with status 1 when any expected structure is missing.
 
 ### Workflow
 

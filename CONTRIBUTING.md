@@ -36,6 +36,10 @@ Changes to the recommendation logic in `src/analyzer/` must keep the reports det
 alter the output, say so in the pull request and update `readme.md` and `interpretation.md` when thresholds or
 weights change.
 
+The scraper's parser tests use hand-written HTML. After changing a parser, and as a periodic manual check, run
+`uv run soccer-rating --check-markup` against the live site: it sends three polite requests, stores nothing and exits
+non-zero when the parsers no longer find the expected structures. It is not part of CI, which never contacts the site.
+
 Mutation testing of the model rules (mutmut, configured in `pyproject.toml`) runs weekly in GitHub Actions; mutmut does
 not run natively on Windows, so use WSL to run it locally (`uv run mutmut run`).
 

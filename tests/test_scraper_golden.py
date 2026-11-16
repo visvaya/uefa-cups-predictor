@@ -1,7 +1,8 @@
 """Golden-file tests that pin the CSV files written by the scraper CLI, run offline.
 
 `tests/fixtures/scraper/` holds a hand-written today-prediction page (CL, EL, an unknown league, a cup league,
-national teams, ads and malformed rows) and club pages named the way `--local` looks them up (`Home-FC.html`).
+national teams, ads and malformed rows) and club and national-team pages named the way `--local` looks them up
+(`Home-FC.html`).
 Three runs cover the default cumulative files merged with existing ones (`existing/`), separate snapshots with
 `--all-leagues`, the time window and `--skip-cups`, and the remote path with a fake fetcher and `--limit`.
 The clock is frozen, so the snapshot date and the time window do not depend on when the tests run.
@@ -20,16 +21,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 
 from scraping import soccer_rating_cli
+from scraping.fetcher import DEFAULT_USER_AGENT
 from scraping.models import PayloadSource
 from scraping.parsers import parse_today_prediction, payload_to_odds_development
 
 TESTS_DIR = Path(__file__).resolve().parent
 FIXTURES_DIR = TESTS_DIR / "fixtures" / "scraper"
 GOLDEN_DIR = TESTS_DIR / "golden" / "scraper"
-FROZEN_NOW = datetime(2026, 2, 5, 18, 0, tzinfo=UTC)
+# 18:00 in Paris, the site's default timezone, so the time window sees 18:00 kickoffs as now
+FROZEN_NOW = datetime(2026, 2, 5, 17, 0, tzinfo=UTC)
 TODAY_PATH = "/today-prediction"
 
 
@@ -41,7 +45,7 @@ def fetch_fixture(url_path: str) -> str | None:
 
 
 def run_cli(monkeypatch: pytest.MonkeyPatch, workdir: Path, output_dir: Path, *args: str) -> list[tuple[str, object]]:
-    """Runs the CLI offline; returns the fetches and sleeps in the order they happened."""
+    """Runs the CLI offline; returns the fetcher's settings, the fetches and the sleeps in the order they happened."""
     calls: list[tuple[str, object]] = []
 
     def fetch(url_path: str) -> str | None:
@@ -50,7 +54,12 @@ def run_cli(monkeypatch: pytest.MonkeyPatch, workdir: Path, output_dir: Path, *a
 
     monkeypatch.chdir(workdir)
     monkeypatch.setattr(soccer_rating_cli, "local_now", lambda: FROZEN_NOW)
-    monkeypatch.setattr(soccer_rating_cli, "SoccerRatingFetcher", lambda: SimpleNamespace(fetch=fetch))
+
+    def fetcher(user_agent: str, delay_s: float) -> SimpleNamespace:
+        calls.append(("fetcher", (user_agent, delay_s)))
+        return SimpleNamespace(fetch=fetch)
+
+    monkeypatch.setattr(soccer_rating_cli, "SoccerRatingFetcher", fetcher)
     monkeypatch.setattr(time, "sleep", lambda seconds: calls.append(("sleep", seconds)))
     monkeypatch.setattr(sys, "argv", ["soccer_rating_cli", "--output-dir", str(output_dir), *args])
     soccer_rating_cli.main()
@@ -87,7 +96,7 @@ def test_local_cumulative_run_merges_existing_files(monkeypatch: pytest.MonkeyPa
 
     calls = run_cli(monkeypatch, local_workdir(tmp_path), output_dir, "--local")
 
-    assert calls == []  # local mode neither fetches nor waits
+    assert calls == [("fetcher", (DEFAULT_USER_AGENT, 1.5))]  # local mode neither fetches nor waits
     assert_matches_golden(output_dir, "cumulative")
 
 
@@ -113,14 +122,69 @@ def test_local_snapshot_run_skips_cups(monkeypatch: pytest.MonkeyPatch, tmp_path
 def test_remote_run_fetches_pages_and_resolves_source_urls(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     output_dir = tmp_path / "out"
 
-    calls = run_cli(monkeypatch, tmp_path, output_dir, "--limit", "3", "--delay", "0.5")
+    calls = run_cli(monkeypatch, tmp_path, output_dir, "--limit", "4", "--delay", "0.5", "--user-agent", "test/1.0")
 
-    # The today page right away, then a pause before every club page; Home FC's page has the payload, Red Star's not
-    club_pages = ["/Home-FC/101/", "/Red-Star/303/", "/Blue-City/404/", "/Green-Park/505/", "/Old-Town/606/"]
-    assert calls == [("fetch", TODAY_PATH)] + [
+    # The today page right away, then a pause before every team page; Home FC's page has the payload, Red Star's not
+    club_pages = [
+        "/Home-FC/101/",
+        "/Red-Star/303/",
+        "/Blue-City/404/",
+        "/Land-A/n11/",
+        "/Green-Park/505/",
+        "/Old-Town/606/",
+    ]
+    assert calls == [("fetcher", ("test/1.0", 0.5)), ("fetch", TODAY_PATH)] + [
         call for href in club_pages for call in (("sleep", 0.5), ("fetch", href))
     ]
     assert_matches_golden(output_dir, "remote")
+
+
+def test_site_timezone_moves_the_time_window(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    window = ("--local", "--all-leagues", "--min-start", "0", "--max-start", "60")
+
+    workdir = local_workdir(tmp_path)
+    run_cli(monkeypatch, workdir, tmp_path / "paris", *window)
+    run_cli(monkeypatch, workdir, tmp_path / "utc", *window, "--site-timezone", "UTC")
+
+    # 17:00 UTC is 18:00 in Paris (the default): the window covers 18:00-19:00 on Paris clocks, 17:00-18:00 on UTC
+    def kickoffs(run: str) -> list[str]:
+        return [str(t) for t in pd.read_csv(tmp_path / run / "today_matches.csv")["time_local"]]
+
+    assert kickoffs("paris") == ["18:30", "19:00"]
+    assert kickoffs("utc") == ["17:00"]
+
+
+def test_check_markup_exits_with_its_result_and_writes_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output_dir = tmp_path / "out"
+
+    with pytest.raises(SystemExit) as exit_info:
+        run_cli(monkeypatch, tmp_path, output_dir, "--check-markup", "--delay", "3")
+
+    assert exit_info.value.code == 0
+    assert not output_dir.exists()
+
+
+def test_match_filters_combine(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    filters = ("--leagues", "CLCUP,elcup,FACUP", "--skip-domestic-cups", "--skip-national-teams")
+
+    # --leagues reads every league of the page, so no --all-leagues is needed
+    run_cli(monkeypatch, local_workdir(tmp_path), tmp_path / "out", "--local", *filters)
+
+    today = pd.read_csv(tmp_path / "out" / "today_matches.csv")
+    # AR1 is not listed, FACUP is a domestic cup and Land A vs Land B are national teams
+    assert today["match_id"].tolist() == [
+        "2026-02-05_CLCUP_101_202",
+        "2026-02-05_CLCUP_303_404",
+        "2026-02-05_ELCUP_505_606",
+        "2026-02-05_ELCUP_707_808",
+    ]
+
+
+def test_check_markup_cannot_run_locally(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        run_cli(monkeypatch, tmp_path, tmp_path / "out", "--check-markup", "--local")
+
+    assert exit_info.value.code == 2  # argparse usage error, before any request
 
 
 def test_local_run_without_today_page_writes_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -154,13 +218,13 @@ def test_validation_report_flags_duplicates_missing_leagues_and_low_confidence(
     # The ids of the matches without a payload come from a set, in no fixed order
     missing_level, missing_message = records.pop(4)
     assert missing_level == "WARNING"
-    assert missing_message.startswith("Missing payloads for 4 matches: ")
+    assert missing_message.startswith("Missing payloads for 5 matches: ")
     assert all(m.match_id in missing_message for m in [*matches[1:], checked[-1]])
     assert records == [
         ("INFO", "--- Validation Report ---"),
         ("ERROR", "Validation FAILED: Found 1 duplicate match_ids!"),
         ("ERROR", "Validation FAILED: Found 1 matches with missing league codes!"),
-        ("INFO", "Payload Coverage: 20.0% (1/5)"),
+        ("INFO", "Payload Coverage: 16.7% (1/6)"),
         ("WARNING", "Quality Alert: Found 1 LOW confidence matches!"),
         ("INFO", "--------------------------"),
     ]

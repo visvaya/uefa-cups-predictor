@@ -4,15 +4,27 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pandas as pd
 
 from csv_safety import neutralize_formulas
 
-from .fetcher import SoccerRatingFetcher, resolve_url
+from .fetcher import DEFAULT_USER_AGENT, SoccerRatingFetcher, resolve_url
+from .markup_check import TODAY_PATH, check_markup
+from .match_filters import (
+    MatchFilter,
+    apply_filters,
+    cups,
+    domestic_cups,
+    national_teams,
+    only_leagues,
+    other_continental_cups,
+    uefa_cups,
+)
 from .models import ClubCup, ClubMeta, OddsDevelopment, PayloadSource, TodayMatch
 from .parsers import (
     parse_clip_payloads,
@@ -27,9 +39,9 @@ from .parsers import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-MINUTES_PER_DAY = 24 * 60
 # A kickoff more than this many minutes in the past is treated as the next day's (after midnight)
 PAST_KICKOFF_ROLLOVER_MINUTES = 12 * 60
+SITE_TIMEZONE = "Europe/Paris"
 RE_KICKOFF_TIME = re.compile(r"^(\d{1,2}):(\d{2})$")
 
 
@@ -38,8 +50,29 @@ def local_now() -> datetime:
     return datetime.now().astimezone()
 
 
+def timezone_arg(name: str) -> ZoneInfo:
+    """An IANA timezone name such as Europe/Paris, for argparse."""
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError) as e:
+        raise argparse.ArgumentTypeError(f"unknown timezone {name!r}") from e
+
+
+def league_list_arg(text: str) -> frozenset[str]:
+    """Comma-separated league codes such as "CLCUP,AR1", for argparse."""
+    codes = frozenset(code.strip().upper() for code in text.split(",") if code.strip())
+    if not codes:
+        raise argparse.ArgumentTypeError("expected league codes separated by commas")
+    return codes
+
+
+def site_clock(now: datetime, site_tz: ZoneInfo) -> datetime:
+    """`now` on the clock the site shows kickoffs in."""
+    return now.astimezone(site_tz)
+
+
 def minutes_until_kickoff(time_local: str, now: datetime) -> float:
-    """Returns minutes from `now` to an "HH:MM" kickoff in the same timezone as `now`.
+    """Returns real minutes from `now` to an "HH:MM" kickoff on the clock of `now`'s timezone (DST-aware with zoneinfo).
 
     Kickoffs far in the past roll over to the next day (late-night fixtures).
     Raises ValueError when `time_local` is not a valid HH:MM time.
@@ -48,9 +81,15 @@ def minutes_until_kickoff(time_local: str, now: datetime) -> float:
     if hm is None:
         raise ValueError(f"expected HH:MM, got {time_local!r}")
     kickoff = now.replace(hour=int(hm.group(1)), minute=int(hm.group(2)), second=0, microsecond=0)
-    diff_min = (kickoff - now).total_seconds() / 60.0
+
+    def minutes_to(moment: datetime) -> float:
+        # Differences between datetimes of the same tzinfo ignore DST, so both are compared in UTC
+        return (moment.astimezone(UTC) - now.astimezone(UTC)).total_seconds() / 60.0
+
+    diff_min = minutes_to(kickoff)
     if diff_min < -PAST_KICKOFF_ROLLOVER_MINUTES:
-        diff_min += MINUTES_PER_DAY
+        # Adding a day keeps the wall-clock time, so the next day's offset applies
+        diff_min = minutes_to(kickoff + timedelta(days=1))
     return diff_min
 
 
@@ -108,7 +147,7 @@ class MatchFilters:
     all_leagues: bool
     min_start: int | None
     max_start: int | None
-    skip_cups: bool
+    drop: tuple[MatchFilter, ...]
 
 
 @dataclass(frozen=True)
@@ -130,9 +169,21 @@ class ScrapeResult:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Soccer-Rating ETL Scraper CLI")
-    parser.add_argument("--local", action="store_true", help="Use local files for testing")
+    # The markup check always reads the live site, so it cannot run on local files
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--local", action="store_true", help="Use local files for testing")
+    mode.add_argument(
+        "--check-markup",
+        action="store_true",
+        help="Fetch the today page and one team page, report whether the parsers find what they expect, write nothing",
+    )
     parser.add_argument("--limit", type=int, default=None, help="Limit number of matches to process")
     parser.add_argument("--delay", type=float, default=1.5, help="Delay between requests in seconds")
+    parser.add_argument(
+        "--user-agent",
+        default=DEFAULT_USER_AGENT,
+        help="User-Agent header (default: names this tool and its repository)",
+    )
     parser.add_argument("--output-dir", type=str, default="data/soccer-rating", help="Output directory")
     parser.add_argument("--all-leagues", action="store_true", help="Capture matches from ALL leagues, not just CL/EL")
     parser.add_argument(
@@ -145,9 +196,47 @@ def parse_args() -> argparse.Namespace:
         "--max-start", type=int, default=None, help="Process matches starting at most N minutes from now"
     )
     parser.add_argument(
-        "--skip-cups", action="store_true", help="Skip matches where league code contains 'CUP' (e.g. FA CUP, CCCUP)"
+        "--site-timezone",
+        type=timezone_arg,
+        # The site's own timezone selector defaults to "GMT +1 Paris" (checked 2026-11-16)
+        default=SITE_TIMEZONE,
+        help=f"IANA timezone the site shows kickoff times in (default: {SITE_TIMEZONE})",
+    )
+    filters = parser.add_argument_group("match filters (combinable; each drops what it names)")
+    filters.add_argument("--skip-cups", action="store_true", help="Skip every cup (league code contains CUP)")
+    filters.add_argument(
+        "--skip-domestic-cups",
+        action="store_true",
+        help="Skip cups that are neither UEFA nor other continental club cups (unknown CUP codes count as domestic)",
+    )
+    filters.add_argument("--skip-uefa-cups", action="store_true", help="Skip CLCUP, ELCUP and ECLCUP")
+    filters.add_argument(
+        "--skip-other-continental-cups",
+        action="store_true",
+        help="Skip continental club cups outside UEFA (CLICUP, AFCCUP, CCCUP)",
+    )
+    filters.add_argument("--skip-national-teams", action="store_true", help="Skip matches of national teams")
+    filters.add_argument(
+        "--leagues",
+        type=league_list_arg,
+        default=None,
+        metavar="CODE[,CODE...]",
+        help="Keep only these league codes, e.g. CLCUP,ELCUP,AR1 (reads all leagues of the page)",
     )
     return parser.parse_args()
+
+
+def match_filters(args: argparse.Namespace) -> tuple[MatchFilter, ...]:
+    """The filters the command line asks for, in a fixed order."""
+    flags = [
+        (args.skip_cups, cups),
+        (args.skip_domestic_cups, domestic_cups),
+        (args.skip_uefa_cups, uefa_cups),
+        (args.skip_other_continental_cups, other_continental_cups),
+        (args.skip_national_teams, national_teams),
+    ]
+    chosen = [make() for wanted, make in flags if wanted]
+    return (*chosen, only_leagues(args.leagues)) if args.leagues is not None else tuple(chosen)
 
 
 def read_today_page(local: bool, fetch: Callable[[str], str | None]) -> str | None:
@@ -158,7 +247,7 @@ def read_today_page(local: bool, fetch: Callable[[str], str | None]) -> str | No
             return None
         html: str | None = Path(TODAY_PAGE).read_text(encoding="utf-8")
     else:
-        html = fetch("/today-prediction")
+        html = fetch(TODAY_PATH)
     if not html:
         logger.error("Failed to get today predictions.")
         return None
@@ -168,10 +257,12 @@ def read_today_page(local: bool, fetch: Callable[[str], str | None]) -> str | No
 def in_time_window(
     matches: list[TodayMatch], now: datetime, min_start: int | None, max_start: int | None
 ) -> list[TodayMatch]:
-    """Matches kicking off between `min_start` and `max_start` minutes after `now`; unreadable times are dropped."""
+    """Matches kicking off between `min_start` and `max_start` minutes after `now`; unreadable times are dropped.
+
+    `now` must be on the clock the site shows kickoffs in (see `site_clock`).
+    """
     kept = []
     for m in matches:
-        # Assumes the site shows kickoff times in the machine's local timezone
         try:
             diff_min = minutes_until_kickoff(m.time_local, now)
         except (ValueError, TypeError) as e:
@@ -180,12 +271,6 @@ def in_time_window(
         if (min_start is None or diff_min >= min_start) and (max_start is None or diff_min <= max_start):
             kept.append(m)
     return kept
-
-
-def without_cups(matches: list[TodayMatch]) -> tuple[list[TodayMatch], set[str]]:
-    """Drops matches whose league code contains 'CUP'; returns the kept matches and the skipped codes."""
-    kept = [m for m in matches if "CUP" not in (m.league_code or "")]
-    return kept, {m.league_code for m in matches if "CUP" in (m.league_code or "")}
 
 
 def select_matches(filters: MatchFilters, today_html: str, snapshot_date: str, now: datetime) -> list[TodayMatch]:
@@ -197,12 +282,7 @@ def select_matches(filters: MatchFilters, today_html: str, snapshot_date: str, n
         logger.info(f"Filtered matches: {len(filtered)} (from {len(matches)}) based on time window.")
         matches = filtered
 
-    if filters.skip_cups:
-        kept, skipped_codes = without_cups(matches)
-        if len(kept) < len(matches):
-            logger.info(f"Filtered out {len(matches) - len(kept)} cup matches. Skipped codes: {sorted(skipped_codes)}")
-        matches = kept
-    return matches
+    return apply_filters(matches, filters.drop)
 
 
 def club_page_or_warning(club_html: str | None, side: Side) -> str | None:
@@ -384,16 +464,19 @@ def save_results(output_dir: Path, matches: list[TodayMatch], result: ScrapeResu
 
 def main() -> None:
     args = parse_args()
+    snapshot_date = local_now().strftime("%Y-%m-%d")
+    fetcher = SoccerRatingFetcher(args.user_agent, args.delay)
+    if args.check_markup:
+        raise SystemExit(check_markup(fetcher.fetch, args.delay, snapshot_date))
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    snapshot_date = local_now().strftime("%Y-%m-%d")
-    fetcher = SoccerRatingFetcher()
 
     today_html = read_today_page(args.local, fetcher.fetch)
     if today_html is None:
         return
-    filters = MatchFilters(args.all_leagues, args.min_start, args.max_start, args.skip_cups)
-    matches = select_matches(filters, today_html, snapshot_date, local_now())
+    all_leagues = args.all_leagues or args.leagues is not None
+    filters = MatchFilters(all_leagues, args.min_start, args.max_start, match_filters(args))
+    matches = select_matches(filters, today_html, snapshot_date, site_clock(local_now(), args.site_timezone))
     if not matches:
         logger.warning("No matches match the criteria. Exiting.")
         return
