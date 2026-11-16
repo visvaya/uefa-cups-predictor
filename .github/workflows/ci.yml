@@ -43,6 +43,11 @@ jobs:
           version-file: uv.lock
           enable-cache: true
       - run: uv sync --locked
+      # Node runs markdownlint inside the gate (npx with an exact version).
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          check-latest: true
       # The same command as locally (scripts/gate.py): every code check, each one run even after a failure.
       - name: Gate
         run: uv run python -m scripts.gate

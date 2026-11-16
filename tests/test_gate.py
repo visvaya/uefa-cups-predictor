@@ -18,6 +18,7 @@ def test_steps_have_unique_names_and_cover_the_ci_checks() -> None:
         "pylint",
         "pytest --cov",
         "tracked",
+        "markdownlint-cli2@",
     ):
         assert any(check in command for command in commands), check
 

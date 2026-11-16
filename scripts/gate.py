@@ -4,8 +4,8 @@ Usage (from the repository root): uv run python -m scripts.gate
 
 Runs each step from the repository root (or the directory the step names), prints its name, exit code and duration,
 carries on after a failure so one run shows every problem, and exits 1 if any step failed. The Python tools come from
-the project environment (run the gate through `uv run`). The security audits (pip-audit, zizmor, actionlint) stay
-separate CI steps.
+the project environment (run the gate through `uv run`); markdownlint runs through npx (Node.js 22 or newer). The
+security audits (pip-audit, zizmor, actionlint) stay separate CI steps.
 """
 
 import io
@@ -35,6 +35,8 @@ STEPS: tuple[Step, ...] = (
     ("pytest", ".", ("python", "-m", "pytest", "--cov", "--cov-report=term")),
     # CI passes the never-committed paths in EXCLUDED_PATHS; locally they come from git config.
     ("tracked files", ".", ("python", "scripts/git_hooks.py", "tracked")),
+    # Config in .markdownlint-cli2.jsonc; .github/ has its own for the templates.
+    ("markdownlint", ".", ("npx", "--yes", "markdownlint-cli2@0.24.0", "**/*.md")),
 )
 
 
