@@ -14,6 +14,7 @@ import pandas as pd
 from csv_safety import neutralize_formulas
 
 from .fetcher import DEFAULT_USER_AGENT, SoccerRatingFetcher, resolve_url
+from .markup_check import TODAY_PATH, check_markup
 from .models import ClubCup, ClubMeta, OddsDevelopment, PayloadSource, TodayMatch
 from .parsers import (
     parse_clip_payloads,
@@ -152,6 +153,11 @@ class ScrapeResult:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Soccer-Rating ETL Scraper CLI")
     parser.add_argument("--local", action="store_true", help="Use local files for testing")
+    parser.add_argument(
+        "--check-markup",
+        action="store_true",
+        help="Fetch the today page and one team page, report whether the parsers find what they expect, write nothing",
+    )
     parser.add_argument("--limit", type=int, default=None, help="Limit number of matches to process")
     parser.add_argument("--delay", type=float, default=1.5, help="Delay between requests in seconds")
     parser.add_argument(
@@ -192,7 +198,7 @@ def read_today_page(local: bool, fetch: Callable[[str], str | None]) -> str | No
             return None
         html: str | None = Path(TODAY_PAGE).read_text(encoding="utf-8")
     else:
-        html = fetch("/today-prediction")
+        html = fetch(TODAY_PATH)
     if not html:
         logger.error("Failed to get today predictions.")
         return None
@@ -425,10 +431,12 @@ def save_results(output_dir: Path, matches: list[TodayMatch], result: ScrapeResu
 
 def main() -> None:
     args = parse_args()
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
     snapshot_date = local_now().strftime("%Y-%m-%d")
     fetcher = SoccerRatingFetcher(args.user_agent)
+    if args.check_markup:
+        raise SystemExit(check_markup(fetcher.fetch, args.delay, snapshot_date))
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     today_html = read_today_page(args.local, fetcher.fetch)
     if today_html is None:

@@ -162,6 +162,16 @@ python -m scraping.soccer_rating_cli
 
 National-team matches (links such as `/Germany/n28/`) are scraped like club matches. Their team ids are stored as negative numbers (`-28`), because the site numbers national teams separately from clubs; the analyzer's CL/EL reports never contain them, so they only show up in the SR-only report.
 
+### Checking the site's markup
+
+The parser tests run on hand-written HTML, so they do not notice when soccer-rating.com changes its markup. Run this manual check now and then (and after any parser change):
+
+```bash
+soccer-rating --check-markup
+```
+
+It fetches the today page and the first match's home team page (two requests plus `robots.txt`, with the usual delay), runs the parsers and logs the number of matches, matches with 1/X/2 odds, odds payloads and whether the team ratings were found. It stores nothing and exits with status 1 when any expected structure is missing.
+
 ### Workflow
 
 1. **Run Scraper**: `python -m scraping.soccer_rating_cli`
