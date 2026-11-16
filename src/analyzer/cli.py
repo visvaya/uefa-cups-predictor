@@ -104,8 +104,8 @@ def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None
     print("\n--- SR-ONLY ANALYSIS TOP 10 RECOMMENDATIONS ---")
     print(report.head(10).to_string(index=False))
     out_path = (output_dir or base_dir) / f"sr_analysis_report{date_str}.csv"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     try:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         write_report(report, out_path, excel_pl)
         print(f"SUCCESS: Saved SR-Only report to: {out_path}")
     except PermissionError:

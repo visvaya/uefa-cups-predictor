@@ -145,8 +145,8 @@ def test_days_adds_the_pages_of_the_next_days(monkeypatch: pytest.MonkeyPatch, t
     # 2026-02-05 is a Thursday; the fixture server answers the Friday page with the same table
     calls = run_cli(monkeypatch, tmp_path, output_dir, "--all-leagues", "--days", "1", "--limit", "1")
 
-    fetches = [arg for kind, arg in calls if kind == "fetch"]
-    assert fetches[:2] == [TODAY_PATH, TODAY_PATH + "/friday"]
+    # The day page waits for --delay like every request after the today page
+    assert calls[1:4] == [("fetch", TODAY_PATH), ("sleep", 1.5), ("fetch", TODAY_PATH + "/friday")]
     match_ids = [str(m) for m in pd.read_csv(output_dir / "today_matches.csv")["match_id"]]
     days = sorted({m.split("_")[0] for m in match_ids})
     assert days == ["2026-02-05", "2026-02-06"]

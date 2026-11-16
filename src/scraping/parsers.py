@@ -287,12 +287,13 @@ def pick_best_payload(
 
     scored = []
     for p in payload_candidates:
-        if p.get("league_code_payload") != wanted_league:
-            continue
-
-        nm = name_match_score(
+        # A payload of another league, or naming other teams, is another fixture however close its odds
+        same_league = p.get("league_code_payload") == wanted_league
+        nm = same_league and name_match_score(
             match_row["home_team"], match_row["away_team"], p["home_team_payload"], p["away_team_payload"]
         )
+        if not nm:
+            continue
 
         vecs = payload_odds_vectors(p)
         stage_scores = {stage: rel_err(today_vec, v) for stage, v in vecs.items()}
@@ -306,15 +307,15 @@ def pick_best_payload(
         scored.append((nm, best_dist, oo_gap if oo_gap is not None else 1e9, best_stage, p))
 
     if not scored:
-        return None, {"reason": "NO_CANDIDATES_AFTER_LEAGUE_FILTER"}
+        return None, {"reason": "NO_CANDIDATE_NAMES_THE_FIXTURE"}
 
-    # sort: najpierw nazwy (2>1>0), potem dystans kursów, potem oo_gap
+    # Names first (2 > 1), then the odds distance, then the OO gap
     scored.sort(key=lambda x: (-x[0], x[1], x[2]))
 
     nm, best_dist, oo_gap, best_stage, best = scored[0]
 
     confidence = "HIGH"
-    if best_dist > 0.03 or nm < 1:
+    if best_dist > 0.03:
         confidence = "LOW"
     elif best_dist > 0.01 or nm < 2:
         confidence = "MEDIUM"

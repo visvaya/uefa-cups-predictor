@@ -27,6 +27,7 @@ from .match_filters import (
 )
 from .models import ClubCup, ClubMeta, OddsDevelopment, PayloadSource, TodayMatch
 from .parsers import (
+    name_match_score,
     parse_clip_payloads,
     parse_club_page,
     parse_team_ratings,
@@ -278,11 +279,15 @@ def day_page_path(today: date, days_ahead: int) -> str:
     return f"{TODAY_PATH}/{WEEKDAY_PAGES[(today + timedelta(days=days_ahead)).weekday()]}"
 
 
-def read_day_pages(fetch: Callable[[str], str | None], today: date, days: int) -> list[tuple[int, str]]:
-    """The pages of the `days` days after today, as (days ahead, html); a missing page is logged and skipped."""
+def read_day_pages(fetch: Callable[[str], str | None], today: date, days: int, delay_s: float) -> list[tuple[int, str]]:
+    """The pages of the `days` days after today, as (days ahead, html); a missing page is logged and skipped.
+
+    Each request waits `delay_s` first, like the club page requests after the today page.
+    """
     pages = []
     for days_ahead in range(1, days + 1):
         path = day_page_path(today, days_ahead)
+        time.sleep(delay_s)
         html = fetch(path)
         if html:
             pages.append((days_ahead, html))
@@ -383,10 +388,15 @@ def club_page_candidates(club_html: str, href: str) -> list[dict[str, Any]]:
 
 
 def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
-    """Reads the home, then the away club page; stops at the first page with payload candidates."""
+    """Reads the home, then the away club page; stops at the first page with a payload naming both teams.
+
+    A club page can list another fixture of the team (a day page's match is often not its next one), so the
+    away page is read when the home page names none; the candidates of both pages are returned.
+    """
     team_ratings: tuple[float | None, float | None] = (None, None)
     clubs: dict[int, ClubMeta] = {}
     cups: list[ClubCup] = []
+    found: list[dict[str, Any]] = []
     sides = [(match.home_id, match.home_team, match.home_href), (match.away_id, match.away_team, match.away_href)]
     for side in sides:
         club_html = read_page(side)
@@ -399,11 +409,19 @@ def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
         meta, club_cups = parse_club_page(club_html, team_id)
         clubs[team_id] = meta
         cups.extend(club_cups)
-        candidates = club_page_candidates(club_html, href)
-        # The payload of a match is on both club pages; the opponent's page would only repeat it
-        if candidates:
-            return MatchScan(candidates, team_ratings, clubs, cups)
-    return MatchScan([], team_ratings, clubs, cups)
+        found.extend(club_page_candidates(club_html, href))
+        # The payload of a match is on both club pages; once one names the fixture, the other would repeat it
+        if any(names_fixture(match, c) for c in found):
+            break
+    return MatchScan(found, team_ratings, clubs, cups)
+
+
+def names_fixture(match: TodayMatch, candidate: dict[str, Any]) -> bool:
+    """Whether a payload names both teams of the match (in either order)."""
+    score = name_match_score(
+        match.home_team, match.away_team, candidate["home_team_payload"], candidate["away_team_payload"]
+    )
+    return score > 0
 
 
 def best_odds_development(
@@ -522,7 +540,7 @@ def main() -> None:
     if today_html is None:
         return
     now = site_clock(local_now(), args.site_timezone)
-    pages = [(0, today_html), *read_day_pages(fetcher.fetch, now.date(), args.days)]
+    pages = [(0, today_html), *read_day_pages(fetcher.fetch, now.date(), args.days, args.delay)]
     all_leagues = args.all_leagues or args.leagues is not None
     filters = MatchFilters(all_leagues, args.min_start, args.max_start, match_filters(args))
     matches = select_matches(filters, pages, now)

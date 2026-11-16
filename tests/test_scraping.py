@@ -18,9 +18,10 @@ from scraping.parsers import (
     norm_team,
     parse_today_prediction,
     payload_to_odds_row,
+    pick_best_payload,
     team_id_from_href,
 )
-from scraping.soccer_rating_cli import minutes_until_kickoff, parse_args, site_clock, timezone_arg
+from scraping.soccer_rating_cli import minutes_until_kickoff, parse_args, scan_club_pages, site_clock, timezone_arg
 
 BACKSLASH = chr(92)
 ROBOTS_URL = "https://www.soccer-rating.com/robots.txt"
@@ -387,3 +388,50 @@ def test_fetch_survives_a_malformed_redirect_target(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", send)
     assert SoccerRatingFetcher().fetch("/x") is None
+
+
+def _payload(home: str, away: str) -> dict[str, object]:
+    odds = {
+        f"{stage}_{side}": value
+        for stage in ("open", "drop", "close", "fair")
+        for side, value in zip("1x2", (1.5, 4.0, 6.0), strict=True)
+    }
+    return {"league_code_payload": "CLCUP", "home_team_payload": home, "away_team_payload": away, "oo": 0.0, **odds}
+
+
+def _fixture(home: str, away: str) -> dict[str, object]:
+    return {
+        "league_code": "CLCUP",
+        "home_team": home,
+        "away_team": away,
+        "odd_1_today": 1.5,
+        "odd_x_today": 4.0,
+        "odd_2_today": 6.0,
+        "odds_rating_oo_today": 0.0,
+    }
+
+
+def test_pick_best_payload_never_takes_another_fixture() -> None:
+    # Same league and same odds, but the payload names other teams: it belongs to another fixture
+    best, debug = pick_best_payload(_fixture("Home FC", "Away FC"), [_payload("Home FC", "Third FC")])
+    assert best is None
+    assert debug["reason"] == "NO_CANDIDATE_NAMES_THE_FIXTURE"
+
+
+def _club_page(home: str, away: str) -> str:
+    payload = f"{home},{away},0,CLCUP,0.0,0.0,0.0," + ",".join(["1.50,4.00,6.00"] * 4)
+    return f"<a href=\"javascript:copyToClipboard('{payload}')\">copy</a>"
+
+
+def test_scan_club_pages_reads_the_away_page_when_the_home_page_lists_another_fixture() -> None:
+    match = parse_today_prediction(_today_page(_today_row("/Home-FC/101/", "/Away-FC/202/")), "2026-02-05")[0]
+    pages = {101: _club_page("Home FC", "Third FC"), 202: _club_page("Home FC", "Away FC")}
+    read: list[int] = []
+
+    def read_page(side: tuple[int, str, str]) -> str:
+        read.append(side[0])
+        return pages[side[0]]
+
+    scan = scan_club_pages(match, read_page)
+    assert read == [101, 202]
+    assert [c["away_team_payload"] for c in scan.candidates] == ["Third FC", "Away FC"]
