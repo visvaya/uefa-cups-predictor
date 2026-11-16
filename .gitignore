@@ -8,6 +8,7 @@ venv/
 ENV/
 
 # Tools
+.hypothesis/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
