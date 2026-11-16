@@ -7,8 +7,8 @@ reviews:
   commit_status: true
   fail_commit_status: true
   auto_review:
-    # A paused review still reports a green status, so later fix rounds would merge unreviewed.
-    auto_pause_after_reviewed_commits: 0
+    # Reviews only on request (`@coderabbitai review`), for key pull requests; the check then ends skipped.
+    enabled: false
   path_instructions:
     - path: "**"
       instructions: >-
