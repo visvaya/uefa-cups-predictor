@@ -1,8 +1,8 @@
 ﻿team;opp;teamWinProb%;teamRotRisk;teamMot;oppMot;teamStatus;oppStatus;expertScore;srCompleteness;srEdge;srDropping;strangeOdds;recommendation;reason
-Team O;Team P;70,0;1,0;100,0;99,0;IN_PLAY;IN_PLAY;1,19;1,0;0,05;0,29;0,0;🟢 STRONG BUY;"Sure Bet Pattern; High Value; Positive Signal; Steam (+); SR Edge; AO(1.5) > Fair(1.4)"
-Team W;Team X;55,0;1,0;86,6;84,3;IN_PLAY;IN_PLAY;1,68;1,0;0,03;0,4;0,0;🟢 STRONG BUY;"Good Value; Strong Expert Signal; Steam (+)"
+Team O;Team P;70,0;1,0;100,0;99,0;IN_PLAY;IN_PLAY;1,24;1,0;0,05;0,29;35,0;🟢 STRONG BUY;"Sure Bet Pattern; High Value; Positive Signal; Steam (+); Strange Odds (35); SR Edge; AO(1.5) > Fair(1.4)"
+Team W;Team X;55,0;1,0;86,6;84,3;IN_PLAY;IN_PLAY;1,72;1,0;0,03;0,4;0,0;🟢 STRONG BUY;"Good Value; Strong Expert Signal; Steam (+)"
 Team R;Team Q;70,0;1,0;95,7;96,8;IN_PLAY;IN_PLAY;0,76;0,5;0,04;-0,0;0,0;🟡 CONSIDER;"Good Value; Positive Signal"
-Team C;Team D;60,5;1,0;81,7;84,3;IN_PLAY;IN_PLAY;1,62;0,5;0,02;-0,29;0,0;🟡 CONSIDER;"Good Value; Strong Expert Signal; (Risk: Rising Odds); Steam (-)"
+Team C;Team D;60,5;1,0;81,7;84,3;IN_PLAY;IN_PLAY;1,62;0,5;0,02;-0,29;-36,0;🟡 CONSIDER;"Good Value; Strong Expert Signal; (Risk: Rising Odds); Steam (-); Strange Odds (-36)"
 Team I;Team J;40,0;1,0;71,4;83,2;IN_PLAY;IN_PLAY;0,2;1,0;0,12;0,0;0,0;🟡 CONSIDER;SR Edge
 Team AA;Team BB;65,0;1,0;47,7;40,0;IN_PLAY;OUT;0,0;0,0;0,0;0,0;0,0;⚪ NEUTRAL;Good Value
 Team F;Team E;55,0;1,0;88,7;86,6;IN_PLAY;IN_PLAY;-0,0;0,0;0,0;-0,0;0,0;⚪ NEUTRAL;Good Value
@@ -21,9 +21,9 @@ Team L;Team K;30,0;1,0;100,0;92,6;IN_PLAY;IN_PLAY;-0,0;0,0;0,0;-0,0;0,0;⚪ NEUT
 Team B;Team A;30,0;1,0;78,5;74,6;IN_PLAY;IN_PLAY;-0,0;0,0;0,0;-0,0;0,0;⚪ NEUTRAL;-
 Team Y;Team Z;30,0;1,0;69,1;55,6;IN_PLAY;IN_PLAY;0,0;0,0;0,0;0,0;0,0;⚪ NEUTRAL;-
 Team M;Team N;25,0;1,0;100,0;100,0;IN_PLAY;IN_PLAY;0,0;0,0;0,0;0,0;0,0;⚪ NEUTRAL;-
-Team X;Team W;20,0;1,0;84,3;86,6;IN_PLAY;IN_PLAY;-1,68;1,0;-0,03;-0,4;0,0;⚪ NEUTRAL;"Strong Expert Signal; (Risk: Rising Odds); Steam (-)"
-Team D;Team C;19,5;1,0;84,3;81,7;IN_PLAY;IN_PLAY;-1,62;0,5;-0,0;0,29;0,0;⚪ NEUTRAL;"Strong Expert Signal; Steam (+)"
-Team P;Team O;15,0;1,0;99,0;100,0;IN_PLAY;IN_PLAY;-1,19;1,0;-0,03;-0,29;0,0;⚪ NEUTRAL;"Positive Signal; Steam (-)"
+Team X;Team W;20,0;1,0;84,3;86,6;IN_PLAY;IN_PLAY;-1,72;1,0;-0,03;-0,4;0,0;⚪ NEUTRAL;"Strong Expert Signal; (Risk: Rising Odds); Steam (-)"
+Team D;Team C;19,5;1,0;84,3;81,7;IN_PLAY;IN_PLAY;-1,62;0,5;-0,0;0,29;-36,0;⚪ NEUTRAL;"Strong Expert Signal; Steam (+); Strange Odds (-36)"
+Team P;Team O;15,0;1,0;99,0;100,0;IN_PLAY;IN_PLAY;-1,24;1,0;-0,03;-0,29;35,0;⚪ NEUTRAL;"Positive Signal; Steam (-); Strange Odds (35)"
 Team E;Team F;15,0;1,0;86,6;88,7;IN_PLAY;IN_PLAY;0,0;0,0;0,0;0,0;0,0;⚪ NEUTRAL;-
 Team Q;Team R;10,0;1,0;96,8;95,7;IN_PLAY;IN_PLAY;-0,76;0,5;-0,02;0,0;0,0;⚪ NEUTRAL;Positive Signal
 Team DD;Team CC;60,0;2,05;28,0;33,1;OUT;OUT;-0,0;0,0;0,0;-0,0;0,0;🔴 AVOID;"Out of contention; High rotation risk"
