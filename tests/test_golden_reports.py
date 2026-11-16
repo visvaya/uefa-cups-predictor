@@ -16,9 +16,11 @@ import os
 import shutil
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from analyzer.cli import run_league, run_sr_only
+from analyzer.config import VALUE_MAX
 
 TESTS_DIR = Path(__file__).resolve().parent
 EXAMPLES_DIR = TESTS_DIR.parent / "data" / "theanalyst"
@@ -99,6 +101,18 @@ def test_analyze_sr_only_reads_the_files_beside_its_input(base_dir: Path) -> Non
     run_sr_only(base_dir, run_dir / SR_ONLY_INPUT, output_dir)
 
     assert_matches_golden(output_dir / "sr_analysis_report_2026-01-28.csv", "sr_analysis_report.csv")
+
+
+def test_league_report_carries_the_value_index_it_ranks_by(base_dir: Path) -> None:
+    # teamValue is the value index (ValFinal): within one recommendation level the rows are ordered by it
+    run_league(base_dir, "cl")
+
+    report = pd.read_csv(base_dir / "cl_recommendations.csv")
+    cols = list(report.columns)
+    assert cols.index("teamValue") == cols.index("teamMot") + 1
+    assert report["teamValue"].between(0, VALUE_MAX).all()
+    for _, rows in report.groupby("recommendation", sort=False):
+        assert rows["teamValue"].is_monotonic_decreasing
 
 
 def test_analyze_league_runs_without_lineups(base_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:

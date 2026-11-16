@@ -44,6 +44,7 @@ REPORT_COLUMNS = {
     "TeamWinProb%": "teamWinProb%",
     "TeamRotRisk": "teamRotRisk",
     "TeamMot": "teamMot",
+    "ValFinal": "teamValue",
     "OppMot": "oppMot",
     "TeamStatus": "teamStatus",
     "OppStatus": "oppStatus",

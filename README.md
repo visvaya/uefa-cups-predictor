@@ -91,6 +91,7 @@ The algorithm sums `LAST 16%` and `KO P/O%` when they are consistent, falls back
 | **team / opp** | Analyzed team and its opponent. |
 | **teamWinProb%** | Probability of winning (from predicted table). |
 | **teamMot** | *Motivation Index* (0-100) – internal pressure for result. |
+| **teamValue** | *Value Index* (0-140): win probability weighted by the team's motivation, raised when the opponent is `OUT`, `LOCKED` or unmotivated, divided by `teamRotRisk` (formula and weights in `src/analyzer/config.py`). 70 or more is `High Value`, 50 or more `Good Value`; rows of one recommendation are ordered by it. |
 | **teamRotRisk** | *Rotation Risk* (1.0 - 2.3) – higher means greater risk of squad rotation. Raised by 10 % for both teams of a match with strange odds (see Soccer-rating Logic). |
 | **teamStatus / oppStatus** | Progress status (`IN_PLAY`, `LOCKED`, `OUT`). |
 | **expertScore** | **Synthetic Strength Signal**. Aggregate score from market, ratings, and lineups. If > 0, model favors this team. |
