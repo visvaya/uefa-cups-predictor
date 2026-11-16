@@ -208,7 +208,7 @@ def test_fetch_stops_after_the_redirect_limit(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_fetch_survives_a_malformed_redirect_target(monkeypatch: pytest.MonkeyPatch) -> None:
-    def send(adapter: object, request: requests.PreparedRequest, **kwargs: object) -> requests.Response:
+    def send(_adapter: object, request: requests.PreparedRequest, **_kwargs: object) -> requests.Response:
         response = requests.Response()
         response.status_code = 302
         response.headers["location"] = "https://["
