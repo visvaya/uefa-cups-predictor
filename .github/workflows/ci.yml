@@ -17,9 +17,12 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Downloaded tools are pinned by version and checksum; the weekly freshness job reports newer releases.
 env:
   ACTIONLINT_VERSION: 1.7.12
   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+  LYCHEE_VERSION: 0.24.2
+  LYCHEE_SHA256: 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
 
 jobs:
   check:
@@ -43,6 +46,11 @@ jobs:
           version-file: uv.lock
           enable-cache: true
       - run: uv sync --locked
+      # Node runs markdownlint inside the gate (npx with an exact version).
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          check-latest: true
       # The same command as locally (scripts/gate.py): every code check, each one run even after a failure.
       - name: Gate
         run: uv run python -m scripts.gate
@@ -68,6 +76,15 @@ jobs:
           echo "${ACTIONLINT_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check --strict
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color
+      # Relative links and their anchors in the tracked Markdown, offline: external sites would make CI flaky.
+      - name: Check Markdown links (lychee)
+        if: ${{ !cancelled() && matrix.python-version == '3.13' }}
+        run: |
+          archive="lychee-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSLo "$RUNNER_TEMP/$archive" "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/$archive"
+          echo "${LYCHEE_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" --strip-components=1 lychee-x86_64-unknown-linux-gnu/lychee
+          git ls-files -z '*.md' | xargs -0 "$RUNNER_TEMP/lychee" --offline --include-fragments --no-progress
 
   conventional-commit:
     name: conventional-commit

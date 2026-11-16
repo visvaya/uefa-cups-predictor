@@ -48,7 +48,7 @@ EMOJI = re.compile(
 )
 # Recommendation labels in the report output carry these circles and serve as sort keys (accepted exception).
 LABEL_EMOJI = frozenset({chr(0x26AA), chr(0x1F534), chr(0x1F7E0), chr(0x1F7E1), chr(0x1F7E2)})
-LABEL_FILES = frozenset({"src/analyzer/recommendations.py", "readme.md", "interpretation.md"})
+LABEL_FILES = frozenset({"src/analyzer/recommendations.py", "README.md", "interpretation.md"})
 LABEL_DIRECTORIES = ("tests/golden/",)  # expected reports, which contain the labels
 IDENT_TIMESTAMP = re.compile(r"\s+\d+\s+[+-]\d{4}$")
 
@@ -111,13 +111,13 @@ def identity_problems(idents: dict[str, str], owner_emails: list[str]) -> list[s
     ]
 
 
-def run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:
-    """Runs a command built in this file (resolved executable, no shell) and captures its UTF-8 output.
+def run(command: list[str], stdin: str | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Runs a command built in this file or in gate.py (resolved executable, no shell) and captures its UTF-8 output.
 
     Bytes, not text mode: on Windows text mode turns every newline sent to stdin into CRLF.
     """
     data = None if stdin is None else stdin.encode("utf-8")
-    result = subprocess.run(command, input=data, capture_output=True, check=False)  # noqa: S603
+    result = subprocess.run(command, input=data, capture_output=True, check=False, cwd=cwd)  # noqa: S603
     return subprocess.CompletedProcess(command, result.returncode, result.stdout.decode(), result.stderr.decode())
 
 
