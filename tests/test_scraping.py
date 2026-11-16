@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import pytest
 import requests
 
-from scraping.fetcher import DEFAULT_USER_AGENT, MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
+from scraping.fetcher import DEFAULT_USER_AGENT, MAX_REDIRECTS, REQUEST_TIMEOUT_S, SoccerRatingFetcher, resolve_url
 from scraping.parsers import (
     LEAGUES,
     _extract_two_numbers,
@@ -237,7 +237,7 @@ def fetcher_with(
     queue = [page() if robots is None else robots, *responses]
 
     def get(url: str, timeout: int, allow_redirects: bool) -> SimpleNamespace:
-        assert allow_redirects is False
+        assert (allow_redirects, timeout) == (False, REQUEST_TIMEOUT_S)
         requested.append(url)
         response = queue.pop(0)
         if isinstance(response, Exception):
