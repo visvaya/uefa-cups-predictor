@@ -72,13 +72,13 @@ GOOD_VALUE = 50  # Val at or above: Good Value
 STRONG_SIGNAL = 1.50  # |expertScore| above: Strong Expert Signal
 POSITIVE_SIGNAL = 0.5  # |expertScore| above: Positive Signal
 MIN_MOTIVATION = 50  # STRONG BUY needs teamMot at or above this (and above oppMot)
-GOOD_SR_EDGE = 0.04  # SR edge above: supports CONSIDER
+GOOD_SR_EDGE = 0.04  # SR edge above: supports CONSIDER and is named SR Edge in the reason
 STEAM_ALIGNED_MIN = -0.01  # srDropping + do_drop at or above: odds are not rising against the pick
 SURE_BET_MAX_CLOSE = 2.00
 SURE_BET_MAX_FAIR = 2.20
 SURE_BET_MIN_STEAM = 0.03
 REASON_MIN_STEAM = 0.05  # |srDropping| above: Steam (+) or Steam (-)
-REASON_MIN_SR_EDGE = 0.05  # |SR edge| above: SR Edge or Market Confidence
+REASON_MIN_SR_EDGE = 0.05  # SR edge below minus this: Market Confidence (SR Edge uses GOOD_SR_EDGE)
 
 # Draw (X) rules, SR-only mode
 PERFECT_DRAW_MAX_SCORE = 0.05  # STRONG BUY X: |expertScore| below this
