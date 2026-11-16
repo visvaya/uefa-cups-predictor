@@ -1,0 +1,65 @@
+name: Mutation testing
+
+# Weekly measurement of how well the tests check the model rules (mutmut; settings in pyproject.toml).
+# Survivors are reported in the job summary; the job fails when mutmut cannot run or the score drops below the
+# baseline (first run, 2026-11-16: 1121 of 1385 mutants killed, 80.9 %).
+on:
+  schedule:
+    - cron: "53 4 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/mutation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutmut:
+    name: mutmut
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      UV_PYTHON: "3.13"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Run mutmut
+        run: uv run mutmut run --max-children 4
+      - name: Report survivors
+        if: ${{ !cancelled() }}
+        run: |
+          uv run mutmut export-cicd-stats
+          {
+            echo "## Mutation testing"
+            echo '```json'
+            cat mutants/mutmut-cicd-stats.json
+            echo '```'
+            echo "Surviving mutants (first 50):"
+            echo '```'
+            uv run mutmut results | head -50
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Check the mutation score
+        env:
+          # Ratchet: raise it when tests kill more mutants, never lower it to pass.
+          MIN_MUTATION_SCORE_PERCENT: "80"
+        run: |
+          uv run python - <<'PY'
+          import json, os, sys
+          s = json.load(open("mutants/mutmut-cicd-stats.json"))
+          tested = s["total"] - s["skipped"]
+          score = 100 * (s["killed"] + s["timeout"]) / tested if tested else 0.0
+          minimum = float(os.environ["MIN_MUTATION_SCORE_PERCENT"])
+          print(f"Mutation score {score:.1f} % (minimum {minimum:.0f} %)")
+          sys.exit(0 if score >= minimum else 1)
+          PY
