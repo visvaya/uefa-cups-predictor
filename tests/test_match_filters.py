@@ -14,6 +14,7 @@ from scraping.match_filters import (
 )
 from scraping.match_filters import cups as all_cups
 from scraping.models import TodayMatch
+from scraping.parsers import team_id_from_href
 from scraping.soccer_rating_cli import league_list_arg
 
 CODES = ["CLCUP", "ELCUP", "ECLCUP", "CLICUP", "AFCCUP", "CCCUP", "FACUP", "UKLCUP", "NEWCUP", "AR1", "EN"]
@@ -74,9 +75,17 @@ def test_daily_combination_keeps_uefa_cups_and_leagues() -> None:
     assert kept_codes(domestic_cups(), other_continental_cups()) == ["CLCUP", "ELCUP", "ECLCUP", "AR1", "EN"]
 
 
+def test_cups_classified_from_club_pages() -> None:
+    # Copa Sudamericana and AFC Champions League Two are continental; Copa Chile and the Rio state cup are domestic
+    classified = [replace(BASE, match_id=code, league_code=code) for code in ("CPCUP", "AFCUP", "CLCCUP", "BRRCUP")]
+    assert kept_codes(other_continental_cups(), matches=classified) == ["CLCCUP", "BRRCUP"]
+    assert kept_codes(domestic_cups(), matches=classified) == ["CPCUP", "AFCUP"]
+
+
 def test_skip_national_teams_drops_matches_with_a_national_team_id() -> None:
-    national = [replace(BASE, home_id=-28, away_id=-21), replace(BASE, away_id=-21), BASE]
-    assert apply_filters(national, [national_teams()]) == [BASE]
+    world_club = replace(BASE, home_id=team_id_from_href("/Zob-Ahan/w250/"))
+    national = [replace(BASE, home_id=-28, away_id=-21), replace(BASE, away_id=-21), BASE, world_club]
+    assert apply_filters(national, [national_teams()]) == [BASE, world_club]
 
 
 def test_leagues_keeps_only_listed_codes_and_combines_with_other_filters() -> None:

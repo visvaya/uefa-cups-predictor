@@ -29,18 +29,26 @@ RE_LEAGUE_STRICT = re.compile(r"\b(CLCUP|ELCUP)\b")
 RE_CLIP = re.compile(r"copyToClipboard\('([^']+)'\)")
 # Club links end in "/<id>/" or "/w<id>/", national-team links in "/n<id>/"
 RE_TEAM_ID = re.compile(r"/([nw]?)(\d+)/")
+# Added to "/w<id>/" ids, which the site numbers apart from "/<id>/" clubs (/Zob-Ahan/w250/ vs /FC-Metz/250/,
+# checked on 2026-11-16); the largest id seen then was about 2 * 10**4, far below the offset.
+WORLD_CLUB_ID_OFFSET = 10**9
 
 
 def team_id_from_href(href: str) -> int:
-    """The team id of a team link; national teams get negative ids, as they are numbered apart from clubs.
+    """The team id of a team link, unique across the site's three numberings.
 
-    National-team pages carry the same ratings and odds payloads as club pages (checked on 2026-11-16).
+    Clubs outside Europe ("/w<id>/") are shifted by WORLD_CLUB_ID_OFFSET and national teams ("/n<id>/") get negative
+    ids. National-team pages carry the same ratings and odds payloads as club pages (checked on 2026-11-16).
     """
     m = RE_TEAM_ID.search(href)
     if not m:
         raise ValueError(f"Could not extract team_id from href={href}")
     team_id = int(m.group(2))
-    return -team_id if m.group(1) == "n" else team_id
+    if m.group(1) == "n":
+        return -team_id
+    if m.group(1) == "w":
+        return WORLD_CLUB_ID_OFFSET + team_id
+    return team_id
 
 
 def make_match_id(snapshot_date: str, league_code: str, home_id: int, away_id: int) -> str:

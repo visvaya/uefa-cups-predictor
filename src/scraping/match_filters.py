@@ -11,9 +11,11 @@ logger = logging.getLogger(__name__)
 # Champions League, Europa League and Conference League, as soccer-rating.com codes them
 UEFA_CLUB_CUPS = frozenset({"CLCUP", "ELCUP", "ECLCUP"})
 # Continental club cups outside UEFA seen so far in the "Cups:" field of the site's club pages
-# (data/soccer-rating/club_cups.csv, 2026-11-16): Copa Libertadores, AFC Cup, CONCACAF Champions Cup.
+# (data/soccer-rating/club_cups.csv, 2026-11-16): Copa Libertadores, AFC Cup, CONCACAF Champions Cup, and,
+# classified from the opponents in the clubs' match lists, Copa Sudamericana (CPCUP) and AFC Champions League Two
+# (AFCUP). CLCCUP (Copa Chile) and BRRCUP (Rio de Janeiro state cup) are domestic.
 # Other codes containing CUP count as domestic cups until they are added here.
-OTHER_CONTINENTAL_CLUB_CUPS = frozenset({"CLICUP", "AFCCUP", "CCCUP"})
+OTHER_CONTINENTAL_CLUB_CUPS = frozenset({"CLICUP", "AFCCUP", "CCCUP", "CPCUP", "AFCUP"})
 
 
 @dataclass(frozen=True)

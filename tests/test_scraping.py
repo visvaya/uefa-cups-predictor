@@ -11,6 +11,7 @@ import requests
 from scraping.fetcher import DEFAULT_USER_AGENT, MAX_REDIRECTS, REQUEST_TIMEOUT_S, SoccerRatingFetcher, resolve_url
 from scraping.parsers import (
     LEAGUES,
+    WORLD_CLUB_ID_OFFSET,
     _extract_two_numbers,
     _normalize_time,
     name_match_score,
@@ -81,7 +82,9 @@ def test_minutes_until_kickoff_rejects_bad_format() -> None:
 
 def test_team_id_from_href() -> None:
     assert team_id_from_href("/Sturm-Graz/1294/") == 1294
-    assert team_id_from_href("/UTC-Cajamarca/w3353/") == 3353
+    # Clubs outside Europe ("/w<id>/") are numbered apart: /Zob-Ahan/w250/ and /FC-Metz/250/ are different clubs
+    assert team_id_from_href("/UTC-Cajamarca/w3353/") == WORLD_CLUB_ID_OFFSET + 3353
+    assert team_id_from_href("/Zob-Ahan/w250/") != team_id_from_href("/FC-Metz/250/")
     # National teams have their own id namespace, kept apart from clubs by the sign
     assert team_id_from_href("/Germany/n28/") == -28
     with pytest.raises(ValueError):
