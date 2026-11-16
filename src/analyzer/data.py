@@ -42,20 +42,14 @@ def cast_numeric(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
 
 
 def read_smart_csv(path: Path) -> pd.DataFrame:
-    """Reads CSV with automatic separator detection (handles ; and ,); raises AnalyzerInputError when missing."""
-    try:
-        # Try reading a few lines to detect separator
-        with path.open(encoding="utf-8-sig") as f:
-            first_line = f.readline()
-            sep = ";" if ";" in first_line else ","
+    """Reads UTF-8 CSV (BOM optional) with the separator taken from the header (; or ,).
 
+    Raises AnalyzerInputError when the file is missing; a file that is not UTF-8 raises UnicodeDecodeError.
+    """
+    try:
+        with path.open(encoding="utf-8-sig") as f:
+            sep = ";" if ";" in f.readline() else ","
         return pd.read_csv(path, sep=sep, encoding="utf-8-sig")
-    except UnicodeDecodeError:
-        # Fallback to standard utf-8
-        with path.open(encoding="utf-8") as f:
-            first_line = f.readline()
-            sep = ";" if ";" in first_line else ","
-        return pd.read_csv(path, sep=sep, encoding="utf-8")
     except FileNotFoundError as err:
         raise AnalyzerInputError(f"Missing file: {path}") from err
 

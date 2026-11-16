@@ -84,6 +84,13 @@ def test_read_smart_csv_raises_input_error_for_missing_file(tmp_path: Path) -> N
         read_smart_csv(tmp_path / "missing.csv")
 
 
+def test_read_smart_csv_rejects_a_file_that_is_not_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "latin1.csv"
+    path.write_bytes(("Team;Pts\nM" + chr(0xFC) + "nchen;3\n").encode("latin-1"))
+    with pytest.raises(UnicodeDecodeError):
+        read_smart_csv(path)
+
+
 @pytest.mark.parametrize(
     ("argv", "message"),
     [([], "ERROR: Missing file: "), (["--sr-only"], "ERROR: Input file not found: ")],

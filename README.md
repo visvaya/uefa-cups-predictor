@@ -82,11 +82,7 @@ The system interprets source data (*Predicted Table*) as a set of probabilities,
 
 ### Calculating P(Top 24) – "Chance of Continuing Play"
 
-The algorithm uses a hybrid approach to maintain mathematical consistency:
-
-1. **Disjoint Check**: If `LAST 16% + KO P/O%` is less than or equal to 100%, we assume they represent separate finishing positions (1-8 and 9-24) and **sum them**.
-2. **Anomaly Handling**: If the sum exceeds 100%, the data is inconsistent. In this case, we avoid the sum and take the **maximum** value from all available progress columns (`LAST 16`, `KPO`, `QF`, etc.).
-3. **Knockout Floor**: Finally, we apply a "sanity floor": `P(Top 24)` must be **≥ QF%**. This handles cases where a team's reported chance of winning/reaching late stages is higher than the reported chance of surviving the league phase.
+The algorithm sums `LAST 16%` and `KO P/O%` when they are consistent, falls back to the maximum progress column when the sum exceeds 100%, and never goes below `QF%`. The steps are described in [interpretation.md](interpretation.md#5-ptop-24-calculation-logic).
 
 ### Report Columns (Main Mode)
 
