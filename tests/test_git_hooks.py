@@ -12,7 +12,7 @@ def test_excluded_paths_rejects_configured_paths(path: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "path", ["readme.md", "src/notes.py", "docs/NOTES.md.bak", ".private", ".github/workflows/ci.yml"]
+    "path", ["README.md", "src/notes.py", "docs/NOTES.md.bak", ".private", ".github/workflows/ci.yml"]
 )
 def test_excluded_paths_keeps_other_files(path: str) -> None:
     assert excluded_paths([path], PATTERNS) == []
@@ -101,7 +101,7 @@ def test_text_problems_rejects_em_dash_and_emoji_anywhere() -> None:
 
 def test_text_problems_allows_label_emoji_only_where_labels_live() -> None:
     assert text_problems("src/analyzer/recommendations.py", 'label = "' + GREEN_LABEL + '"\n') == []
-    assert text_problems("readme.md", GREEN_LABEL + "\n") == []
+    assert text_problems("README.md", GREEN_LABEL + "\n") == []
     assert text_problems("tests/golden/cl.csv", GREEN_LABEL + "\n") == []
     assert text_problems("tests/golden/cl.csv", ROCKET + "\n") != []
     assert text_problems("src/x.py", GREEN_LABEL + "\n") != []

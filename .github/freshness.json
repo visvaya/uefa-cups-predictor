@@ -1,0 +1,46 @@
+{
+  "minimumReleaseAgeDays": 7,
+  "items": [
+    { "name": "Python packages", "mechanism": "dependabot", "where": "uv, /; runtime and dev groups in uv.lock, exclude-newer in pyproject.toml" },
+    {
+      "name": "hatchling (build backend)",
+      "mechanism": "dependabot",
+      "where": "uv, /; Dependabot's uv parser reads [build-system] requires (dependabot-core uv/spec/dependabot/uv/file_parser_spec.rb, 'with build-system requirements', read 2026-11-16); confirm on its first pull request"
+    },
+    { "name": "uv (CI)", "mechanism": "dependabot", "where": "uv, /; the uv dev dependency in uv.lock, which setup-uv reads through version-file" },
+    { "name": "GitHub Actions", "mechanism": "dependabot", "where": "github-actions, /; pinned by commit" },
+    {
+      "name": "Python patch",
+      "mechanism": "check-latest",
+      "where": "no patch is pinned: uv uses the runner image's interpreter of each UV_PYTHON line or downloads the newest patch the pinned uv knows, so the patch follows the image and the uv pin"
+    },
+    {
+      "name": "Python lines",
+      "mechanism": "manual",
+      "where": "requires-python in pyproject.toml and the CI matrix (3.12, 3.13); drop 3.12 when it reaches end of support (October 2028) and add a new line to the matrix after its first patch release"
+    },
+    {
+      "name": "Node for CI tools",
+      "mechanism": "check-latest",
+      "where": "setup-node node-version 24 with check-latest in ci.yml and freshness.yml; move to the next LTS line when 24 leaves active support"
+    },
+    {
+      "name": "markdownlint-cli2",
+      "mechanism": "job",
+      "check": { "file": "scripts/gate.py", "pattern": "markdownlint-cli2@([0-9.]+)", "npm": "markdownlint-cli2" },
+      "howToBump": "update the version in scripts/gate.py"
+    },
+    {
+      "name": "actionlint",
+      "mechanism": "job",
+      "check": { "file": ".github/workflows/ci.yml", "pattern": "ACTIONLINT_VERSION:[ \"]*([0-9.]+)", "github": "rhysd/actionlint" },
+      "howToBump": "update ACTIONLINT_VERSION and ACTIONLINT_SHA256 in ci.yml from the release checksums file"
+    },
+    {
+      "name": "lychee",
+      "mechanism": "job",
+      "check": { "file": ".github/workflows/ci.yml", "pattern": "LYCHEE_VERSION:[ \"]*([0-9.]+)", "github": "lycheeverse/lychee" },
+      "howToBump": "update LYCHEE_VERSION and LYCHEE_SHA256 in ci.yml from the .sha256 file of the Linux GNU archive"
+    }
+  ]
+}

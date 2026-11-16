@@ -1,6 +1,6 @@
 """Model constants: league format, status rules, score weights and recommendation cut-offs.
 
-Probabilities are fractions (0..1) unless the name says `PCT`; odds are decimal odds. `readme.md` and
+Probabilities are fractions (0..1) unless the name says `PCT`; odds are decimal odds. `README.md` and
 `interpretation.md` describe these rules, so a changed value needs a change there too.
 """
 

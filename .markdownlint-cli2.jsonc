@@ -1,0 +1,9 @@
+{
+  "config": {
+    "default": true,
+    "MD013": false, // line length: prose and tables keep their lines
+    "MD024": { "siblings_only": true }, // the same heading under different parents
+    "MD060": { "style": "compact" }, // tables: one changed cell changes one line
+  },
+  "gitignore": true, // environments and caches hold the Markdown of installed packages
+}
