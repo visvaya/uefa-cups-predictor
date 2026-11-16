@@ -62,6 +62,7 @@ NEUTRAL_DRAW_PROB = 0.334  # draw probability without SR data (the merged frame;
 
 # Soccer-rating signals
 STRANGE_ODDS_MIN_ABS = 30  # |AO| above this is reported as strange odds
+STRANGE_ODDS_ROTATION_FACTOR = 1.10  # standard mode: strange odds multiply both teams' RotRisk (capped)
 HIGH_QUALITY_MAX_ODDS_DISTANCE = 0.01  # sr_quality 1.0 needs a HIGH confidence match within this odds distance
 
 # Recommendation cut-offs

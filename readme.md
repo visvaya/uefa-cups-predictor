@@ -95,7 +95,7 @@ The algorithm uses a hybrid approach to maintain mathematical consistency:
 | **team / opp** | Analyzed team and its opponent. |
 | **teamWinProb%** | Probability of winning (from predicted table). |
 | **teamMot** | *Motivation Index* (0-100) – internal pressure for result. |
-| **teamRotRisk** | *Rotation Risk* (1.0 - 2.3) – higher means greater risk of squad rotation. |
+| **teamRotRisk** | *Rotation Risk* (1.0 - 2.3) – higher means greater risk of squad rotation. Raised by 10 % for both teams of a match with strange odds (see Soccer-rating Logic). |
 | **teamStatus / oppStatus** | Progress status (`IN_PLAY`, `LOCKED`, `OUT`). |
 | **expertScore** | **Synthetic Strength Signal**. Aggregate score from market, ratings, and lineups. If > 0, model favors this team. |
 | **srEdge** | **Probability Edge**: `FairProb - MarketCloseProb`. Positive = Value found by SR model. |
@@ -133,7 +133,7 @@ The algorithm uses a hybrid approach to maintain mathematical consistency:
 Odds are used as a **dynamic market signal** to enrich the static predictions from The Analyst. It represents the "live" consensus of bookmakers and professional bettors.
 
 1. **Market Consistency**: If model's favorite also has dropping odds (Steam), motivation and confidence are boosted.
-2. **Strange Odds Anomaly**: If a market rating adjustment is significant (>30), `RotRisk` is automatically increased to account for possible hidden factors (injuries, internal rotation).
+2. **Strange Odds Anomaly**: If a market rating adjustment is significant (|AO| > 30), the rotation risk of both teams in that match is multiplied by 1.10 (capped at 2.3) to account for possible hidden factors (injuries, internal rotation); the anomaly does not say which side carries them. The raised risk also lowers the Value Index, which divides by it. Standard mode only; SR-only mode has no rotation risk. With today's weights the raise alone cannot make a row `🟠 CAUTION`: an `IN_PLAY` team's risk stays below 1.11, and 1.11 x 1.10 is below the 1.39 threshold, so `Strange Odds (n)` in the reason is enough to explain it.
 
 ## Scraping Data
 

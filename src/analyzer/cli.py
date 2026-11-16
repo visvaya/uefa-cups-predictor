@@ -19,7 +19,7 @@ from analyzer.data import (
 )
 from analyzer.errors import AnalyzerInputError
 from analyzer.league import LEAGUE_NAMES, league_report, match_frame, validated_inputs
-from analyzer.model import calculate_values, enrich_table, integrity_report
+from analyzer.model import calculate_values, enrich_table, integrity_report, with_strange_odds_rotation
 from analyzer.soccer_rating import add_soccer_rating_features, coverage_report
 from analyzer.sr_only import sr_only_report, valid_odds
 from csv_safety import neutralize_formulas
@@ -55,7 +55,7 @@ def run_league(base_dir: Path, prefix: str, excel_pl: bool = False) -> None:
     matches = add_soccer_rating_features(matches, sr)
     if not sr.empty:
         print("\n".join(coverage_report(matches)))
-    report = league_report(calculate_values(matches), decimal_separator(excel_pl))
+    report = league_report(calculate_values(with_strange_odds_rotation(matches)), decimal_separator(excel_pl))
 
     print(f"\n--- {league_name} TOP 10 RECOMMENDATIONS ---")
     print(report.head(10).to_string(index=False))
