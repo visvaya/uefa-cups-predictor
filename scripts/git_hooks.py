@@ -111,13 +111,13 @@ def identity_problems(idents: dict[str, str], owner_emails: list[str]) -> list[s
     ]
 
 
-def run(command: list[str], stdin: str | None = None) -> subprocess.CompletedProcess[str]:
-    """Runs a command built in this file (resolved executable, no shell) and captures its UTF-8 output.
+def run(command: list[str], stdin: str | None = None, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Runs a command built in this file or in gate.py (resolved executable, no shell) and captures its UTF-8 output.
 
     Bytes, not text mode: on Windows text mode turns every newline sent to stdin into CRLF.
     """
     data = None if stdin is None else stdin.encode("utf-8")
-    result = subprocess.run(command, input=data, capture_output=True, check=False)  # noqa: S603
+    result = subprocess.run(command, input=data, capture_output=True, check=False, cwd=cwd)  # noqa: S603
     return subprocess.CompletedProcess(command, result.returncode, result.stdout.decode(), result.stderr.decode())
 
 
