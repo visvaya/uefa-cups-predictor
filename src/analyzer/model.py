@@ -25,6 +25,7 @@ from analyzer.config import (
     SEED_PEAK_XPOS,
     SEED_WIDTH_XPOS,
     STATUS_BONUSES,
+    STRANGE_ODDS_ROTATION_FACTOR,
     VALUE_BASE_SHARE,
     VALUE_MAX,
     VALUE_MOTIVATION_SHARE,
@@ -111,6 +112,18 @@ def enrich_table(table: pd.DataFrame) -> pd.DataFrame:
     relief = ROTATION_MOTIVATION_RELIEF * (df["Motivation"] / 100.0)
     df["RotRisk"] = (rot * (ROTATION_BASE - relief)).clip(1.0, ROTATION_RISK_MAX)
     return df
+
+
+def with_strange_odds_rotation(f: pd.DataFrame) -> pd.DataFrame:
+    """Raises Risk_H and Risk_A of a match with strange odds by STRANGE_ODDS_ROTATION_FACTOR, capped.
+
+    Both teams, because the anomaly does not say which side carries the hidden factor (injuries, rotation).
+    """
+    factor = np.where(f["strangeOdds"] != 0, STRANGE_ODDS_ROTATION_FACTOR, 1.0)
+    return f.assign(
+        Risk_H=(f["Risk_H"] * factor).clip(upper=ROTATION_RISK_MAX),
+        Risk_A=(f["Risk_A"] * factor).clip(upper=ROTATION_RISK_MAX),
+    )
 
 
 def calculate_values(df: pd.DataFrame) -> pd.DataFrame:
