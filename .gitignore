@@ -23,7 +23,9 @@ htmlcov/
 *.html
 # Synthetic test inputs and expected reports
 !tests/fixtures/**/*.csv
+!tests/fixtures/scraper/*.html
 !tests/golden/*.csv
+!tests/golden/scraper/**/*.csv
 
 # Ignore all data by default
 data/**/*

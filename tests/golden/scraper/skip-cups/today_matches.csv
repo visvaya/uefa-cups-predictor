@@ -1,0 +1,3 @@
+match_id,snapshot_date,league_code,league_name,time_local,home_id,away_id,home_team,away_team,home_href,away_href,value_side,odds_rating_oo_today,odd_1_today,odd_x_today,odd_2_today,lineup_rating_home_today,lineup_rating_away_today,lineup_type_today
+2026-02-05_AR1_909_1010,2026-02-05,AR1,Primera Division,22:00,909,1010,River Plate Res,Boca Res,/River-Plate-Res/909/,/Boca-Res/1010/,,,1.8,3.3,4.5,,,expected
+2026-02-05_AR1_1313_1414,2026-02-05,AR1,Primera Division,23:59,1313,1414,Late United,Night City,/Late-United/1313/,/Night-City/1414/,,45.0,2.0,3.2,3.8,,,
