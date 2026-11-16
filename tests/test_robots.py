@@ -29,6 +29,9 @@ CASES = [
     (["User-agent: *", "Disallow: /a%3cb"], "/a%3Cb", False),
     # comments and other lines are ignored
     (["# comment", "User-agent: * # all", "Crawl-delay: 5", "Disallow: /private # no"], "/private/x", False),
+    # the longest match wins, not the first: a broad Allow before a narrower Disallow
+    (["User-agent: *", "Allow: /", "Disallow: /private/"], "/private/x", False),
+    (["User-agent: *", "Allow: /", "Disallow: /private/"], "/public/x", True),
 ]
 
 # Group selection by product token
