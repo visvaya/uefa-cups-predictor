@@ -35,6 +35,14 @@ NEUTRAL = "⚪ NEUTRAL"
 CAUTION = "🟠 CAUTION"
 AVOID = "🔴 AVOID"
 RECOMMENDATION_ORDER = {STRONG_BUY: 0, CONSIDER: 1, NEUTRAL: 2, CAUTION: 3, AVOID: 4}
+# The last report columns of both modes, in this order: soccer-rating signals and the recommendation.
+SIGNAL_REPORT_COLUMNS = {
+    "SR_edge": "srEdge",
+    "srDropping": "srDropping",
+    "strangeOdds": "strangeOdds",
+    "recommendation": "recommendation",
+    "reason": "reason",
+}
 
 ROUND_2_COLUMNS = (
     "TeamRotRisk",

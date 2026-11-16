@@ -27,6 +27,8 @@ Run the same checks as CI before opening a pull request:
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
+uv run vulture                                   # dead code
+uv run pylint analyze.py src scripts tests       # duplicated code (only this check is enabled)
 uv run pytest --cov
 uv run python scripts/git_hooks.py tracked
 ```

@@ -6,7 +6,12 @@ import pandas as pd
 from src.analyzer.config import LEAGUE_TABLE_TEAMS, LINEUP_DIFF_SCALE, ROUND_FIXTURES, W_LINEUP
 from src.analyzer.errors import AnalyzerInputError
 from src.analyzer.names import norm_key
-from src.analyzer.recommendations import format_recommendations, recommendation_rank, round_numeric
+from src.analyzer.recommendations import (
+    SIGNAL_REPORT_COLUMNS,
+    format_recommendations,
+    recommendation_rank,
+    round_numeric,
+)
 from src.analyzer.soccer_rating import expert_score
 
 LEAGUE_NAMES = {"cl": "CHAMPIONS LEAGUE", "el": "EUROPA LEAGUE"}
@@ -44,11 +49,7 @@ REPORT_COLUMNS = {
     "OppStatus": "oppStatus",
     "expertScore": "expertScore",
     "sr_quality": "srCompleteness",
-    "SR_edge": "srEdge",
-    "srDropping": "srDropping",
-    "strangeOdds": "strangeOdds",
-    "recommendation": "recommendation",
-    "reason": "reason",
+    **SIGNAL_REPORT_COLUMNS,
 }
 
 

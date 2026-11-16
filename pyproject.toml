@@ -20,10 +20,12 @@ dev = [
     "hypothesis==6.170.15",
     "mypy==2.4.1",
     "pip-audit==2.10.1",
+    "pylint==4.1.3",
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
     "ruff==0.17.4",
     "types-requests==2.33.0.20261030",
+    "vulture==2.16",
     "zizmor==1.32.0",
 ]
 
@@ -39,11 +41,37 @@ line-length = 120
 
 [tool.ruff.lint]
 # Defaults (E4, E7, E9, F) plus all of pycodestyle (E, W), bug, modernisation, simplification,
-# import order, pathlib, blind-except and security (bandit) rules.
-extend-select = ["B", "BLE", "E", "I", "PTH", "RUF", "S", "SIM", "UP", "W"]
+# import order, pathlib, blind-except and security (bandit) rules, and function size limits.
+extend-select = [
+    "B", "BLE", "C90", "E", "I", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PTH", "RUF", "S", "SIM", "UP", "W",
+]
+
+# Size limits: the largest values measured after splitting the analyzer on 2026-11-16 (returns: resolve_url's
+# guard clauses). Tighten them when the code allows; never raise them to make a change pass.
+[tool.ruff.lint.mccabe]
+max-complexity = 7
+
+[tool.ruff.lint.pylint]
+max-args = 4
+max-branches = 6
+max-returns = 5
+max-statements = 26
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # pytest assertions
+# Temporary, until the scraper is split like the analyzer: parse_today_prediction, payload_to_odds_development
+# and the CLI's main and match loop exceed the limits.
+"src/scraping/parsers.py" = ["C901", "PLR0912", "PLR0913", "PLR0915"]
+"src/scraping/soccer_rating_cli.py" = ["C901", "PLR0912", "PLR0915"]
+
+[tool.vulture]
+paths = ["analyze.py", "src", "scripts", "tests"]
+min_confidence = 80
+
+[tool.pylint.main]
+# Only the duplicate-code check runs (ruff covers style and errors); see CONTRIBUTING.md.
+disable = "all"
+enable = "duplicate-code"
 
 [tool.ruff.format]
 line-ending = "lf"
