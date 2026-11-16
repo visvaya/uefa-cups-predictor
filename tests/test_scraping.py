@@ -14,6 +14,7 @@ from scraping.parsers import (
     WORLD_CLUB_ID_OFFSET,
     _extract_two_numbers,
     _normalize_time,
+    club_page_match_date,
     name_match_score,
     norm_team,
     parse_today_prediction,
@@ -418,9 +419,12 @@ def test_pick_best_payload_never_takes_another_fixture() -> None:
     assert debug["reason"] == "NO_CANDIDATE_NAMES_THE_FIXTURE"
 
 
-def _club_page(home: str, away: str) -> str:
+def _club_page(home: str, away: str, start: str | None = None, ratings: str = "") -> str:
+    """A club page with the payload of its next match and, when given, that match's start date and Team Ratings."""
     payload = f"{home},{away},0,CLCUP,0.0,0.0,0.0," + ",".join(["1.50,4.00,6.00"] * 4)
-    return f"<a href=\"javascript:copyToClipboard('{payload}')\">copy</a>"
+    event = f'<script type="application/ld+json">{{"@type": "SportsEvent", "startDate": "{start}"}}</script>'
+    table = f"<table><tr><td>Team Ratings (H/A)</td>{ratings}</tr></table>" if ratings else ""
+    return (event if start else "") + table + f"<a href=\"javascript:copyToClipboard('{payload}')\">copy</a>"
 
 
 def test_scan_club_pages_reads_the_away_page_when_the_home_page_lists_another_fixture() -> None:
@@ -435,3 +439,21 @@ def test_scan_club_pages_reads_the_away_page_when_the_home_page_lists_another_fi
     scan = scan_club_pages(match, read_page)
     assert read == [101, 202]
     assert [c["away_team_payload"] for c in scan.candidates] == ["Third FC", "Away FC"]
+
+
+def test_club_page_match_date_reads_the_next_match_start() -> None:
+    assert club_page_match_date(_club_page("A", "B", "2026-11-18T20:00+0100")) == "2026-11-18"
+    assert club_page_match_date(_club_page("A", "B")) is None
+
+
+def test_scan_club_pages_skips_a_page_whose_next_match_is_on_another_day() -> None:
+    # Two legs against the same opponent: the home page shows the first leg, the away page the right day
+    match = parse_today_prediction(_today_page(_today_row("/Home-FC/101/", "/Away-FC/202/")), "2026-02-05")[0]
+    pages = {
+        101: _club_page("Home FC", "Away FC", "2026-02-01T18:00+0100", "<td>1900.00</td><td>1800.00</td>"),
+        202: _club_page("Home FC", "Away FC", "2026-02-05T21:00+0100"),
+    }
+    scan = scan_club_pages(match, lambda side: pages[side[0]])
+    assert [c["_source_href"] for c in scan.candidates] == ["/Away-FC/202/"]
+    # The skipped page's ratings belong to its other match, so they are not kept
+    assert scan.team_ratings == (None, None)

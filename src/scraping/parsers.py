@@ -30,6 +30,8 @@ RE_MATCH_TABLE_HEADER = re.compile(
     r"Football Prediction (Today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)", re.IGNORECASE
 )
 RE_CLIP = re.compile(r"copyToClipboard\('([^']+)'\)")
+# schema.org SportsEvent of the club's next match: "startDate": "2026-11-18T20:00+0100" (site time)
+RE_START_DATE = re.compile(r'"startDate":\s*"(\d{4}-\d{2}-\d{2})T')
 # Club links end in "/<id>/" or "/w<id>/", national-team links in "/n<id>/"
 RE_TEAM_ID = re.compile(r"/([nw]?)(\d+)/")
 # Added to "/w<id>/" ids, which the site numbers apart from "/<id>/" clubs (/Zob-Ahan/w250/ vs /FC-Metz/250/,
@@ -339,6 +341,15 @@ def parse_clip_payloads(html: str) -> list[list[str]]:
         if m:
             payloads.append(m.group(1).split(","))
     return payloads
+
+
+def club_page_match_date(html: str) -> str | None:
+    """The date of the match whose odds payload a club page shows (its next match); None when the page names none.
+
+    A club page carries the payload of the club's next match only, so for a later fixture it shows another one.
+    """
+    m = RE_START_DATE.search(html)
+    return m.group(1) if m else None
 
 
 def parse_team_ratings(html: str) -> tuple[float | None, float | None]:

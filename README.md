@@ -159,8 +159,8 @@ python -m scraping.soccer_rating_cli
 Match filters (combinable, applied after the time window; each logs what it dropped):
 
 - `--skip-cups`: Skip every cup (league code contains `CUP`, e.g. `FACUP`, `CLCUP`).
-- `--skip-domestic-cups`: Skip cups that are neither UEFA nor other continental club cups. A `CUP` code not listed as continental counts as domestic.
-- `--skip-uefa-cups`: Skip the UEFA club competitions `CLCUP`, `ELCUP` and `ECLCUP`.
+- `--skip-domestic-cups`: Skip cups that are neither UEFA nor other continental club cups. Cup codes are classified in one table (`CUP_CODES` in `src/scraping/match_filters.py`); a `CUP` code missing from it counts as domestic, and the run logs `Unclassified cup code <code> (<name>)` so that it can be classified.
+- `--skip-uefa-cups`: Skip the UEFA club competitions `CLCUP`, `ELCUP`, `ECLCUP` and `WCLCUP` (Women's Champions League).
 - `--skip-other-continental-cups`: Skip continental club cups outside UEFA (`CLICUP`, `AFCCUP`, `CCCUP`, `CPCUP`, `AFCUP`, the codes seen so far; the list is `OTHER_CONTINENTAL_CLUB_CUPS` in `src/scraping/match_filters.py`).
 - `--skip-national-teams`: Skip matches of national teams.
 - `--leagues CODE[,CODE...]`: Keep only the listed league codes (e.g. `CLCUP,ELCUP,AR1`); implies reading all leagues of the page.

@@ -16,7 +16,9 @@ def test_report_counts_what_the_parsers_found() -> None:
 
     assert team_href == "/Home-FC/101/"
     # Valid matches on the fixture page in all-leagues mode; the short payload of Home FC's page does not count
-    assert with_team_page(report, TEAM_HTML) == MarkupReport(8, 8, 3, team_ratings=True, club_ratings=True)
+    assert with_team_page(report, TEAM_HTML) == MarkupReport(
+        8, 8, 3, team_ratings=True, club_ratings=True, match_date=True
+    )
     assert markup_problems(with_team_page(report, TEAM_HTML)) == []
 
 
@@ -29,6 +31,7 @@ def test_report_names_every_missing_structure() -> None:
         "no odds payloads on the team page",
         "no Team Ratings (H/A) on the team page",
         "no Rating Total/Home/Away on the team page",
+        "no next-match startDate on the team page",
     ]
 
 

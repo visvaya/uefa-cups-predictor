@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from .parsers import (
+    club_page_match_date,
     parse_clip_payloads,
     parse_club_page,
     parse_team_ratings,
@@ -29,6 +30,7 @@ class MarkupReport:
     payloads: int
     team_ratings: bool
     club_ratings: bool
+    match_date: bool = False
 
 
 def today_report(today_html: str, snapshot_date: str) -> tuple[MarkupReport, str | None]:
@@ -48,6 +50,7 @@ def with_team_page(report: MarkupReport, team_html: str) -> MarkupReport:
         payloads=len(payloads),
         team_ratings=None not in parse_team_ratings(team_html),
         club_ratings=None not in (meta.rating_total, meta.rating_home, meta.rating_away),
+        match_date=club_page_match_date(team_html) is not None,
     )
 
 
@@ -59,6 +62,8 @@ def markup_problems(report: MarkupReport) -> list[str]:
         (report.payloads > 0, "no odds payloads on the team page"),
         (report.team_ratings, "no Team Ratings (H/A) on the team page"),
         (report.club_ratings, "no Rating Total/Home/Away on the team page"),
+        # Without it the scraper cannot tell a later fixture from the club's next match
+        (report.match_date, "no next-match startDate on the team page"),
     ]
     return [problem for found, problem in checks if not found]
 

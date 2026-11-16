@@ -24,9 +24,11 @@ from .match_filters import (
     only_leagues,
     other_continental_cups,
     uefa_cups,
+    unclassified_cups,
 )
 from .models import ClubCup, ClubMeta, OddsDevelopment, PayloadSource, TodayMatch
 from .parsers import (
+    club_page_match_date,
     name_match_score,
     parse_clip_payloads,
     parse_club_page,
@@ -224,7 +226,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip cups that are neither UEFA nor other continental club cups (unknown CUP codes count as domestic)",
     )
-    filters.add_argument("--skip-uefa-cups", action="store_true", help="Skip CLCUP, ELCUP and ECLCUP")
+    filters.add_argument("--skip-uefa-cups", action="store_true", help="Skip CLCUP, ELCUP, ECLCUP and WCLCUP")
     filters.add_argument(
         "--skip-other-continental-cups",
         action="store_true",
@@ -334,6 +336,10 @@ def page_matches(filters: MatchFilters, html: str, now: datetime, days_ahead: in
 def select_matches(filters: MatchFilters, pages: list[tuple[int, str]], now: datetime) -> list[TodayMatch]:
     """The matches of the day pages, given as (days ahead, html), that pass the time window and the filters."""
     matches = [m for days_ahead, html in pages for m in page_matches(filters, html, now, days_ahead)]
+    for code, name in sorted(unclassified_cups(matches).items()):
+        logger.warning(
+            f"Unclassified cup code {code} ({name}): counted as a domestic cup; add it to CUP_CODES in match_filters"
+        )
     return apply_filters(matches, filters.drop)
 
 
@@ -403,12 +409,18 @@ def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
         if not club_html:
             continue
         team_id, _, href = side
-        tr_h, tr_a = parse_team_ratings(club_html)
-        if tr_h and tr_a:
-            team_ratings = (tr_h, tr_a)
         meta, club_cups = parse_club_page(club_html, team_id)
         clubs[team_id] = meta
         cups.extend(club_cups)
+        page_date = club_page_match_date(club_html)
+        if page_date not in (None, match.snapshot_date):
+            # The page shows the club's next match, which is on another day than this fixture; its odds and
+            # its Team Ratings (H/A) belong to that match, while the club's own data stays valid
+            logger.info(f"Club page {href} shows the match of {page_date}, not of {match.snapshot_date}.")
+            continue
+        tr_h, tr_a = parse_team_ratings(club_html)
+        if tr_h and tr_a:
+            team_ratings = (tr_h, tr_a)
         found.extend(club_page_candidates(club_html, href))
         # The payload of a match is on both club pages; once one names the fixture, the other would repeat it
         if any(names_fixture(match, c) for c in found):

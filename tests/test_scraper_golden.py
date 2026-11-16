@@ -186,11 +186,16 @@ def test_check_markup_exits_with_its_result_and_writes_nothing(monkeypatch: pyte
     assert not output_dir.exists()
 
 
-def test_match_filters_combine(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_match_filters_combine(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     filters = ("--leagues", "CLCUP,elcup,FACUP", "--skip-domestic-cups", "--skip-national-teams")
 
     # --leagues reads every league of the page, so no --all-leagues is needed
     run_cli(monkeypatch, local_workdir(tmp_path), tmp_path / "out", "--local", *filters)
+
+    # FACUP is not in the cup table, so the run names it instead of classifying it silently
+    assert "Unclassified cup code FACUP (FA Cup): counted as a domestic cup" in caplog.text
 
     today = pd.read_csv(tmp_path / "out" / "today_matches.csv")
     # AR1 is not listed, FACUP is a domestic cup and Land A vs Land B are national teams
