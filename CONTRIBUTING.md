@@ -52,7 +52,8 @@ not run natively on Windows, so use WSL to run it locally (`uv run mutmut run`).
   `fix(scraper): handle empty odds cell`. Pull requests are squash-merged and the title becomes the commit on
   `main`.
 - Add or update tests for changed behaviour.
-- CodeRabbit reviews every pull request into `main` automatically (drafts only when marked ready); its review and
-  the `gate` check must pass before merging.
+- The `gate` check must pass before merging. [CodeRabbit](https://www.coderabbit.ai/) reviews a pull request when
+  the maintainer asks for it (the comment `@coderabbitai review`), usually for changes to parsing, CI or larger logic
+  changes; its comments are suggestions, and the maintainer decides which to apply.
 
 By contributing you agree that your contribution is licensed under the [MIT License](LICENSE).
