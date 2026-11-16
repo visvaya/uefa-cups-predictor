@@ -6,6 +6,9 @@ reviews:
   poem: false
   commit_status: true
   fail_commit_status: true
+  auto_review:
+    # A paused review still reports a green status, so later fix rounds would merge unreviewed.
+    auto_pause_after_reviewed_commits: 0
   path_instructions:
     - path: "**"
       instructions: >-
@@ -20,4 +23,9 @@ reviews:
         Prefix comments on problems the pull request did not cause with "Pre-existing:". Do not comment on
         what the CI gate already enforces: the steps of scripts/gate.py (ruff check and format, mypy,
         import-linter, vulture, pylint duplicate-code, pytest with the coverage threshold, the tracked-file
-        scan), pip-audit, zizmor and actionlint.
+        scan, markdownlint-cli2), pip-audit, zizmor, actionlint and the offline lychee link check of the
+        Markdown files.
+knowledge_base:
+  learnings:
+    # What the bot learns here stays in this repository.
+    scope: local
