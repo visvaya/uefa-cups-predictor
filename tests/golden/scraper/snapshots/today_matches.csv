@@ -1,0 +1,5 @@
+match_id,snapshot_date,league_code,league_name,time_local,home_id,away_id,home_team,away_team,home_href,away_href,value_side,odds_rating_oo_today,odd_1_today,odd_x_today,odd_2_today,lineup_rating_home_today,lineup_rating_away_today,lineup_type_today
+2026-02-05_CLCUP_101_202,2026-02-05,CLCUP,Champions League,21:00,101,202,Home FC,Away FC,/Home-FC/101/,/Away-FC/202/,HOME,55.1,1.57,4.2,5.25,68.0,52.0,live
+2026-02-05_CLCUP_303_404,2026-02-05,CLCUP,Champions League,18:30,303,404,Red Star,Blue City,/Red-Star/303/,/Blue-City/404/,AWAY,48.0,2.1,3.4,3.3,61.0,63.0,expected
+2026-02-05_AR1_909_1010,2026-02-05,AR1,Primera Division,22:00,909,1010,River Plate Res,Boca Res,/River-Plate-Res/909/,/Boca-Res/1010/,,,1.8,3.3,4.5,,,expected
+2026-02-05_FACUP_1111_1212,2026-02-05,FACUP,FA Cup,20:00,1111,1212,Cup Town,Cup City,/Cup-Town/1111/,/Cup-City/1212/,,51.0,2.2,3.3,3.2,,,

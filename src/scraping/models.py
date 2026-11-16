@@ -61,6 +61,15 @@ class OddsDevelopment:
     team_rating_away: float | None
 
 
+@dataclass(frozen=True)
+class PayloadSource:
+    """Where a matched odds payload came from, with the team ratings (H/A) read from the same club page."""
+
+    source_url: str
+    team_rating_home: float | None
+    team_rating_away: float | None
+
+
 @dataclass
 class ClubMeta:
     team_id: int
