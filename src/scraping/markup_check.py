@@ -7,7 +7,7 @@ today page and one team page, runs the parsers on them and reports what they fou
 import logging
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .parsers import (
     parse_clip_payloads,
@@ -43,9 +43,8 @@ def with_team_page(report: MarkupReport, team_html: str) -> MarkupReport:
     """`report` completed with the payloads and ratings found on a team page."""
     payloads = [parts for parts in parse_clip_payloads(team_html) if payload_to_odds_row(parts)]
     meta, _ = parse_club_page(team_html, 0)
-    return MarkupReport(
-        matches=report.matches,
-        matches_with_odds=report.matches_with_odds,
+    return replace(
+        report,
         payloads=len(payloads),
         team_ratings=None not in parse_team_ratings(team_html),
         club_ratings=None not in (meta.rating_total, meta.rating_home, meta.rating_away),
