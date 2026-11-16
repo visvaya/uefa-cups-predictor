@@ -32,7 +32,8 @@ from scraping.parsers import parse_today_prediction, payload_to_odds_development
 TESTS_DIR = Path(__file__).resolve().parent
 FIXTURES_DIR = TESTS_DIR / "fixtures" / "scraper"
 GOLDEN_DIR = TESTS_DIR / "golden" / "scraper"
-FROZEN_NOW = datetime(2026, 2, 5, 18, 0, tzinfo=UTC)
+# 18:00 in Paris, the site's default timezone, so the time window sees 18:00 kickoffs as now
+FROZEN_NOW = datetime(2026, 2, 5, 17, 0, tzinfo=UTC)
 TODAY_PATH = "/today-prediction"
 
 
@@ -142,15 +143,15 @@ def test_site_timezone_moves_the_time_window(monkeypatch: pytest.MonkeyPatch, tm
     window = ("--local", "--all-leagues", "--min-start", "0", "--max-start", "60")
 
     workdir = local_workdir(tmp_path)
-    run_cli(monkeypatch, workdir, tmp_path / "utc", *window)
-    run_cli(monkeypatch, workdir, tmp_path / "paris", *window, "--site-timezone", "Europe/Paris")
+    run_cli(monkeypatch, workdir, tmp_path / "paris", *window)
+    run_cli(monkeypatch, workdir, tmp_path / "utc", *window, "--site-timezone", "UTC")
 
-    # 18:00 UTC is 19:00 in Paris: the window covers 18:00-19:00 on UTC clocks and 19:00-20:00 on Paris clocks
+    # 17:00 UTC is 18:00 in Paris (the default): the window covers 18:00-19:00 on Paris clocks, 17:00-18:00 on UTC
     def kickoffs(run: str) -> list[str]:
         return [str(t) for t in pd.read_csv(tmp_path / run / "today_matches.csv")["time_local"]]
 
-    assert kickoffs("utc") == ["18:30", "19:00"]
-    assert kickoffs("paris") == ["19:00", "20:00"]
+    assert kickoffs("paris") == ["18:30", "19:00"]
+    assert kickoffs("utc") == ["17:00"]
 
 
 def test_check_markup_exits_with_its_result_and_writes_nothing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

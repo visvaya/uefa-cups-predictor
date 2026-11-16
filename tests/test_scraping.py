@@ -1,4 +1,5 @@
 import argparse
+import sys
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -18,7 +19,7 @@ from scraping.parsers import (
     payload_to_odds_row,
     team_id_from_href,
 )
-from scraping.soccer_rating_cli import minutes_until_kickoff, site_clock, timezone_arg
+from scraping.soccer_rating_cli import minutes_until_kickoff, parse_args, site_clock, timezone_arg
 
 BACKSLASH = chr(92)
 ROBOTS_URL = "https://www.soccer-rating.com/robots.txt"
@@ -57,7 +58,13 @@ def test_site_clock_reads_kickoffs_in_the_site_timezone() -> None:
     now = site_clock(EVENING, ZoneInfo("Europe/Paris"))
     assert now.utcoffset() == timedelta(hours=1)
     assert minutes_until_kickoff("21:00", now) == 120
-    assert site_clock(EVENING, None) is EVENING
+
+
+def test_default_site_timezone_counts_real_minutes_across_dst(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["soccer-rating"])
+    # 00:30 UTC on 2026-03-29 is 01:30 CET; 04:00 that night is CEST, 02:00 UTC
+    now = site_clock(datetime(2026, 3, 29, 0, 30, tzinfo=UTC), parse_args().site_timezone)
+    assert minutes_until_kickoff("04:00", now) == 90
 
 
 def test_timezone_arg_rejects_unknown_names() -> None:

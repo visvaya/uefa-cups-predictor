@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 # A kickoff more than this many minutes in the past is treated as the next day's (after midnight)
 PAST_KICKOFF_ROLLOVER_MINUTES = 12 * 60
+SITE_TIMEZONE = "Europe/Paris"
 RE_KICKOFF_TIME = re.compile(r"^(\d{1,2}):(\d{2})$")
 
 
@@ -65,9 +66,9 @@ def league_list_arg(text: str) -> frozenset[str]:
     return codes
 
 
-def site_clock(now: datetime, site_tz: ZoneInfo | None) -> datetime:
-    """`now` on the clock the site shows kickoffs in; `now` itself when the site's timezone is not given."""
-    return now if site_tz is None else now.astimezone(site_tz)
+def site_clock(now: datetime, site_tz: ZoneInfo) -> datetime:
+    """`now` on the clock the site shows kickoffs in."""
+    return now.astimezone(site_tz)
 
 
 def minutes_until_kickoff(time_local: str, now: datetime) -> float:
@@ -197,8 +198,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--site-timezone",
         type=timezone_arg,
-        default=None,
-        help="IANA timezone the site shows kickoff times in, e.g. Europe/Paris (default: this machine's timezone)",
+        # The site's own timezone selector defaults to "GMT +1 Paris" (checked 2026-11-16)
+        default=SITE_TIMEZONE,
+        help=f"IANA timezone the site shows kickoff times in (default: {SITE_TIMEZONE})",
     )
     filters = parser.add_argument_group("match filters (combinable; each drops what it names)")
     filters.add_argument("--skip-cups", action="store_true", help="Skip every cup (league code contains CUP)")

@@ -157,7 +157,7 @@ python -m scraping.soccer_rating_cli
 - `--separate-snapshots`: Save snapshot to a separate file (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of merging.
 - `--min-start N`: Process matches starting at least N minutes from now.
 - `--max-start N`: Process matches starting at most N minutes from now. A kickoff more than 12 hours in the past counts as the next day's fixture.
-- `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (e.g. `Europe/Paris`); the window then counts real minutes, also across a DST change. Default: the machine's local timezone. The site renders times in the offset chosen in its "Timezone" selector, which defaulted to "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established.
+- `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (default `Europe/Paris`); the time window counts real minutes, also across a DST change. The default follows the site's "Timezone" selector, which showed "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established, so override it if the site shows times in another zone.
 
 Match filters (combinable, applied after the time window; each logs what it dropped):
 
