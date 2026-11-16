@@ -263,6 +263,8 @@ pytest --cov           # unit tests with the coverage threshold
 ruff check .           # lint
 ruff format --check .  # formatting
 mypy                   # type checking (paths configured in pyproject.toml)
+vulture                # dead code
+pylint analyze.py src scripts tests    # duplicated code
 python scripts/git_hooks.py tracked    # no em dashes, stray emoji or excluded paths in tracked files
 git config core.hooksPath .githooks    # once per checkout: commit message and staged-file checks
 ```

@@ -4,7 +4,12 @@ import numpy as np
 import pandas as pd
 
 from src.analyzer.config import DRAW_ZONE_MAX_SCORE
-from src.analyzer.recommendations import format_recommendations, recommendation_rank, round_numeric
+from src.analyzer.recommendations import (
+    SIGNAL_REPORT_COLUMNS,
+    format_recommendations,
+    recommendation_rank,
+    round_numeric,
+)
 from src.analyzer.soccer_rating import expert_score, sr_quality, with_market_signals, with_value_rating_signals
 
 REPORT_COLUMNS = {
@@ -13,11 +18,7 @@ REPORT_COLUMNS = {
     "expertScore": "expertScore",
     "pick12": "pick",
     "srCompleteness": "srCompleteness",
-    "SR_edge": "srEdge",
-    "srDropping": "srDropping",
-    "strangeOdds": "strangeOdds",
-    "recommendation": "recommendation",
-    "reason": "reason",
+    **SIGNAL_REPORT_COLUMNS,
 }
 
 

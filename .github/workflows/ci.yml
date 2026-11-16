@@ -47,6 +47,10 @@ jobs:
         if: ${{ !cancelled() }}
       - run: uv run mypy
         if: ${{ !cancelled() }}
+      - run: uv run vulture
+        if: ${{ !cancelled() }}
+      - run: uv run pylint analyze.py src scripts tests
+        if: ${{ !cancelled() }}
       - run: uv run pytest --cov --cov-report=term
         if: ${{ !cancelled() }}
       - run: uv run python scripts/git_hooks.py tracked
