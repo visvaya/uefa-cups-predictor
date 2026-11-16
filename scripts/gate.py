@@ -7,6 +7,7 @@ its name, exit code and duration, carries on after a failure so one run shows ev
 failed. The security audits (pip-audit, zizmor, actionlint) stay separate CI steps.
 """
 
+import io
 import os
 import sys
 import time
@@ -73,6 +74,11 @@ def main() -> int:
     # Every step is a Python process: UTF-8 mode makes them write UTF-8 whatever the Windows code page, which the
     # strict decoding in `run` expects.
     os.environ["PYTHONUTF8"] = "1"
+    # This process's own streams may still use a narrower code page (output redirected on Windows): replace what
+    # they cannot encode instead of stopping the gate.
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(errors="backslashreplace")
     results = run_steps(STEPS, run_python, time.monotonic)
     print(f"\n{summary(results)}")
     return 1 if any(r.exit_code for r in results) else 0
