@@ -131,15 +131,15 @@ def load_soccer_rating(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, list[
             f"WARNING: {meta_path.name} not found: team ids cannot be mapped, running without soccer-rating data"
         ]
 
-    warnings = []
+    notes = []
     today_path = sr_dir / "today_matches.csv"
     if today_path.exists():
         today = read_smart_csv(today_path)
     else:
         today = pd.DataFrame()
-        warnings.append(f"WARNING: {today_path.name} not found: running without lineups")
+        notes.append(f"WARNING: {today_path.name} not found: running without lineups")
     sr = with_lineups(latest_snapshots(sr), today)
-    return with_team_keys(sr, read_smart_csv(meta_path)), warnings
+    return with_team_keys(sr, read_smart_csv(meta_path)), notes
 
 
 def load_club_names(path: Path) -> dict[int, str]:

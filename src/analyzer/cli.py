@@ -49,8 +49,8 @@ def run_league(base_dir: Path, prefix: str, excel_pl: bool = False) -> None:
     print("\n".join(integrity_report(table, league_name)))
     matches = match_frame(fixtures, enrich_table(table))
 
-    sr, warnings = load_soccer_rating(base_dir, prefix)
-    for line in warnings:
+    sr, notes = load_soccer_rating(base_dir, prefix)
+    for line in notes:
         print(line)
     matches = add_soccer_rating_features(matches, sr)
     if not sr.empty:
