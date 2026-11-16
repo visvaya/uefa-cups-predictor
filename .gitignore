@@ -33,3 +33,4 @@ data/**/*
 !data/**/
 # Allow only files ending in _example.csv anywhere in data
 !data/**/*_example.csv
+mutants/

@@ -37,6 +37,9 @@ Changes to the recommendation logic in `src/analyzer/` must keep the reports det
 alter the output, say so in the pull request and update `readme.md` and `interpretation.md` when thresholds or
 weights change.
 
+Mutation testing of the model rules (mutmut, configured in `pyproject.toml`) runs weekly in GitHub Actions; mutmut does
+not run natively on Windows, so use WSL to run it locally (`uv run mutmut run`).
+
 ## Pull requests
 
 - One topic per pull request, branched from `main`.
