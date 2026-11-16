@@ -7,9 +7,10 @@ import pandas as pd
 import pytest
 
 from analyzer.cli import main
+from analyzer.config import ROTATION_RISK_MAX, STRANGE_ODDS_ROTATION_FACTOR
 from analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, read_smart_csv
 from analyzer.errors import AnalyzerInputError
-from analyzer.model import enrich_table, pressure_vector
+from analyzer.model import enrich_table, pressure_vector, with_strange_odds_rotation
 from analyzer.names import norm_key
 
 REPO_DIR = Path(__file__).resolve().parents[1]
@@ -65,6 +66,17 @@ def test_enrich_table_on_example_data_produces_bounded_indices() -> None:
     assert set(enriched["Status"]) <= {"IN_PLAY", "OUT", "LOCKED_DIRECT_RO16", "LOCKED_PLAYOFFS"}
     assert enriched["Motivation"].between(0, 100).all()
     assert enriched["RotRisk"].between(1.0, 2.3).all()
+
+
+def test_strange_odds_raise_the_rotation_risk_of_both_teams_up_to_the_cap() -> None:
+    matches = pd.DataFrame({"Risk_H": [1.2, 1.2, 2.2], "Risk_A": [1.0, 1.0, 1.3], "strangeOdds": [35.0, 0.0, -40.0]})
+
+    raised = with_strange_odds_rotation(matches)
+
+    factor = STRANGE_ODDS_ROTATION_FACTOR
+    assert raised["Risk_H"].tolist() == pytest.approx([1.2 * factor, 1.2, ROTATION_RISK_MAX])
+    assert raised["Risk_A"].tolist() == pytest.approx([1.0 * factor, 1.0, 1.3 * factor])
+    assert matches["Risk_H"].tolist() == [1.2, 1.2, 2.2]
 
 
 def test_read_smart_csv_raises_input_error_for_missing_file(tmp_path: Path) -> None:
