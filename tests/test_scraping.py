@@ -1,4 +1,5 @@
 import argparse
+from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -211,28 +212,33 @@ def test_resolve_url_rejects_other_urls(url_path: str) -> None:
     assert resolve_url(url_path) is None
 
 
-def page(text: str = "", location: str | None = None) -> SimpleNamespace:
+def page(text: str = "", location: str | None = None, status: int = 200) -> SimpleNamespace:
     """A stand-in for requests.Response with only what fetch reads."""
     return SimpleNamespace(
         is_redirect=location is not None,
         headers={"location": location} if location else {},
         text=text,
-        raise_for_status=lambda: None,
+        status_code=status,
     )
 
 
 def fetcher_with(
-    monkeypatch: pytest.MonkeyPatch, responses: list[SimpleNamespace], robots: str = ""
+    monkeypatch: pytest.MonkeyPatch,
+    responses: Sequence[SimpleNamespace | Exception],
+    robots: SimpleNamespace | Exception | None = None,
 ) -> tuple[SoccerRatingFetcher, list[str]]:
-    """A fetcher whose requests get `responses` in order, after `robots` as robots.txt (empty allows everything)."""
+    """A fetcher whose requests get `responses` (or raise them) in order, after `robots` (default: empty, allow all)."""
     fetcher = SoccerRatingFetcher()
     requested: list[str] = []
-    responses = [page(text=robots), *responses]
+    queue = [page() if robots is None else robots, *responses]
 
     def get(url: str, timeout: int, allow_redirects: bool) -> SimpleNamespace:
         assert allow_redirects is False
         requested.append(url)
-        return responses.pop(0)
+        response = queue.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
     monkeypatch.setattr(fetcher.session, "get", get)
     return fetcher, requested
@@ -269,7 +275,7 @@ def test_fetch_reads_robots_once_and_skips_disallowed_paths(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     robots = "User-Agent: *" + chr(10) + "Disallow: /chart.pl" + chr(10)
-    fetcher, requested = fetcher_with(monkeypatch, [page(text="today"), page(text="club")], robots=robots)
+    fetcher, requested = fetcher_with(monkeypatch, [page(text="today"), page(text="club")], robots=page(text=robots))
 
     assert fetcher.fetch("/today-prediction") == "today"
     assert fetcher.fetch("/chart.pl?id=1") is None
@@ -285,10 +291,42 @@ def test_fetch_reads_robots_once_and_skips_disallowed_paths(
 
 def test_fetch_skips_a_redirect_into_a_disallowed_path(monkeypatch: pytest.MonkeyPatch) -> None:
     robots = "User-Agent: *" + chr(10) + "Disallow: /private/" + chr(10)
-    fetcher, requested = fetcher_with(monkeypatch, [page(location="/private/x")], robots=robots)
+    fetcher, requested = fetcher_with(monkeypatch, [page(location="/private/x")], robots=page(text=robots))
 
     assert fetcher.fetch("/Ajax/") is None
     assert requested == [ROBOTS_URL, "https://www.soccer-rating.com/Ajax/"]
+
+
+def test_fetch_treats_a_missing_robots_txt_as_allowing_everything(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetcher, requested = fetcher_with(monkeypatch, [page(text="today")], robots=page(text="Not found", status=404))
+
+    assert fetcher.fetch("/today-prediction") == "today"
+    assert requested == [ROBOTS_URL, "https://www.soccer-rating.com/today-prediction"]
+
+
+@pytest.mark.parametrize(
+    "robots",
+    [
+        page(text="Disallow: /chart.pl", status=503),
+        requests.ConnectionError("down"),
+        page(location="https://evil.example/"),
+    ],
+)
+def test_fetch_stops_when_robots_txt_is_unreachable(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, robots: SimpleNamespace | Exception
+) -> None:
+    fetcher, requested = fetcher_with(monkeypatch, [page(text="today")], robots=robots)
+
+    assert fetcher.fetch("/today-prediction") is None
+    assert fetcher.fetch("/Ajax/123/") is None
+    assert requested == [ROBOTS_URL]
+    assert "robots.txt is unreachable" in caplog.text
+
+
+def test_fetch_returns_none_on_an_error_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetcher, _ = fetcher_with(monkeypatch, [page(text="Server error", status=500)])
+
+    assert fetcher.fetch("/today-prediction") is None
 
 
 def test_fetch_survives_a_malformed_redirect_target(monkeypatch: pytest.MonkeyPatch) -> None:

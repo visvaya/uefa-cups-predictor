@@ -150,7 +150,7 @@ python -m scraping.soccer_rating_cli
 
 - `--limit N`: Process only N matches (useful for quick testing).
 - `--delay N`: Set delay between requests (default 1.5s).
-- `--user-agent TEXT`: Override the User-Agent header. By default the scraper identifies itself as `uefa-cups-predictor` with a link to this repository. It reads the site's `robots.txt` once per run and skips paths it disallows.
+- `--user-agent TEXT`: Override the User-Agent header. By default the scraper identifies itself as `uefa-cups-predictor` with a link to this repository. It reads the site's `robots.txt` once per run and skips paths it disallows; a missing `robots.txt` (4xx) allows everything, while a server or network error fetching it stops all requests of the run (RFC 9309).
 - `--local`: Use local HTML files (for debugging without network).
 - `--output-dir PATH`: Custom output directory (default `data/soccer-rating`).
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
