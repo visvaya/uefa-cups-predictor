@@ -4,6 +4,7 @@ from dataclasses import replace
 import pytest
 
 from scraping.match_filters import (
+    CUP_CODES,
     MatchFilter,
     apply_filters,
     domestic_cups,
@@ -11,6 +12,7 @@ from scraping.match_filters import (
     only_leagues,
     other_continental_cups,
     uefa_cups,
+    unclassified_cups,
 )
 from scraping.match_filters import cups as all_cups
 from scraping.models import TodayMatch
@@ -82,6 +84,13 @@ def test_cups_classified_from_club_pages() -> None:
     assert kept_codes(domestic_cups(), matches=classified) == ["CPCUP", "AFCUP"]
 
 
+def test_womens_champions_league_is_a_uefa_cup() -> None:
+    # WCLCUP is the UEFA Women's Champions League (Chelsea v Paris Saint-Germain on 2026-11-18), not a domestic cup
+    womens = [replace(BASE, match_id="WCLCUP", league_code="WCLCUP")]
+    assert kept_codes(domestic_cups(), other_continental_cups(), matches=womens) == ["WCLCUP"]
+    assert kept_codes(uefa_cups(), matches=womens) == []
+
+
 def test_skip_national_teams_drops_matches_with_a_national_team_id() -> None:
     world_club = replace(BASE, home_id=team_id_from_href("/Zob-Ahan/w250/"))
     national = [replace(BASE, home_id=-28, away_id=-21), replace(BASE, away_id=-21), BASE, world_club]
@@ -104,3 +113,14 @@ def test_league_list_arg() -> None:
     assert league_list_arg("CLCUP, elcup,,AR1") == frozenset({"CLCUP", "ELCUP", "AR1"})
     with pytest.raises(argparse.ArgumentTypeError):
         league_list_arg(" , ")
+
+
+def test_cup_codes_classify_every_cup_the_filters_name() -> None:
+    assert {code for code, (kind, _) in CUP_CODES.items() if kind == "uefa"} == {"CLCUP", "ELCUP", "ECLCUP", "WCLCUP"}
+    assert CUP_CODES["ESCUP"] == ("domestic", "Copa del Rey")
+
+
+def test_unclassified_cups_names_cup_codes_missing_from_the_table() -> None:
+    unknown = replace(BASE, match_id="NEWCUP", league_code="NEWCUP", league_name="New Cup")
+    known = [replace(BASE, league_code=code) for code in ("WCLCUP", "ESCUP", "AR1")]
+    assert unclassified_cups([unknown, *known, unknown]) == {"NEWCUP": "New Cup"}
