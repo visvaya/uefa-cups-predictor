@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,7 @@ from src.analyzer.names import norm_key
 
 REPO_DIR = Path(__file__).resolve().parents[1]
 EXAMPLE_TABLE = REPO_DIR / "data" / "theanalyst" / "champions-league" / "cl_table_predicted_example.csv"
+SR_FIXTURES_DIR = REPO_DIR / "tests" / "fixtures" / "soccer-rating"
 
 
 def test_norm_key_strips_diacritics_and_applies_name_fix() -> None:
@@ -95,4 +97,16 @@ def test_sr_only_stops_when_no_match_has_valid_odds(tmp_path: Path, capsys: pyte
 
     assert exit_info.value.code == 1
     assert capsys.readouterr().out.splitlines()[-1] == f"ERROR: No match with valid odds in {snapshot.name}"
+    assert not list(tmp_path.glob("sr_analysis_report*.csv"))
+
+
+def test_sr_only_stops_when_the_named_input_file_is_missing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    shutil.copytree(SR_FIXTURES_DIR, tmp_path / "data" / "soccer-rating")
+    missing = tmp_path / "data" / "soccer-rating" / "match_odds_development_2026-02-07.csv"
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(tmp_path, ["--sr-only", "--input-file", str(missing), "--output-dir", str(tmp_path)])
+
+    assert exit_info.value.code == 1
+    assert capsys.readouterr().out.splitlines()[-1] == f"ERROR: Input file not found: {missing}"
     assert not list(tmp_path.glob("sr_analysis_report*.csv"))

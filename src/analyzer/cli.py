@@ -84,8 +84,8 @@ def today_names(path: Path) -> dict[str, dict[str, str]]:
 def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None, excel_pl: bool = False) -> None:
     """SR-only mode: writes `sr_analysis_report[_<date>].csv` to `output_dir` (default `base_dir`)."""
     sr_dir = soccer_rating_dir(base_dir)
-    # The cumulative file unless an existing snapshot is given
-    path = input_file if input_file and input_file.exists() else sr_dir / "match_odds_development.csv"
+    # The named snapshot, or the cumulative file when none is named
+    path = input_file or sr_dir / "match_odds_development.csv"
     if not path.exists():
         raise AnalyzerInputError(f"Input file not found: {path}")
     print(f"INFO: Loading SR data from: {path.name}")
