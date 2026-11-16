@@ -409,17 +409,18 @@ def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
         if not club_html:
             continue
         team_id, _, href = side
-        tr_h, tr_a = parse_team_ratings(club_html)
-        if tr_h and tr_a:
-            team_ratings = (tr_h, tr_a)
         meta, club_cups = parse_club_page(club_html, team_id)
         clubs[team_id] = meta
         cups.extend(club_cups)
         page_date = club_page_match_date(club_html)
         if page_date not in (None, match.snapshot_date):
-            # The page shows the club's next match, which is on another day than this fixture
+            # The page shows the club's next match, which is on another day than this fixture; its odds and
+            # its Team Ratings (H/A) belong to that match, while the club's own data stays valid
             logger.info(f"Club page {href} shows the match of {page_date}, not of {match.snapshot_date}.")
             continue
+        tr_h, tr_a = parse_team_ratings(club_html)
+        if tr_h and tr_a:
+            team_ratings = (tr_h, tr_a)
         found.extend(club_page_candidates(club_html, href))
         # The payload of a match is on both club pages; once one names the fixture, the other would repeat it
         if any(names_fixture(match, c) for c in found):
