@@ -9,7 +9,7 @@ from hypothesis import strategies as st
 from urllib3.util import parse_url
 
 from src.csv_safety import FORMULA_PREFIXES, neutralize_cell
-from src.scraping.fetcher import ALLOWED_HOSTS, resolve_url
+from src.scraping.fetcher import resolve_url
 from src.scraping.parsers import (
     _extract_float,
     _extract_two_numbers,
@@ -85,6 +85,10 @@ bases = st.sampled_from(
 )
 
 
+# The contract, written out here so that a wider production allowlist would fail the property.
+SITE_HOSTS = frozenset({"soccer-rating.com", "www.soccer-rating.com"})
+
+
 @given(link=links, base=bases)
 @example(link="https://user@evil.com", base="https://www.soccer-rating.com/")
 @example(link="https://soccer-rating.com:443@evil.com/", base="https://www.soccer-rating.com/")
@@ -96,14 +100,14 @@ def test_resolve_url_stays_on_https_soccer_rating(link: str, base: str) -> None:
         return
     parts = urlsplit(url)
     assert parts.scheme == "https"
-    assert parts.hostname in ALLOWED_HOSTS
+    assert parts.hostname in SITE_HOSTS
     assert parts.username is None and parts.password is None
     assert parts.port is None
     assert parts.fragment == ""
     # The HTTP client (requests) parses URLs with urllib3: it must see the same host.
     parsed = parse_url(url)
     assert parsed.scheme == "https"
-    assert parsed.host in ALLOWED_HOSTS
+    assert parsed.host in SITE_HOSTS
     assert parsed.auth is None
     assert parsed.port is None
 
