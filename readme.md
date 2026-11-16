@@ -158,7 +158,17 @@ python -m scraping.soccer_rating_cli
 - `--min-start N`: Process matches starting at least N minutes from now.
 - `--max-start N`: Process matches starting at most N minutes from now. A kickoff more than 12 hours in the past counts as the next day's fixture.
 - `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (e.g. `Europe/Paris`); the window then counts real minutes, also across a DST change. Default: the machine's local timezone. The site renders times in the offset chosen in its "Timezone" selector, which defaulted to "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established.
-- `--skip-cups`: Skip cup matches (league code contains `CUP`, e.g. `FACUP`) except the UEFA club competitions `CLCUP`, `ELCUP` and `ECLCUP`; useful together with `--all-leagues`.
+
+Match filters (combinable, applied after the time window; each logs what it dropped):
+
+- `--skip-cups`: Skip every cup (league code contains `CUP`, e.g. `FACUP`, `CLCUP`).
+- `--skip-domestic-cups`: Skip cups that are neither UEFA nor other continental club cups. A `CUP` code not listed as continental counts as domestic.
+- `--skip-uefa-cups`: Skip the UEFA club competitions `CLCUP`, `ELCUP` and `ECLCUP`.
+- `--skip-other-continental-cups`: Skip continental club cups outside UEFA (`CLICUP`, `AFCCUP`, `CCCUP`, the codes seen so far; the list is `OTHER_CONTINENTAL_CLUB_CUPS` in `src/scraping/match_filters.py`).
+- `--skip-national-teams`: Skip matches of national teams.
+- `--leagues CODE[,CODE...]`: Keep only the listed league codes (e.g. `CLCUP,ELCUP,AR1`); implies reading all leagues of the page.
+
+With `--all-leagues`, `--skip-domestic-cups --skip-other-continental-cups` keeps the leagues and the UEFA cups.
 
 National-team matches (links such as `/Germany/n28/`) are scraped like club matches. Their team ids are stored as negative numbers (`-28`), because the site numbers national teams separately from clubs; the analyzer's CL/EL reports never contain them, so they only show up in the SR-only report.
 

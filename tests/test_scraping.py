@@ -1,6 +1,5 @@
 import argparse
 from collections.abc import Sequence
-from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
@@ -19,7 +18,7 @@ from scraping.parsers import (
     payload_to_odds_row,
     team_id_from_href,
 )
-from scraping.soccer_rating_cli import minutes_until_kickoff, site_clock, timezone_arg, without_cups
+from scraping.soccer_rating_cli import minutes_until_kickoff, site_clock, timezone_arg
 
 BACKSLASH = chr(92)
 ROBOTS_URL = "https://www.soccer-rating.com/robots.txt"
@@ -155,16 +154,6 @@ def test_parse_today_prediction_names_unknown_leagues_without_changing_leagues()
         ("AR1", "Primera Division"),
     ]
     assert leagues_before == LEAGUES
-
-
-def test_without_cups_keeps_uefa_club_competitions() -> None:
-    match = parse_today_prediction(_today_page(_today_row("/Home-FC/101/", "/Away-FC/202/")), "2026-02-05")[0]
-    codes = ["CLCUP", "ELCUP", "ECLCUP", "FACUP", "UKLCUP", "AR1"]
-
-    kept, skipped = without_cups([replace(match, league_code=code) for code in codes])
-
-    assert [m.league_code for m in kept] == ["CLCUP", "ELCUP", "ECLCUP", "AR1"]
-    assert skipped == {"FACUP", "UKLCUP"}
 
 
 def test_payload_to_odds_row_requires_full_payload() -> None:
