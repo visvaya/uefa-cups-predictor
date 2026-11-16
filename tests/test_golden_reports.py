@@ -90,6 +90,17 @@ def test_analyze_sr_only_report_matches_golden(base_dir: Path, excel_pl: bool) -
     )
 
 
+def test_analyze_sr_only_reads_the_files_beside_its_input(base_dir: Path) -> None:
+    # A snapshot in its own folder brings its own team names; the default folder's would not match its matches
+    run_dir = base_dir / "elsewhere" / "run"
+    shutil.move(base_dir / "data" / "soccer-rating", run_dir)
+    output_dir = base_dir / "new" / "recommendations"
+
+    run_sr_only(base_dir, run_dir / SR_ONLY_INPUT, output_dir)
+
+    assert_matches_golden(output_dir / "sr_analysis_report_2026-01-28.csv", "sr_analysis_report.csv")
+
+
 def test_analyze_league_runs_without_lineups(base_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
     (base_dir / "data" / "soccer-rating" / "today_matches.csv").unlink()
 

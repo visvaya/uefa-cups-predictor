@@ -82,10 +82,13 @@ def today_names(path: Path) -> dict[str, dict[str, str]]:
 
 
 def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None, excel_pl: bool = False) -> None:
-    """SR-only mode: writes `sr_analysis_report[_<date>].csv` to `output_dir` (default `base_dir`)."""
-    sr_dir = soccer_rating_dir(base_dir)
+    """SR-only mode: writes `sr_analysis_report[_<date>].csv` to `output_dir` (default `base_dir`, created if missing).
+
+    Team names and lineups come from the scraper's files beside the snapshot, which one scraper run wrote together.
+    """
     # The named snapshot, or the cumulative file when none is named
-    path = input_file or sr_dir / "match_odds_development.csv"
+    path = input_file or soccer_rating_dir(base_dir) / "match_odds_development.csv"
+    sr_dir = path.parent
     if not path.exists():
         raise AnalyzerInputError(f"Input file not found: {path}")
     print(f"INFO: Loading SR data from: {path.name}")
@@ -101,6 +104,7 @@ def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None
     print("\n--- SR-ONLY ANALYSIS TOP 10 RECOMMENDATIONS ---")
     print(report.head(10).to_string(index=False))
     out_path = (output_dir or base_dir) / f"sr_analysis_report{date_str}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         write_report(report, out_path, excel_pl)
         print(f"SUCCESS: Saved SR-Only report to: {out_path}")

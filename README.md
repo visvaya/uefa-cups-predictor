@@ -204,8 +204,8 @@ python analyze.py --excel-pl
 ### Analyzer Arguments
 
 - `--sr-only`: Run analysis independent of 'The Analyst' data (Market Signals only).
-- `--input-file PATH`: Specify a snapshot file for SR-only mode (e.g., specific date).
-- `--output-dir PATH`: Custom directory for analysis reports.
+- `--input-file PATH`: Specify a snapshot file for SR-only mode (e.g., specific date). Team names and lineups are read from `club_meta.csv` and `today_matches.csv` in the same folder, so keep a scraper run's files together (`soccer-rating --output-dir`).
+- `--output-dir PATH`: Custom directory for analysis reports, created if missing.
 
 **Generated Reports:**
 
