@@ -156,7 +156,7 @@ python -m scraping.soccer_rating_cli
 - `--separate-snapshots`: Save snapshot to a separate file (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of merging.
 - `--min-start N`: Process matches starting at least N minutes from now.
 - `--max-start N`: Process matches starting at most N minutes from now. Kickoff times are read in the machine's local timezone; a kickoff more than 12 hours in the past counts as the next day's fixture.
-- `--skip-cups`: Skip matches whose league code contains `CUP` (e.g. `FACUP`); useful together with `--all-leagues`.
+- `--skip-cups`: Skip cup matches (league code contains `CUP`, e.g. `FACUP`) except the UEFA club competitions `CLCUP`, `ELCUP` and `ECLCUP`; useful together with `--all-leagues`.
 
 National team fixtures are skipped with a warning; only club matches are supported.
 

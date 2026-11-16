@@ -1,2 +1,3 @@
 match_id,snapshot_date,home_id,away_id,league_code,source_url,oo,do,ao,open_1,open_x,open_2,drop_1,drop_x,drop_2,close_1,close_x,close_2,fair_1,fair_x,fair_2,name_match_level,matched_odds_stage,odds_distance,oo_match_gap,match_confidence,team_rating_home,team_rating_away
-2026-02-05_AR1_909_1010,2026-02-05,909,1010,AR1,/River-Plate-Res/909/,51.0,50.0,49.0,2.5,3.0,2.8,2.5,3.0,2.8,2.5,3.0,2.8,2.5,3.0,2.8,2,open,0.32904761904761903,,LOW,,
+2026-02-05_CLCUP_101_202,2026-02-05,101,202,CLCUP,/Home-FC/101/,55.1,54.0,53.5,1.6,4.1,5.0,1.58,4.15,5.1,1.57,4.2,5.25,1.52,4.4,5.9,2,close,0.0,0.0,HIGH,2083.96,2029.4
+2026-02-05_CLCUP_303_404,2026-02-05,303,404,CLCUP,/Blue-City/404/,47.5,47.0,46.0,2.2,3.3,3.2,2.15,3.35,3.25,2.14,3.45,3.36,2.05,3.5,3.6,1,close,0.017013828421792703,0.5,MEDIUM,1990.1,1950.2

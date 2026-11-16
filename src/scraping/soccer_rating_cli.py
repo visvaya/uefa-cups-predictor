@@ -31,6 +31,8 @@ MINUTES_PER_DAY = 24 * 60
 # A kickoff more than this many minutes in the past is treated as the next day's (after midnight)
 PAST_KICKOFF_ROLLOVER_MINUTES = 12 * 60
 RE_KICKOFF_TIME = re.compile(r"^(\d{1,2}):(\d{2})$")
+# Kept by --skip-cups: Champions League, Europa League and Conference League (codes as soccer-rating.com uses them)
+UEFA_CLUB_CUPS = frozenset({"CLCUP", "ELCUP", "ECLCUP"})
 
 
 def local_now() -> datetime:
@@ -145,7 +147,9 @@ def parse_args() -> argparse.Namespace:
         "--max-start", type=int, default=None, help="Process matches starting at most N minutes from now"
     )
     parser.add_argument(
-        "--skip-cups", action="store_true", help="Skip matches where league code contains 'CUP' (e.g. FA CUP, CCCUP)"
+        "--skip-cups",
+        action="store_true",
+        help="Skip cup matches (league code contains 'CUP', e.g. FACUP) except CLCUP, ELCUP and ECLCUP",
     )
     return parser.parse_args()
 
@@ -182,10 +186,15 @@ def in_time_window(
     return kept
 
 
+def is_skipped_cup(league_code: str) -> bool:
+    """A cup code (it contains 'CUP') other than the UEFA club competitions this project analyses."""
+    return "CUP" in league_code and league_code not in UEFA_CLUB_CUPS
+
+
 def without_cups(matches: list[TodayMatch]) -> tuple[list[TodayMatch], set[str]]:
-    """Drops matches whose league code contains 'CUP'; returns the kept matches and the skipped codes."""
-    kept = [m for m in matches if "CUP" not in (m.league_code or "")]
-    return kept, {m.league_code for m in matches if "CUP" in (m.league_code or "")}
+    """Drops cup matches except UEFA club competitions; returns the kept matches and the skipped codes."""
+    kept = [m for m in matches if not is_skipped_cup(m.league_code or "")]
+    return kept, {m.league_code for m in matches if is_skipped_cup(m.league_code or "")}
 
 
 def select_matches(filters: MatchFilters, today_html: str, snapshot_date: str, now: datetime) -> list[TodayMatch]:
