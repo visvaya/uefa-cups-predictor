@@ -21,17 +21,15 @@ git config core.hooksPath .githooks   # commit message and staged-file checks
 
 ## Checks
 
-Run the same checks as CI before opening a pull request:
+Run the same checks as CI before opening a pull request, from the repository root:
 
 ```bash
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy
-uv run vulture                                   # dead code
-uv run pylint analyze.py src scripts tests       # duplicated code (only this check is enabled)
-uv run pytest --cov
-uv run python scripts/git_hooks.py tracked
+uv run python -m scripts.gate
 ```
+
+The gate (`scripts/gate.py`) runs ruff, mypy, vulture, pylint (only the duplicate-code check is enabled), pytest with the
+coverage threshold and the tracked-file scan, reports each step's exit code and duration, and exits 1 if any failed.
+Add a new code check to its `STEPS`, not to the workflow, so local runs and CI stay the same.
 
 Changes to the recommendation logic in `src/analyzer/` must keep the reports deterministic. If a change is meant to
 alter the output, say so in the pull request and update `readme.md` and `interpretation.md` when thresholds or
