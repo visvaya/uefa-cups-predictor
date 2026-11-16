@@ -215,10 +215,18 @@ def fetcher_with(
     monkeypatch: pytest.MonkeyPatch,
     responses: Sequence[SimpleNamespace | Exception],
     robots: SimpleNamespace | Exception | None = None,
+    delay_s: float = 0.0,
 ) -> tuple[SoccerRatingFetcher, list[str]]:
-    """A fetcher whose requests get `responses` (or raise them) in order, after `robots` (default: empty, allow all)."""
-    fetcher = SoccerRatingFetcher()
+    """A fetcher whose requests get `responses` (or raise them) in order, after `robots` (default: empty, allow all).
+
+    The returned list records the requested URLs and, as "sleep <seconds>", every pause longer than zero.
+    """
     requested: list[str] = []
+
+    def sleep(seconds: float) -> None:
+        requested.extend([f"sleep {seconds}"] if seconds else [])
+
+    fetcher = SoccerRatingFetcher(delay_s=delay_s, sleep=sleep)
     queue = [page() if robots is None else robots, *responses]
 
     def get(url: str, timeout: int, allow_redirects: bool) -> SimpleNamespace:
@@ -284,6 +292,21 @@ def test_fetch_skips_a_redirect_into_a_disallowed_path(monkeypatch: pytest.Monke
 
     assert fetcher.fetch("/Ajax/") is None
     assert requested == [ROBOTS_URL, "https://www.soccer-rating.com/Ajax/"]
+
+
+def test_fetch_waits_the_delay_between_robots_txt_and_the_first_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    fetcher, requested = fetcher_with(monkeypatch, [page(text="today"), page(text="club")], delay_s=2.5)
+
+    assert fetcher.fetch("/today-prediction") == "today"
+    assert fetcher.fetch("/Ajax/123/") == "club"
+
+    # Later pages are paced by the caller (the club page reader), so the fetcher waits only once
+    assert requested == [
+        ROBOTS_URL,
+        "sleep 2.5",
+        "https://www.soccer-rating.com/today-prediction",
+        "https://www.soccer-rating.com/Ajax/123/",
+    ]
 
 
 def test_fetch_treats_a_missing_robots_txt_as_allowing_everything(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -463,7 +463,7 @@ def save_results(output_dir: Path, matches: list[TodayMatch], result: ScrapeResu
 def main() -> None:
     args = parse_args()
     snapshot_date = local_now().strftime("%Y-%m-%d")
-    fetcher = SoccerRatingFetcher(args.user_agent)
+    fetcher = SoccerRatingFetcher(args.user_agent, args.delay)
     if args.check_markup:
         raise SystemExit(check_markup(fetcher.fetch, args.delay, snapshot_date))
     output_dir = Path(args.output_dir)

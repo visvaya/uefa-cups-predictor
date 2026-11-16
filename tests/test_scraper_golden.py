@@ -44,7 +44,7 @@ def fetch_fixture(url_path: str) -> str | None:
 
 
 def run_cli(monkeypatch: pytest.MonkeyPatch, workdir: Path, output_dir: Path, *args: str) -> list[tuple[str, object]]:
-    """Runs the CLI offline; returns the fetcher's User-Agent, the fetches and the sleeps in the order they happened."""
+    """Runs the CLI offline; returns the fetcher's settings, the fetches and the sleeps in the order they happened."""
     calls: list[tuple[str, object]] = []
 
     def fetch(url_path: str) -> str | None:
@@ -54,8 +54,8 @@ def run_cli(monkeypatch: pytest.MonkeyPatch, workdir: Path, output_dir: Path, *a
     monkeypatch.chdir(workdir)
     monkeypatch.setattr(soccer_rating_cli, "local_now", lambda: FROZEN_NOW)
 
-    def fetcher(user_agent: str) -> SimpleNamespace:
-        calls.append(("user_agent", user_agent))
+    def fetcher(user_agent: str, delay_s: float) -> SimpleNamespace:
+        calls.append(("fetcher", (user_agent, delay_s)))
         return SimpleNamespace(fetch=fetch)
 
     monkeypatch.setattr(soccer_rating_cli, "SoccerRatingFetcher", fetcher)
@@ -95,7 +95,7 @@ def test_local_cumulative_run_merges_existing_files(monkeypatch: pytest.MonkeyPa
 
     calls = run_cli(monkeypatch, local_workdir(tmp_path), output_dir, "--local")
 
-    assert calls == [("user_agent", DEFAULT_USER_AGENT)]  # local mode neither fetches nor waits
+    assert calls == [("fetcher", (DEFAULT_USER_AGENT, 1.5))]  # local mode neither fetches nor waits
     assert_matches_golden(output_dir, "cumulative")
 
 
@@ -132,7 +132,7 @@ def test_remote_run_fetches_pages_and_resolves_source_urls(monkeypatch: pytest.M
         "/Green-Park/505/",
         "/Old-Town/606/",
     ]
-    assert calls == [("user_agent", "test/1.0"), ("fetch", TODAY_PATH)] + [
+    assert calls == [("fetcher", ("test/1.0", 0.5)), ("fetch", TODAY_PATH)] + [
         call for href in club_pages for call in (("sleep", 0.5), ("fetch", href))
     ]
     assert_matches_golden(output_dir, "remote")

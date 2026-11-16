@@ -1,4 +1,6 @@
 import logging
+import time
+from collections.abc import Callable
 from typing import ClassVar
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
@@ -11,6 +13,7 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://www.soccer-rating.com"
 ALLOWED_HOSTS = frozenset({"www.soccer-rating.com", "soccer-rating.com"})
 MAX_REDIRECTS = 5
+REQUEST_TIMEOUT_S = 15
 ROBOTS_PATH = "/robots.txt"
 # Names the tool and where to read about it, so the site can tell who sends the requests
 DEFAULT_USER_AGENT = "uefa-cups-predictor/0.1 (+https://github.com/visvaya/uefa-cups-predictor)"
@@ -44,9 +47,12 @@ class SoccerRatingFetcher:
         "Accept-Language": "en-US,en;q=0.9,pl;q=0.8",
     }
 
-    def __init__(self, user_agent: str = DEFAULT_USER_AGENT, timeout: int = 15):
-        self.timeout = timeout
+    def __init__(
+        self, user_agent: str = DEFAULT_USER_AGENT, delay_s: float = 0.0, sleep: Callable[[float], None] = time.sleep
+    ):
         self.user_agent = user_agent
+        self.delay_s = delay_s
+        self.sleep = sleep
         self.session = requests.Session()
         self.session.headers.update({**self.HEADERS, "User-Agent": user_agent})
         self.robots: Rules | None = None
@@ -54,10 +60,11 @@ class SoccerRatingFetcher:
     def fetch(self, url_path: str) -> str | None:
         """Fetches a page from soccer-rating.com (a full URL or a relative path) unless robots.txt disallows it.
 
-        robots.txt is read once, on the first fetch.
+        robots.txt is read once, on the first fetch, followed by a pause of `delay_s` before the page itself.
         """
         if self.robots is None:
             self.robots = self._read_robots()
+            self.sleep(self.delay_s)
         response = self._response(url_path, self.robots)
         if response is None:
             return None
@@ -88,7 +95,7 @@ class SoccerRatingFetcher:
                     logger.warning(f"Skipping {url}: disallowed by robots.txt")
                     return None
                 logger.info(f"Fetching {url}...")
-                response = self.session.get(url, timeout=self.timeout, allow_redirects=False)
+                response = self.session.get(url, timeout=REQUEST_TIMEOUT_S, allow_redirects=False)
                 if not response.is_redirect:
                     return response
                 target = response.headers["location"]
