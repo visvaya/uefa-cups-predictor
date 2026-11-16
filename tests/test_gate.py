@@ -9,7 +9,16 @@ def test_steps_have_unique_names_and_cover_the_ci_checks() -> None:
     names = [name for name, _ in STEPS]
     assert len(names) == len(set(names))
     commands = [" ".join(args) for _, args in STEPS]
-    for check in ("ruff check", "ruff format --check", "mypy", "vulture", "pylint", "pytest --cov", "tracked"):
+    for check in (
+        "ruff check",
+        "ruff format --check",
+        "mypy",
+        "importlinter",
+        "vulture",
+        "pylint",
+        "pytest --cov",
+        "tracked",
+    ):
         assert any(check in command for command in commands), check
 
 

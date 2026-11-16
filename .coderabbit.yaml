@@ -18,6 +18,6 @@ reviews:
         recommendation output stays deterministic and its default format (comma separator, decimal point)
         unchanged; a change to model thresholds or weights also updates readme.md and interpretation.md.
         Prefix comments on problems the pull request did not cause with "Pre-existing:". Do not comment on
-        what the CI gate already enforces: the steps of scripts/gate.py (ruff check and format, mypy, vulture,
-        pylint duplicate-code, pytest with the coverage threshold, the tracked-file scan), pip-audit, zizmor and
-        actionlint.
+        what the CI gate already enforces: the steps of scripts/gate.py (ruff check and format, mypy,
+        import-linter, vulture, pylint duplicate-code, pytest with the coverage threshold, the tracked-file
+        scan), pip-audit, zizmor and actionlint.

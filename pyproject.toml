@@ -32,6 +32,7 @@ sources = ["src"]
 # Exact versions keep the quality gate stable: new ruff releases change the default rule set.
 dev = [
     "hypothesis==6.170.15",
+    "import-linter==2.16",
     "mutmut==3.8.1",
     "mypy==2.4.1",
     "pip-audit==2.10.1",
@@ -74,6 +75,33 @@ max-statements = 26
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # pytest assertions
+
+[tool.importlinter]
+# Layer boundaries: the model and the parsers stay free of I/O, so they remain testable as pure functions.
+# Checked by scripts/gate.py; forbidden contracts also catch indirect imports through another module.
+# csv_safety is a module, which import-linter cannot take as a root: tests/test_csv_safety.py checks its imports.
+root_packages = ["analyzer", "scraping"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Analyzer logic does no I/O"
+type = "forbidden"
+source_modules = [
+    "analyzer.config",
+    "analyzer.names",
+    "analyzer.model",
+    "analyzer.recommendations",
+    "analyzer.soccer_rating",
+    "analyzer.league",
+    "analyzer.sr_only",
+]
+forbidden_modules = ["analyzer.data", "analyzer.cli", "scraping", "requests"]
+
+[[tool.importlinter.contracts]]
+name = "Scraper parsing does no I/O"
+type = "forbidden"
+source_modules = ["scraping.parsers", "scraping.models"]
+forbidden_modules = ["scraping.fetcher", "scraping.soccer_rating_cli", "requests"]
 
 [tool.vulture]
 paths = ["analyze.py", "src", "scripts", "tests"]

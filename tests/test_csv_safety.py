@@ -1,6 +1,10 @@
+import ast
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
+import csv_safety
 from csv_safety import neutralize_cell, neutralize_formulas
 
 TAB = chr(9)
@@ -36,3 +40,12 @@ def test_neutralize_formulas_is_idempotent() -> None:
     df = pd.DataFrame({"team": ["=evil()"]})
     once = neutralize_formulas(df)
     assert neutralize_formulas(once)["team"].tolist() == once["team"].tolist()
+
+
+def test_csv_safety_imports_no_package_of_the_project() -> None:
+    """Layer contract import-linter cannot express: it accepts only packages as roots, and this is a module."""
+    tree = ast.parse(Path(csv_safety.__file__).read_text(encoding="utf-8"))
+    imported = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names} | {
+        node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
+    }
+    assert not {name for name in imported if name.split(".")[0] in {"analyzer", "scraping"}}

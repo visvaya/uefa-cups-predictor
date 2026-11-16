@@ -27,9 +27,10 @@ Run the same checks as CI before opening a pull request, from the repository roo
 uv run python -m scripts.gate
 ```
 
-The gate (`scripts/gate.py`) runs ruff, mypy, vulture, pylint (only the duplicate-code check is enabled), pytest with the
-coverage threshold and the tracked-file scan, reports each step's exit code and duration, and exits 1 if any failed.
-Add a new code check to its `STEPS`, not to the workflow, so local runs and CI stay the same.
+The gate (`scripts/gate.py`) runs ruff, mypy, import-linter (layer contracts in `pyproject.toml`), vulture, pylint
+(only the duplicate-code check is enabled), pytest with the coverage threshold and the tracked-file scan, reports each
+step's exit code and duration, and exits 1 if any failed. Add a new code check to its `STEPS`, not to the workflow, so
+local runs and CI stay the same.
 
 Changes to the recommendation logic in `src/analyzer/` must keep the reports deterministic. If a change is meant to
 alter the output, say so in the pull request and update `readme.md` and `interpretation.md` when thresholds or

@@ -19,6 +19,11 @@ STEPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("ruff check", ("-m", "ruff", "check", ".")),
     ("ruff format", ("-m", "ruff", "format", "--check", ".")),
     ("mypy", ("-m", "mypy")),
+    # import-linter has no `python -m` entry point; --no-cache leaves no cache directory behind.
+    (
+        "import contracts",
+        ("-c", "from importlinter.cli import lint_imports_command; lint_imports_command()", "--no-cache"),
+    ),
     ("vulture", ("-m", "vulture")),
     ("pylint duplicate-code", ("-m", "pylint", "analyze.py", "src", "scripts", "tests")),
     ("pytest", ("-m", "pytest", "--cov", "--cov-report=term")),
