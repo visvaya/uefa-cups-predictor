@@ -26,6 +26,9 @@ RE_INT = re.compile(r"\s(\d+)$")
 # Letters that NFKD does not decompose into a base letter plus a combining mark
 NON_DECOMPOSING_LETTERS = str.maketrans({"ø": "o", "æ": "ae", "å": "a", "ł": "l", "đ": "d", "ß": "ss"})
 RE_LEAGUE_STRICT = re.compile(r"\b(CLCUP|ELCUP)\b")
+RE_MATCH_TABLE_HEADER = re.compile(
+    r"Football Prediction (Today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)", re.IGNORECASE
+)
 RE_CLIP = re.compile(r"copyToClipboard\('([^']+)'\)")
 # Club links end in "/<id>/" or "/w<id>/", national-team links in "/n<id>/"
 RE_TEAM_ID = re.compile(r"/([nw]?)(\d+)/")
@@ -82,8 +85,9 @@ def _extract_two_numbers(td_text: str) -> tuple[float | None, float | None]:
 
 
 def _find_match_table(soup: BeautifulSoup) -> Tag | None:
+    # The today page heads its table "Football Prediction Today", a day page "Football Prediction Tuesday"
     for t in soup.find_all("table", class_="bigtable"):
-        if t.find(string=re.compile(r"Football Prediction Today", re.IGNORECASE)):
+        if t.find(string=RE_MATCH_TABLE_HEADER):
             return t
     return None
 

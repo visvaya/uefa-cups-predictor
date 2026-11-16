@@ -32,8 +32,14 @@ def test_minutes_until_kickoff_same_day() -> None:
     assert minutes_until_kickoff("21:00", EVENING) == 180
 
 
-def test_minutes_until_kickoff_rolls_over_midnight() -> None:
-    assert minutes_until_kickoff("01:00", EVENING) == 7 * 60
+def test_minutes_until_kickoff_keeps_early_kickoffs_on_the_page_day() -> None:
+    # A day page lists 00:00-06:00 kickoffs of its own date: at 18:00 a 01:00 kickoff today is already past
+    assert minutes_until_kickoff("01:00", EVENING) == -17 * 60
+
+
+def test_minutes_until_kickoff_counts_from_a_later_day_page() -> None:
+    assert minutes_until_kickoff("01:00", EVENING, days_ahead=1) == 7 * 60
+    assert minutes_until_kickoff("21:00", EVENING, days_ahead=2) == (2 * 24 + 3) * 60
 
 
 def test_minutes_until_kickoff_keeps_recent_past_negative() -> None:
@@ -50,9 +56,9 @@ def test_minutes_until_kickoff_counts_real_minutes_across_autumn_dst() -> None:
     assert minutes_until_kickoff("04:00", datetime(2026, 10, 25, 1, 0, tzinfo=WARSAW)) == 240
 
 
-def test_minutes_until_kickoff_rolls_over_into_a_dst_change() -> None:
+def test_minutes_until_kickoff_counts_into_a_dst_change_on_the_next_day_page() -> None:
     # 23:30 CET on 2026-03-28 to 11:00 CEST the next day is 10.5 hours, not 11.5
-    assert minutes_until_kickoff("11:00", datetime(2026, 3, 28, 23, 30, tzinfo=WARSAW)) == 630
+    assert minutes_until_kickoff("11:00", datetime(2026, 3, 28, 23, 30, tzinfo=WARSAW), days_ahead=1) == 630
 
 
 def test_site_clock_reads_kickoffs_in_the_site_timezone() -> None:
@@ -137,6 +143,11 @@ def test_parse_today_prediction_reads_club_match() -> None:
     assert match.match_id == "2026-02-05_CLCUP_101_202"
     assert (match.odd_1_today, match.lineup_rating_home_today) == (1.57, 68.0)
     assert (match.odd_x_today, match.lineup_rating_away_today) == (4.2, 52.0)
+
+
+def test_parse_today_prediction_reads_a_weekday_page() -> None:
+    page = _today_page(_today_row("/Home-FC/101/", "/Away-FC/202/")).replace("Today", "Tuesday<br>(Tomorrow)")
+    assert [m.match_id for m in parse_today_prediction(page, "2026-02-06")] == ["2026-02-06_CLCUP_101_202"]
 
 
 def test_parse_today_prediction_reads_national_team_links() -> None:
