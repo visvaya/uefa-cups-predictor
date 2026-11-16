@@ -1,10 +1,10 @@
 ﻿homeTeam;awayTeam;expertScore;pick;srCompleteness;srEdge;srDropping;strangeOdds;recommendation;reason
 Alpha FC;Beta United;1,0;1;1,0;0,04;0,32;0,0;🟢 STRONG BUY;"Sure Bet Pattern; Positive Signal; Steam (+)"
 Gamma SC;Delta Town;0,98;2;1,0;0,04;0,32;0,0;🟢 STRONG BUY;"Sure Bet Pattern; Positive Signal; Steam (+)"
-Epsilon Club;Zeta Rovers;0,0;X;1,0;-0,01;0,0;0,0;🟢 STRONG BUY;Lean: X2 (SteamX 0.06)
+Epsilon Club;Zeta Rovers;0,0;X;1,0;-0,01;0,0;0,0;🟢 STRONG BUY;Lean: X2 (SteamX 0,06)
 Bodø/Glimt;Iota FC;1,36;1;1,0;0,02;0,0;0,0;🟡 CONSIDER;Positive Signal
 Nu Albion;Xi Rangers;0,66;1;0,5;-0,08;-0,37;0,0;🟡 CONSIDER;"Positive Signal; Steam (-); Market Confidence"
-Eta Athletic;Theta City;0,06;X;1,0;0,0;0,0;0,0;🟡 CONSIDER;Lean: 1X (SteamX 0.0)
-ID_999;Mu Dynamo;0,0;X;0,0;0,0;0,0;-40,0;🟡 CONSIDER;"Strange Odds (-40); Lean: X2 (SteamX 0.0)"
+Eta Athletic;Theta City;0,06;X;1,0;0,0;0,0;0,0;🟡 CONSIDER;Lean: 1X (SteamX 0,0)
+ID_999;Mu Dynamo;0,0;X;0,0;0,0;0,0;-40,0;🟡 CONSIDER;"Strange Odds (-40); Lean: X2 (SteamX 0,0)"
 Kappa Sport;Lambda Wanderers;0,26;1;0,5;-0,01;0,0;45,0;⚪ NEUTRAL;Strange Odds (45)
-Omicron FC;Beta United;0,01;X;1,0;-0,01;0,35;0,0;⚪ NEUTRAL;"Steam (+); Lean: 1X (SteamX 0.0)"
+Omicron FC;Beta United;0,01;X;1,0;-0,01;0,35;0,0;⚪ NEUTRAL;"Steam (+); Lean: 1X (SteamX 0,0)"

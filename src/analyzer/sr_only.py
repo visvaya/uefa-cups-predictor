@@ -107,11 +107,14 @@ def favoured_sides(ranking: pd.DataFrame) -> pd.DataFrame:
 
 
 def sr_only_report(
-    sr: pd.DataFrame, id_to_name: dict[int, str], today_names: dict[str, dict[str, str]]
+    sr: pd.DataFrame, id_to_name: dict[int, str], today_names: dict[str, dict[str, str]], decimal: str
 ) -> pd.DataFrame:
-    """The SR-only report rows for a soccer-rating snapshot with numeric odds columns."""
+    """The SR-only report rows for a soccer-rating snapshot with numeric odds columns.
+
+    `decimal` is the decimal separator of the numbers in the reasons.
+    """
     matches = match_features(with_team_names(sr, id_to_name, today_names))
-    ranking = favoured_sides(format_recommendations(team_ranking(matches), allow_draws=True))
+    ranking = favoured_sides(format_recommendations(team_ranking(matches), allow_draws=True, decimal=decimal))
 
     report = ranking.rename(columns=REPORT_COLUMNS)
     for c in REPORT_COLUMNS.values():
