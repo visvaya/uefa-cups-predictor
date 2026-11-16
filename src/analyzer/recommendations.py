@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from src.analyzer.config import (
+from analyzer.config import (
     CONSIDER_DRAW_MAX_SCORE,
     DOMINANT_STEAM_DIFF,
     DRAW_MIN_FAIR_PROB,

@@ -10,7 +10,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.csv_safety import neutralize_formulas
+from csv_safety import neutralize_formulas
 
 from .fetcher import SoccerRatingFetcher, resolve_url
 from .models import ClubCup, ClubMeta, OddsDevelopment, PayloadSource, TodayMatch

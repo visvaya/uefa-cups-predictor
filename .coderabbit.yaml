@@ -9,8 +9,9 @@ reviews:
   path_instructions:
     - path: "**"
       instructions: >-
-        Python 3.12+ scripts: analyze.py (entry point), src/analyzer (recommendation model) and src/scraping
-        (soccer-rating.com scraper).
+        Python 3.12+ src-layout package: analyze.py (entry point), src/analyzer (recommendation model),
+        src/scraping (soccer-rating.com scraper) and src/csv_safety.py, imported as analyzer, scraping and
+        csv_safety.
         Principles: lean code without speculative options; pathlib instead of open(); specific exceptions
         instead of broad ones; every noqa states its reason; no secrets or absolute paths; CSV input through
         read_smart_csv and CSV output through neutralize_formulas; fetched URLs through resolve_url;

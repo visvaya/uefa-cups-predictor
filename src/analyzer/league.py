@@ -3,16 +3,16 @@
 import numpy as np
 import pandas as pd
 
-from src.analyzer.config import LEAGUE_TABLE_TEAMS, LINEUP_DIFF_SCALE, ROUND_FIXTURES, W_LINEUP
-from src.analyzer.errors import AnalyzerInputError
-from src.analyzer.names import norm_key
-from src.analyzer.recommendations import (
+from analyzer.config import LEAGUE_TABLE_TEAMS, LINEUP_DIFF_SCALE, ROUND_FIXTURES, W_LINEUP
+from analyzer.errors import AnalyzerInputError
+from analyzer.names import norm_key
+from analyzer.recommendations import (
     SIGNAL_REPORT_COLUMNS,
     format_recommendations,
     recommendation_rank,
     round_numeric,
 )
-from src.analyzer.soccer_rating import expert_score
+from analyzer.soccer_rating import expert_score
 
 LEAGUE_NAMES = {"cl": "CHAMPIONS LEAGUE", "el": "EUROPA LEAGUE"}
 

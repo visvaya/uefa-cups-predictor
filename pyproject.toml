@@ -14,6 +14,20 @@ dependencies = [
     "requests>=2.33",
 ]
 
+[project.scripts]
+analyze = "analyzer.cli:run"
+soccer-rating = "scraping.soccer_rating_cli:main"
+
+[build-system]
+# Fetched at build time; exact pin, released more than a week before adoption (release-age rule).
+requires = ["hatchling==1.33.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Three top-level import names from src/ in one distribution (uv_build supports only package directories).
+only-include = ["src/analyzer", "src/scraping", "src/csv_safety.py"]
+sources = ["src"]
+
 [dependency-groups]
 # Exact versions keep the quality gate stable: new ruff releases change the default rule set.
 dev = [
@@ -30,8 +44,8 @@ dev = [
 ]
 
 [tool.uv]
-# Scripts run from the repository root; there is nothing to build or install.
-package = false
+# `uv sync` installs the project in editable mode (imports `analyzer`, `scraping`, `csv_safety`; console scripts).
+package = true
 # Supply-chain guard: ignore releases younger than a week (matches the Dependabot cooldown).
 exclude-newer = "7 days"
 
@@ -77,6 +91,7 @@ python_version = "3.12"
 files = ["analyze.py", "src", "scripts", "tests"]
 strict = true
 explicit_package_bases = true
+mypy_path = "src"
 
 [[tool.mypy.overrides]]
 # pandas ships no type information (pandas-stubs is not a dependency).
@@ -88,8 +103,8 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.coverage.run]
-# analyze.py is only the entry point (`main` under `if __name__ == "__main__"`); tests import src.analyzer directly
-source = ["src"]
+# analyze.py is only the entry point (`main` under `if __name__ == "__main__"`); tests import analyzer directly
+source = ["analyzer", "scraping", "csv_safety"]
 branch = true
 
 [tool.coverage.report]

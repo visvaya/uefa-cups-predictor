@@ -6,11 +6,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.analyzer.cli import main
-from src.analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, read_smart_csv
-from src.analyzer.errors import AnalyzerInputError
-from src.analyzer.model import enrich_table, pressure_vector
-from src.analyzer.names import norm_key
+from analyzer.cli import main
+from analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, read_smart_csv
+from analyzer.errors import AnalyzerInputError
+from analyzer.model import enrich_table, pressure_vector
+from analyzer.names import norm_key
 
 REPO_DIR = Path(__file__).resolve().parents[1]
 EXAMPLE_TABLE = REPO_DIR / "data" / "theanalyst" / "champions-league" / "cl_table_predicted_example.csv"

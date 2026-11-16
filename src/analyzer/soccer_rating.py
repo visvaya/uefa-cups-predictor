@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from src.analyzer.config import (
+from analyzer.config import (
     DO_DROP_SCALE,
     HIGH_QUALITY_MAX_ODDS_DISTANCE,
     MIN_STEAM_ODDS,

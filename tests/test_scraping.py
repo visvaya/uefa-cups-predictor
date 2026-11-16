@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import pytest
 import requests
 
-from src.scraping.fetcher import MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
-from src.scraping.parsers import (
+from scraping.fetcher import MAX_REDIRECTS, SoccerRatingFetcher, resolve_url
+from scraping.parsers import (
     LEAGUES,
     _extract_two_numbers,
     _normalize_time,
@@ -15,7 +15,7 @@ from src.scraping.parsers import (
     payload_to_odds_row,
     team_id_from_href,
 )
-from src.scraping.soccer_rating_cli import minutes_until_kickoff
+from scraping.soccer_rating_cli import minutes_until_kickoff
 
 BACKSLASH = chr(92)
 EVENING = datetime(2026, 2, 5, 18, 0, tzinfo=UTC)
