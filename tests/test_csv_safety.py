@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src.csv_safety import neutralize_cell, neutralize_formulas
+from csv_safety import neutralize_cell, neutralize_formulas
 
 TAB = chr(9)
 CR = chr(13)

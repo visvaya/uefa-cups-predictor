@@ -5,7 +5,7 @@ The code lives in `src/analyzer/`; this file only points it at the data next to 
 
 from pathlib import Path
 
-from src.analyzer.cli import main
+from analyzer.cli import main
 
 if __name__ == "__main__":
     main(Path(__file__).parent)

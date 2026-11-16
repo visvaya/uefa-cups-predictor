@@ -1,9 +1,9 @@
 import pandas as pd
 import pytest
 
-from src.analyzer import sr_only
-from src.analyzer.recommendations import CONSIDER
-from src.analyzer.soccer_rating import add_soccer_rating_features
+from analyzer import sr_only
+from analyzer.recommendations import CONSIDER
+from analyzer.soccer_rating import add_soccer_rating_features
 
 FIXTURES = pd.DataFrame({"HomeKey": ["home"], "AwayKey": ["away"]})
 SR_MATCH = {

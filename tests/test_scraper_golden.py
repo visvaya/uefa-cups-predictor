@@ -22,9 +22,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.scraping import soccer_rating_cli
-from src.scraping.models import PayloadSource
-from src.scraping.parsers import parse_today_prediction, payload_to_odds_development
+from scraping import soccer_rating_cli
+from scraping.models import PayloadSource
+from scraping.parsers import parse_today_prediction, payload_to_odds_development
 
 TESTS_DIR = Path(__file__).resolve().parent
 FIXTURES_DIR = TESTS_DIR / "fixtures" / "scraper"

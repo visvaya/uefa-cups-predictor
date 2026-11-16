@@ -22,11 +22,13 @@ Requires Python 3.12 or newer and [uv](https://docs.astral.sh/uv/). Dependencies
 ```bash
 git clone https://github.com/visvaya/uefa-cups-predictor.git
 cd uefa-cups-predictor
-uv sync --locked --no-dev   # creates .venv with the locked runtime dependencies
+uv sync --locked --no-dev   # creates .venv with the locked runtime dependencies and the project
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 ```
 
-Alternatively, prefix commands with `uv run` instead of activating the environment.
+Alternatively, prefix commands with `uv run` instead of activating the environment. The environment also provides
+two commands: `analyze` (same as `python analyze.py`) and `soccer-rating` (same as
+`python -m scraping.soccer_rating_cli`).
 
 Input data is not included in the repository (see [How to Get Data](#how-to-get-data)); only the `_example.csv` templates are tracked. Run all commands from the repository root.
 
@@ -138,7 +140,7 @@ Odds are used as a **dynamic market signal** to enrich the static predictions fr
 To update the Soccer-rating data (odds, steam, ratings), run:
 
 ```bash
-python -m src.scraping.soccer_rating_cli
+python -m scraping.soccer_rating_cli
 ```
 
 - **Default behavior**: Fetches today's predictions from `soccer-rating.com`, scrapes match details, odds history, and team ratings.
@@ -160,7 +162,7 @@ National team fixtures are skipped with a warning; only club matches are support
 
 ### Workflow
 
-1. **Run Scraper**: `python -m src.scraping.soccer_rating_cli`
+1. **Run Scraper**: `python -m scraping.soccer_rating_cli`
 2. **Verify**: Check `data/soccer-rating/match_odds_development.csv` (or the dated snapshot when using `--separate-snapshots`) for new data.
 3. **Analyze**: Run `python analyze.py` to generate the report.
 

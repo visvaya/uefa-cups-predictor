@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.analyzer.errors import AnalyzerInputError
-from src.analyzer.names import norm_key
+from analyzer.errors import AnalyzerInputError
+from analyzer.names import norm_key
 
 LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league"}
 FIXTURES_NUMERIC_COLUMNS = ["HomeWin%", "Draw%", "AwayWin%"]
