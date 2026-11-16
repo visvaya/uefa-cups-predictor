@@ -79,21 +79,20 @@ def _header_league(txt: str, all_leagues: bool) -> tuple[str | None, str] | None
 
     None when the row is noise (e.g. "Top Football Prediction Today") and the current league stays. Without
     `all_leagues` the code is None, so the rows below are skipped, unless the header names the CL or EL.
+    The site is consistent ("AR1 ...", "CLCUP ..."): the first word is the code, the rest names the league.
     """
     parts = txt.split(maxsplit=1)
     if not parts:
         return None
-    code_candidate = parts[0]
+    code = parts[0]
     # League codes are short and mostly uppercase or digits (e.g., AR1, CLCUP)
-    if not code_candidate.isupper() and not any(c.isdigit() for c in code_candidate):
+    if (not code.isupper() and not any(c.isdigit() for c in code)) or len(code) > 10:
         return None
-    if len(code_candidate) > 10:
-        return None
-    if not all_leagues:
-        m = RE_LEAGUE_STRICT.search(txt)
-        return (m.group(1), LEAGUES[m.group(1)]) if m else (None, "")
-    # The site is consistent ("AR1 ...", "CLCUP ..."); the rest of the header names the league
-    return code_candidate, parts[1] if len(parts) > 1 else code_candidate
+    name = parts[1] if len(parts) > 1 else code
+    if all_leagues:
+        return code, name
+    m = RE_LEAGUE_STRICT.search(txt)
+    return (m.group(1) if m else None), name
 
 
 def _value_side(home_a: Tag, away_a: Tag) -> str | None:

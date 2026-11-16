@@ -76,7 +76,6 @@ def validate_results(matches: list[TodayMatch], all_odds_dev: list[OddsDevelopme
     logger.info("--- Validation Report ---")
     unique_ids = validate_matches(matches)
 
-    # Coverage
     matched_ids = {d.match_id for d in all_odds_dev}
     coverage = len(matched_ids) / len(unique_ids) if unique_ids else 0
     logger.info(f"Payload Coverage: {coverage:.1%} ({len(matched_ids)}/{len(unique_ids)})")
@@ -84,7 +83,6 @@ def validate_results(matches: list[TodayMatch], all_odds_dev: list[OddsDevelopme
         missing = unique_ids - matched_ids
         logger.warning(f"Missing payloads for {len(missing)} matches: {list(missing)}")
 
-    # Quality
     low_conf = [d for d in all_odds_dev if d.match_confidence == "LOW"]
     if low_conf:
         logger.warning(f"Quality Alert: Found {len(low_conf)} LOW confidence matches!")
@@ -96,11 +94,21 @@ def validate_results(matches: list[TodayMatch], all_odds_dev: list[OddsDevelopme
 
 TODAY_PAGE = "today-prediction.html"
 # Columns written first, in this order; the rest follow in model order
-ODDS_ID_COLUMNS = ["match_id", "snapshot_date", "home_id", "away_id", "league_code", "source_url"]
-CLUB_COLUMNS = ["team_id", "team_name", "rating_total", "rating_home", "rating_away"]
+ODDS_ID_COLUMNS = ("match_id", "snapshot_date", "home_id", "away_id", "league_code", "source_url")
+CLUB_COLUMNS = ("team_id", "team_name", "rating_total", "rating_home", "rating_away")
 
-# Reads a club page by (team name, href): None when skipped (already logged), "" when it could not be fetched
-ClubPageReader = Callable[[str, str], str | None]
+# One side of a match: team id, team name and the link to its club page
+Side = tuple[int, str, str]
+# Reads the club page of a side; None (after logging why) when it is not available
+ClubPageReader = Callable[[Side], str | None]
+
+
+@dataclass(frozen=True)
+class MatchFilters:
+    all_leagues: bool
+    min_start: int | None
+    max_start: int | None
+    skip_cups: bool
 
 
 @dataclass(frozen=True)
@@ -115,7 +123,6 @@ class MatchScan:
 
 @dataclass(frozen=True)
 class ScrapeResult:
-    matches: list[TodayMatch]
     odds_development: list[OddsDevelopment]
     clubs: dict[int, ClubMeta]
     cups: list[ClubCup]
@@ -181,16 +188,16 @@ def without_cups(matches: list[TodayMatch]) -> tuple[list[TodayMatch], set[str]]
     return kept, {m.league_code for m in matches if "CUP" in (m.league_code or "")}
 
 
-def select_matches(args: argparse.Namespace, today_html: str, now: datetime) -> list[TodayMatch]:
-    matches = parse_today_prediction(today_html, now.strftime("%Y-%m-%d"), all_leagues=args.all_leagues)
+def select_matches(filters: MatchFilters, today_html: str, snapshot_date: str, now: datetime) -> list[TodayMatch]:
+    matches = parse_today_prediction(today_html, snapshot_date, all_leagues=filters.all_leagues)
     logger.info(f"Loaded {len(matches)} total matches (all matching leagues).")
 
-    if args.min_start is not None or args.max_start is not None:
-        filtered = in_time_window(matches, now, args.min_start, args.max_start)
+    if filters.min_start is not None or filters.max_start is not None:
+        filtered = in_time_window(matches, now, filters.min_start, filters.max_start)
         logger.info(f"Filtered matches: {len(filtered)} (from {len(matches)}) based on time window.")
         matches = filtered
 
-    if args.skip_cups:
+    if filters.skip_cups:
         kept, skipped_codes = without_cups(matches)
         if len(kept) < len(matches):
             logger.info(f"Filtered out {len(matches) - len(kept)} cup matches. Skipped codes: {sorted(skipped_codes)}")
@@ -198,8 +205,18 @@ def select_matches(args: argparse.Namespace, today_html: str, now: datetime) -> 
     return matches
 
 
-def read_local_club_page(team_name: str, _href: str) -> str | None:
+def club_page_or_warning(club_html: str | None, side: Side) -> str | None:
+    """The page, or None with a warning when it is missing or empty."""
+    if not club_html:
+        team_id, team_name, _ = side
+        logger.warning(f"Could not fetch club page for {team_name} ({team_id}).")
+        return None
+    return club_html
+
+
+def read_local_club_page(side: Side) -> str | None:
     """A club page from the current directory: `<Team-Name>.html` (a few slug variants) or the generic `club.html`."""
+    team_name = side[1]
     slug_variants = [
         team_name.replace(" ", "-"),
         team_name.replace(" ", "-").lower(),
@@ -212,15 +229,24 @@ def read_local_club_page(team_name: str, _href: str) -> str | None:
         logger.warning(f"No local file for {team_name}, skipping.")
         return None
     logger.info(f"Using local file {html_path} for {team_name}")
-    return html_path.read_text(encoding="utf-8")
+    return club_page_or_warning(html_path.read_text(encoding="utf-8"), side)
 
 
 def remote_club_page_reader(fetch: Callable[[str], str | None], delay_s: float) -> ClubPageReader:
-    def read(_team_name: str, href: str) -> str:
+    def read(side: Side) -> str | None:
         time.sleep(delay_s)
-        return fetch(href) or ""
+        return club_page_or_warning(fetch(side[2]), side)
 
     return read
+
+
+def remote_source_url(href: str) -> str:
+    """The absolute URL of a club page link (the link itself when it leaves the site)."""
+    return resolve_url(href) or href
+
+
+def local_source_url(href: str) -> str:
+    return href
 
 
 def club_page_candidates(club_html: str, href: str) -> list[dict[str, Any]]:
@@ -235,13 +261,11 @@ def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
     clubs: dict[int, ClubMeta] = {}
     cups: list[ClubCup] = []
     sides = [(match.home_id, match.home_team, match.home_href), (match.away_id, match.away_team, match.away_href)]
-    for team_id, team_name, href in sides:
-        club_html = read_page(team_name, href)
-        if club_html is None:
-            continue
+    for side in sides:
+        club_html = read_page(side)
         if not club_html:
-            logger.warning(f"Could not fetch club page for {team_name} ({team_id}).")
             continue
+        team_id, _, href = side
         tr_h, tr_a = parse_team_ratings(club_html)
         if tr_h and tr_a:
             team_ratings = (tr_h, tr_a)
@@ -255,14 +279,15 @@ def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
     return MatchScan([], team_ratings, clubs, cups)
 
 
-def best_odds_development(match: TodayMatch, scan: MatchScan, local: bool) -> OddsDevelopment | None:
+def best_odds_development(
+    match: TodayMatch, scan: MatchScan, source_url: Callable[[str], str]
+) -> OddsDevelopment | None:
     best_row, debug = pick_best_payload(match.__dict__, scan.candidates)
     if not best_row:
         logger.warning(f"No matching odds payload discovered for {match.match_id}")
         return None
-    source_href = best_row["_source_href"]
     source = PayloadSource(
-        source_url=source_href if local else resolve_url(source_href) or source_href,
+        source_url=source_url(best_row["_source_href"]),
         team_rating_home=scan.team_ratings[0],
         team_rating_away=scan.team_ratings[1],
     )
@@ -278,7 +303,7 @@ def best_odds_development(match: TodayMatch, scan: MatchScan, local: bool) -> Od
 
 
 def scrape_matches(
-    matches: list[TodayMatch], limit: int | None, read_page: ClubPageReader, local: bool
+    matches: list[TodayMatch], limit: int | None, read_page: ClubPageReader, source_url: Callable[[str], str]
 ) -> ScrapeResult:
     odds_development = []
     clubs: dict[int, ClubMeta] = {}
@@ -293,10 +318,10 @@ def scrape_matches(
         scan = scan_club_pages(match, read_page)
         clubs.update(scan.clubs)
         cups.extend(scan.cups)
-        dev = best_odds_development(match, scan, local)
+        dev = best_odds_development(match, scan, source_url)
         if dev:
             odds_development.append(dev)
-    return ScrapeResult(matches, odds_development, clubs, cups)
+    return ScrapeResult(odds_development, clubs, cups)
 
 
 def save_cumulative(path: Path, df_new: pd.DataFrame, id_cols: list[str], sort_col: str | None = None) -> int:
@@ -326,7 +351,7 @@ def keep_columns(path: Path, columns: list[str]) -> None:
 def save_odds_development(output_dir: Path, odds_development: list[OddsDevelopment], snapshot_file: str | None) -> None:
     """Writes the daily `snapshot_file` when given, otherwise the cumulative `match_odds_development.csv`."""
     df_dev = pd.DataFrame([d.__dict__ for d in odds_development])
-    columns = ODDS_ID_COLUMNS + [c for c in df_dev.columns if c not in ODDS_ID_COLUMNS]
+    columns = [*ODDS_ID_COLUMNS, *(c for c in df_dev.columns if c not in ODDS_ID_COLUMNS)]
     df_dev = df_dev[columns]
     if snapshot_file:
         # One file per day, merged so that a second run on the same day does not duplicate matches
@@ -339,17 +364,17 @@ def save_odds_development(output_dir: Path, odds_development: list[OddsDevelopme
         logger.info(f"Updated match_odds_development.csv (Total records: {total})")
 
 
-def save_results(output_dir: Path, result: ScrapeResult, snapshot_file: str | None) -> None:
-    neutralize_formulas(pd.DataFrame([m.__dict__ for m in result.matches])).to_csv(
+def save_results(output_dir: Path, matches: list[TodayMatch], result: ScrapeResult, snapshot_file: str | None) -> None:
+    neutralize_formulas(pd.DataFrame([m.__dict__ for m in matches])).to_csv(
         output_dir / "today_matches.csv", index=False
     )
     if result.odds_development:
         save_odds_development(output_dir, result.odds_development, snapshot_file)
     if result.clubs:
         clubs_path = output_dir / "club_meta.csv"
-        df_clubs = pd.DataFrame([c.__dict__ for c in result.clubs.values()])[CLUB_COLUMNS]
+        df_clubs = pd.DataFrame([c.__dict__ for c in result.clubs.values()])[list(CLUB_COLUMNS)]
         total = save_cumulative(clubs_path, df_clubs, ["team_id"], "team_id")
-        keep_columns(clubs_path, CLUB_COLUMNS)
+        keep_columns(clubs_path, list(CLUB_COLUMNS))
         logger.info(f"Updated club_meta.csv (Total records: {total})")
     if result.cups:
         df_cups = pd.DataFrame([c.__dict__ for c in result.cups])
@@ -361,23 +386,25 @@ def main() -> None:
     args = parse_args()
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    now = local_now()
+    snapshot_date = local_now().strftime("%Y-%m-%d")
     fetcher = SoccerRatingFetcher()
 
     today_html = read_today_page(args.local, fetcher.fetch)
     if today_html is None:
         return
-    matches = select_matches(args, today_html, now)
+    filters = MatchFilters(args.all_leagues, args.min_start, args.max_start, args.skip_cups)
+    matches = select_matches(filters, today_html, snapshot_date, local_now())
     if not matches:
         logger.warning("No matches match the criteria. Exiting.")
         return
 
     read_page = read_local_club_page if args.local else remote_club_page_reader(fetcher.fetch, args.delay)
-    result = scrape_matches(matches, args.limit, read_page, args.local)
-    snapshot_date = now.strftime("%Y-%m-%d")
-    save_results(output_dir, result, f"match_odds_development_{snapshot_date}.csv" if args.separate_snapshots else None)
+    source_url = local_source_url if args.local else remote_source_url
+    result = scrape_matches(matches, args.limit, read_page, source_url)
+    snapshot_file = f"match_odds_development_{snapshot_date}.csv" if args.separate_snapshots else None
+    save_results(output_dir, matches, result, snapshot_file)
     logger.info(f"ETL Complete. Outputs in {output_dir}")
-    validate_results(result.matches, result.odds_development)
+    validate_results(matches, result.odds_development)
 
 
 if __name__ == "__main__":
