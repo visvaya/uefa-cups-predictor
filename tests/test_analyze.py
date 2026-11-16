@@ -1,4 +1,5 @@
 import shutil
+from codecs import BOM_UTF8
 from pathlib import Path
 
 import numpy as np
@@ -110,3 +111,8 @@ def test_sr_only_stops_when_the_named_input_file_is_missing(tmp_path: Path, caps
     assert exit_info.value.code == 1
     assert capsys.readouterr().out.splitlines()[-1] == f"ERROR: Input file not found: {missing}"
     assert not list(tmp_path.glob("sr_analysis_report*.csv"))
+
+
+@pytest.mark.parametrize("path", sorted((REPO_DIR / "data").glob("**/*_example.csv")), ids=lambda p: p.name)
+def test_example_csv_starts_with_at_most_one_bom(path: Path) -> None:
+    assert not path.read_bytes().startswith(BOM_UTF8 * 2)
