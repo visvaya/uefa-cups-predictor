@@ -11,6 +11,7 @@ from urllib3.util import parse_url
 from csv_safety import FORMULA_PREFIXES, neutralize_cell
 from scraping.fetcher import resolve_url
 from scraping.parsers import (
+    WORLD_CLUB_ID_OFFSET,
     _extract_float,
     _extract_two_numbers,
     _normalize_time,
@@ -147,10 +148,18 @@ def _is_number(text: str) -> bool:
     return True
 
 
-@given(slug=st.text(alphabet=st.characters(categories=["L"], exclude_characters="/")), team_id=ids)
-def test_team_id_from_href_reads_back_the_id(slug: str, team_id: int) -> None:
-    assert team_id_from_href(f"/{slug}/{team_id}/") == team_id
-    assert team_id_from_href(f"https://www.soccer-rating.com/{slug}/w{team_id}/") == team_id
+@given(
+    slug=st.text(alphabet=st.characters(categories=["L"], exclude_characters="/")),
+    team_id=st.integers(min_value=0, max_value=WORLD_CLUB_ID_OFFSET - 1),
+)
+def test_team_id_from_href_keeps_the_three_numberings_apart(slug: str, team_id: int) -> None:
+    club = team_id_from_href(f"/{slug}/{team_id}/")
+    world_club = team_id_from_href(f"https://www.soccer-rating.com/{slug}/w{team_id}/")
+    national_team = team_id_from_href(f"/{slug}/n{team_id}/")
+    assert club == team_id
+    assert world_club == WORLD_CLUB_ID_OFFSET + team_id
+    assert national_team == -team_id
+    assert world_club not in (club, national_team)
 
 
 @given(st.text())

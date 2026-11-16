@@ -213,7 +213,7 @@ def parse_args() -> argparse.Namespace:
     filters.add_argument(
         "--skip-other-continental-cups",
         action="store_true",
-        help="Skip continental club cups outside UEFA (CLICUP, AFCCUP, CCCUP)",
+        help="Skip continental club cups outside UEFA (CLICUP, AFCCUP, CCCUP, CPCUP, AFCUP)",
     )
     filters.add_argument("--skip-national-teams", action="store_true", help="Skip matches of national teams")
     filters.add_argument(

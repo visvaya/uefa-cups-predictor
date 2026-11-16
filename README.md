@@ -160,7 +160,7 @@ Match filters (combinable, applied after the time window; each logs what it drop
 - `--skip-cups`: Skip every cup (league code contains `CUP`, e.g. `FACUP`, `CLCUP`).
 - `--skip-domestic-cups`: Skip cups that are neither UEFA nor other continental club cups. A `CUP` code not listed as continental counts as domestic.
 - `--skip-uefa-cups`: Skip the UEFA club competitions `CLCUP`, `ELCUP` and `ECLCUP`.
-- `--skip-other-continental-cups`: Skip continental club cups outside UEFA (`CLICUP`, `AFCCUP`, `CCCUP`, the codes seen so far; the list is `OTHER_CONTINENTAL_CLUB_CUPS` in `src/scraping/match_filters.py`).
+- `--skip-other-continental-cups`: Skip continental club cups outside UEFA (`CLICUP`, `AFCCUP`, `CCCUP`, `CPCUP`, `AFCUP`, the codes seen so far; the list is `OTHER_CONTINENTAL_CLUB_CUPS` in `src/scraping/match_filters.py`).
 - `--skip-national-teams`: Skip matches of national teams.
 - `--leagues CODE[,CODE...]`: Keep only the listed league codes (e.g. `CLCUP,ELCUP,AR1`); implies reading all leagues of the page.
 
