@@ -119,8 +119,8 @@ The algorithm uses a hybrid approach to maintain mathematical consistency:
   - `Status LOCKED...`: Team has secured its spot. Always `🟠 CAUTION` due to high rotation risk.
   - `High rotation risk`: `teamRotRisk` >= 1.39. Always `🟠 CAUTION`.
 - **Value/Signal**:
-  - `High Val / Good Val`: High mathematical advantage based on motivation and win prob.
-  - `Strong Signal`: `expertScore > 1.50` indicating an elite betting opportunity.
+  - `High Value / Good Value`: High mathematical advantage based on motivation and win prob.
+  - `Strong Expert Signal`: `|expertScore| > 1.50`, a strong model signal for either side; `Positive Signal` is the same for `|expertScore| > 0.50`. Apart from the `Sure Bet Pattern` and SR-only `X` picks, a row reaches `🟡 CONSIDER` or `🟢 STRONG BUY` only with a positive score (this row's team favoured).
 - **Market Signals**:
   - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`).
   - `Steam (+)`: Market odds are dropping for this team.
@@ -212,6 +212,7 @@ In standard mode every run prints a data integrity report for each cup's predict
 - **`ERROR: Missing teams in cl_table: [...]`**: A team name in the fixtures file doesn't match the names in the predicted table, and the run stops with exit code 1. Fix this using the `NAME_FIX` dictionary (see below).
 - **`WARNING: today_matches.csv not found: running without lineups`**: The soccer-rating odds are used without the lineup term.
 - **`WARNING: club_meta.csv not found: team ids cannot be mapped, running without soccer-rating data`**: The cup is analysed from The Analyst data alone.
+- **`ERROR: Input file not found: <path>`** (SR-only): the file named with `--input-file`, or `data/soccer-rating/match_odds_development.csv` when none is named, does not exist; the run stops with exit code 1.
 
 ## Customizing Team Names (NAME_FIX)
 
