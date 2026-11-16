@@ -18,9 +18,10 @@ from scraping.parsers import (
     norm_team,
     parse_today_prediction,
     payload_to_odds_row,
+    pick_best_payload,
     team_id_from_href,
 )
-from scraping.soccer_rating_cli import minutes_until_kickoff, parse_args, site_clock, timezone_arg
+from scraping.soccer_rating_cli import minutes_until_kickoff, parse_args, scan_club_pages, site_clock, timezone_arg
 
 BACKSLASH = chr(92)
 ROBOTS_URL = "https://www.soccer-rating.com/robots.txt"
@@ -32,8 +33,14 @@ def test_minutes_until_kickoff_same_day() -> None:
     assert minutes_until_kickoff("21:00", EVENING) == 180
 
 
-def test_minutes_until_kickoff_rolls_over_midnight() -> None:
-    assert minutes_until_kickoff("01:00", EVENING) == 7 * 60
+def test_minutes_until_kickoff_keeps_early_kickoffs_on_the_page_day() -> None:
+    # A day page lists 00:00-06:00 kickoffs of its own date: at 18:00 a 01:00 kickoff today is already past
+    assert minutes_until_kickoff("01:00", EVENING) == -17 * 60
+
+
+def test_minutes_until_kickoff_counts_from_a_later_day_page() -> None:
+    assert minutes_until_kickoff("01:00", EVENING, days_ahead=1) == 7 * 60
+    assert minutes_until_kickoff("21:00", EVENING, days_ahead=2) == (2 * 24 + 3) * 60
 
 
 def test_minutes_until_kickoff_keeps_recent_past_negative() -> None:
@@ -50,9 +57,9 @@ def test_minutes_until_kickoff_counts_real_minutes_across_autumn_dst() -> None:
     assert minutes_until_kickoff("04:00", datetime(2026, 10, 25, 1, 0, tzinfo=WARSAW)) == 240
 
 
-def test_minutes_until_kickoff_rolls_over_into_a_dst_change() -> None:
+def test_minutes_until_kickoff_counts_into_a_dst_change_on_the_next_day_page() -> None:
     # 23:30 CET on 2026-03-28 to 11:00 CEST the next day is 10.5 hours, not 11.5
-    assert minutes_until_kickoff("11:00", datetime(2026, 3, 28, 23, 30, tzinfo=WARSAW)) == 630
+    assert minutes_until_kickoff("11:00", datetime(2026, 3, 28, 23, 30, tzinfo=WARSAW), days_ahead=1) == 630
 
 
 def test_site_clock_reads_kickoffs_in_the_site_timezone() -> None:
@@ -137,6 +144,11 @@ def test_parse_today_prediction_reads_club_match() -> None:
     assert match.match_id == "2026-02-05_CLCUP_101_202"
     assert (match.odd_1_today, match.lineup_rating_home_today) == (1.57, 68.0)
     assert (match.odd_x_today, match.lineup_rating_away_today) == (4.2, 52.0)
+
+
+def test_parse_today_prediction_reads_a_weekday_page() -> None:
+    page = _today_page(_today_row("/Home-FC/101/", "/Away-FC/202/")).replace("Today", "Tuesday<br>(Tomorrow)")
+    assert [m.match_id for m in parse_today_prediction(page, "2026-02-06")] == ["2026-02-06_CLCUP_101_202"]
 
 
 def test_parse_today_prediction_reads_national_team_links() -> None:
@@ -376,3 +388,50 @@ def test_fetch_survives_a_malformed_redirect_target(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", send)
     assert SoccerRatingFetcher().fetch("/x") is None
+
+
+def _payload(home: str, away: str) -> dict[str, object]:
+    odds = {
+        f"{stage}_{side}": value
+        for stage in ("open", "drop", "close", "fair")
+        for side, value in zip("1x2", (1.5, 4.0, 6.0), strict=True)
+    }
+    return {"league_code_payload": "CLCUP", "home_team_payload": home, "away_team_payload": away, "oo": 0.0, **odds}
+
+
+def _fixture(home: str, away: str) -> dict[str, object]:
+    return {
+        "league_code": "CLCUP",
+        "home_team": home,
+        "away_team": away,
+        "odd_1_today": 1.5,
+        "odd_x_today": 4.0,
+        "odd_2_today": 6.0,
+        "odds_rating_oo_today": 0.0,
+    }
+
+
+def test_pick_best_payload_never_takes_another_fixture() -> None:
+    # Same league and same odds, but the payload names other teams: it belongs to another fixture
+    best, debug = pick_best_payload(_fixture("Home FC", "Away FC"), [_payload("Home FC", "Third FC")])
+    assert best is None
+    assert debug["reason"] == "NO_CANDIDATE_NAMES_THE_FIXTURE"
+
+
+def _club_page(home: str, away: str) -> str:
+    payload = f"{home},{away},0,CLCUP,0.0,0.0,0.0," + ",".join(["1.50,4.00,6.00"] * 4)
+    return f"<a href=\"javascript:copyToClipboard('{payload}')\">copy</a>"
+
+
+def test_scan_club_pages_reads_the_away_page_when_the_home_page_lists_another_fixture() -> None:
+    match = parse_today_prediction(_today_page(_today_row("/Home-FC/101/", "/Away-FC/202/")), "2026-02-05")[0]
+    pages = {101: _club_page("Home FC", "Third FC"), 202: _club_page("Home FC", "Away FC")}
+    read: list[int] = []
+
+    def read_page(side: tuple[int, str, str]) -> str:
+        read.append(side[0])
+        return pages[side[0]]
+
+    scan = scan_club_pages(match, read_page)
+    assert read == [101, 202]
+    assert [c["away_team_payload"] for c in scan.candidates] == ["Third FC", "Away FC"]

@@ -26,6 +26,9 @@ RE_INT = re.compile(r"\s(\d+)$")
 # Letters that NFKD does not decompose into a base letter plus a combining mark
 NON_DECOMPOSING_LETTERS = str.maketrans({"ø": "o", "æ": "ae", "å": "a", "ł": "l", "đ": "d", "ß": "ss"})
 RE_LEAGUE_STRICT = re.compile(r"\b(CLCUP|ELCUP)\b")
+RE_MATCH_TABLE_HEADER = re.compile(
+    r"Football Prediction (Today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)", re.IGNORECASE
+)
 RE_CLIP = re.compile(r"copyToClipboard\('([^']+)'\)")
 # Club links end in "/<id>/" or "/w<id>/", national-team links in "/n<id>/"
 RE_TEAM_ID = re.compile(r"/([nw]?)(\d+)/")
@@ -82,8 +85,9 @@ def _extract_two_numbers(td_text: str) -> tuple[float | None, float | None]:
 
 
 def _find_match_table(soup: BeautifulSoup) -> Tag | None:
+    # The today page heads its table "Football Prediction Today", a day page "Football Prediction Tuesday"
     for t in soup.find_all("table", class_="bigtable"):
-        if t.find(string=re.compile(r"Football Prediction Today", re.IGNORECASE)):
+        if t.find(string=RE_MATCH_TABLE_HEADER):
             return t
     return None
 
@@ -283,12 +287,13 @@ def pick_best_payload(
 
     scored = []
     for p in payload_candidates:
-        if p.get("league_code_payload") != wanted_league:
-            continue
-
-        nm = name_match_score(
+        # A payload of another league, or naming other teams, is another fixture however close its odds
+        same_league = p.get("league_code_payload") == wanted_league
+        nm = same_league and name_match_score(
             match_row["home_team"], match_row["away_team"], p["home_team_payload"], p["away_team_payload"]
         )
+        if not nm:
+            continue
 
         vecs = payload_odds_vectors(p)
         stage_scores = {stage: rel_err(today_vec, v) for stage, v in vecs.items()}
@@ -302,15 +307,15 @@ def pick_best_payload(
         scored.append((nm, best_dist, oo_gap if oo_gap is not None else 1e9, best_stage, p))
 
     if not scored:
-        return None, {"reason": "NO_CANDIDATES_AFTER_LEAGUE_FILTER"}
+        return None, {"reason": "NO_CANDIDATE_NAMES_THE_FIXTURE"}
 
-    # sort: najpierw nazwy (2>1>0), potem dystans kursów, potem oo_gap
+    # Names first (2 > 1), then the odds distance, then the OO gap
     scored.sort(key=lambda x: (-x[0], x[1], x[2]))
 
     nm, best_dist, oo_gap, best_stage, best = scored[0]
 
     confidence = "HIGH"
-    if best_dist > 0.03 or nm < 1:
+    if best_dist > 0.03:
         confidence = "LOW"
     elif best_dist > 0.01 or nm < 2:
         confidence = "MEDIUM"

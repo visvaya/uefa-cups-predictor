@@ -152,7 +152,8 @@ python -m scraping.soccer_rating_cli
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
 - `--separate-snapshots`: Save snapshot to a separate file (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of merging.
 - `--min-start N`: Process matches starting at least N minutes from now.
-- `--max-start N`: Process matches starting at most N minutes from now. A kickoff more than 12 hours in the past counts as the next day's fixture.
+- `--max-start N`: Process matches starting at most N minutes from now. Each kickoff is on the date of the page that lists it: an `00:00` kickoff on the today page has already started.
+- `--days N`: Also read the site's day pages for the next N days (0-6, e.g. `/today-prediction/tuesday`); match ids start with the kickoff date and the snapshot file keeps the scrape date. Needs the live site, so it cannot be combined with `--local`.
 - `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (default `Europe/Paris`); the time window counts real minutes, also across a DST change. The default follows the site's "Timezone" selector, which showed "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established, so override it if the site shows times in another zone.
 
 Match filters (combinable, applied after the time window; each logs what it dropped):
@@ -203,8 +204,8 @@ python analyze.py --excel-pl
 ### Analyzer Arguments
 
 - `--sr-only`: Run analysis independent of 'The Analyst' data (Market Signals only).
-- `--input-file PATH`: Specify a snapshot file for SR-only mode (e.g., specific date).
-- `--output-dir PATH`: Custom directory for analysis reports.
+- `--input-file PATH`: Specify a snapshot file for SR-only mode (e.g., specific date). Team names and lineups are read from `club_meta.csv` and `today_matches.csv` in the same folder, so keep a scraper run's files together (`soccer-rating --output-dir`).
+- `--output-dir PATH`: Custom directory for analysis reports, created if missing.
 
 **Generated Reports:**
 

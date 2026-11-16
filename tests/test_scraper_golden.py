@@ -139,6 +139,28 @@ def test_remote_run_fetches_pages_and_resolves_source_urls(monkeypatch: pytest.M
     assert_matches_golden(output_dir, "remote")
 
 
+def test_days_adds_the_pages_of_the_next_days(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output_dir = tmp_path / "out"
+
+    # 2026-02-05 is a Thursday; the fixture server answers the Friday page with the same table
+    calls = run_cli(monkeypatch, tmp_path, output_dir, "--all-leagues", "--days", "1", "--limit", "1")
+
+    # The day page waits for --delay like every request after the today page
+    assert calls[1:4] == [("fetch", TODAY_PATH), ("sleep", 1.5), ("fetch", TODAY_PATH + "/friday")]
+    match_ids = [str(m) for m in pd.read_csv(output_dir / "today_matches.csv")["match_id"]]
+    days = sorted({m.split("_")[0] for m in match_ids})
+    assert days == ["2026-02-05", "2026-02-06"]
+    assert len(match_ids) == len(set(match_ids))
+
+
+def test_days_needs_the_live_site(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit):
+        run_cli(monkeypatch, tmp_path, tmp_path / "out", "--local", "--days", "1")
+    assert "--days reads the live site" in capsys.readouterr().err
+
+
 def test_site_timezone_moves_the_time_window(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     window = ("--local", "--all-leagues", "--min-start", "0", "--max-start", "60")
 

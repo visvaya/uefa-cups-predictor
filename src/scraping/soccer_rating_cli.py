@@ -4,7 +4,7 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -27,6 +27,7 @@ from .match_filters import (
 )
 from .models import ClubCup, ClubMeta, OddsDevelopment, PayloadSource, TodayMatch
 from .parsers import (
+    name_match_score,
     parse_clip_payloads,
     parse_club_page,
     parse_team_ratings,
@@ -39,9 +40,10 @@ from .parsers import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# A kickoff more than this many minutes in the past is treated as the next day's (after midnight)
-PAST_KICKOFF_ROLLOVER_MINUTES = 12 * 60
 SITE_TIMEZONE = "Europe/Paris"
+# The site has day pages for the six days after today (/today-prediction/<weekday>)
+MAX_DAYS_AHEAD = 6
+WEEKDAY_PAGES = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 RE_KICKOFF_TIME = re.compile(r"^(\d{1,2}):(\d{2})$")
 
 
@@ -66,31 +68,38 @@ def league_list_arg(text: str) -> frozenset[str]:
     return codes
 
 
+def days_arg(text: str) -> int:
+    """A number of days after today with a day page on the site, for argparse."""
+    try:
+        days = int(text)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(f"expected a whole number, got {text!r}") from e
+    if not 0 <= days <= MAX_DAYS_AHEAD:
+        raise argparse.ArgumentTypeError(f"expected 0-{MAX_DAYS_AHEAD}, got {days}")
+    return days
+
+
 def site_clock(now: datetime, site_tz: ZoneInfo) -> datetime:
     """`now` on the clock the site shows kickoffs in."""
     return now.astimezone(site_tz)
 
 
-def minutes_until_kickoff(time_local: str, now: datetime) -> float:
+def minutes_until_kickoff(time_local: str, now: datetime, days_ahead: int = 0) -> float:
     """Returns real minutes from `now` to an "HH:MM" kickoff on the clock of `now`'s timezone (DST-aware with zoneinfo).
 
-    Kickoffs far in the past roll over to the next day (late-night fixtures).
+    The kickoff is on the date of the page that lists it, `days_ahead` days after `now`'s date: a day page lists
+    the early-morning kickoffs of its own date (checked 2026-11-16), so an 00:00 kickoff on today's page is past.
     Raises ValueError when `time_local` is not a valid HH:MM time.
     """
     hm = RE_KICKOFF_TIME.match(time_local)
     if hm is None:
         raise ValueError(f"expected HH:MM, got {time_local!r}")
-    kickoff = now.replace(hour=int(hm.group(1)), minute=int(hm.group(2)), second=0, microsecond=0)
-
-    def minutes_to(moment: datetime) -> float:
-        # Differences between datetimes of the same tzinfo ignore DST, so both are compared in UTC
-        return (moment.astimezone(UTC) - now.astimezone(UTC)).total_seconds() / 60.0
-
-    diff_min = minutes_to(kickoff)
-    if diff_min < -PAST_KICKOFF_ROLLOVER_MINUTES:
-        # Adding a day keeps the wall-clock time, so the next day's offset applies
-        diff_min = minutes_to(kickoff + timedelta(days=1))
-    return diff_min
+    # Adding days keeps the wall-clock time, so the kickoff day's offset applies
+    kickoff = now.replace(hour=int(hm.group(1)), minute=int(hm.group(2)), second=0, microsecond=0) + timedelta(
+        days=days_ahead
+    )
+    # Differences between datetimes of the same tzinfo ignore DST, so both are compared in UTC
+    return (kickoff.astimezone(UTC) - now.astimezone(UTC)).total_seconds() / 60.0
 
 
 def validate_matches(matches: list[TodayMatch]) -> set[str]:
@@ -202,6 +211,12 @@ def parse_args() -> argparse.Namespace:
         default=SITE_TIMEZONE,
         help=f"IANA timezone the site shows kickoff times in (default: {SITE_TIMEZONE})",
     )
+    parser.add_argument(
+        "--days",
+        type=days_arg,
+        default=0,
+        help=f"Also read the day pages of the next N days (0-{MAX_DAYS_AHEAD}); match ids carry the kickoff date",
+    )
     filters = parser.add_argument_group("match filters (combinable; each drops what it names)")
     filters.add_argument("--skip-cups", action="store_true", help="Skip every cup (league code contains CUP)")
     filters.add_argument(
@@ -223,7 +238,10 @@ def parse_args() -> argparse.Namespace:
         metavar="CODE[,CODE...]",
         help="Keep only these league codes, e.g. CLCUP,ELCUP,AR1 (reads all leagues of the page)",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.local and args.days:
+        parser.error("--days reads the live site; --local has only the today page")
+    return args
 
 
 def match_filters(args: argparse.Namespace) -> tuple[MatchFilter, ...]:
@@ -254,34 +272,68 @@ def read_today_page(local: bool, fetch: Callable[[str], str | None]) -> str | No
     return html
 
 
+def day_page_path(today: date, days_ahead: int) -> str:
+    """The site path of the page listing the kickoffs `days_ahead` days after `today` (0 is the today page)."""
+    if days_ahead == 0:
+        return TODAY_PATH
+    return f"{TODAY_PATH}/{WEEKDAY_PAGES[(today + timedelta(days=days_ahead)).weekday()]}"
+
+
+def read_day_pages(fetch: Callable[[str], str | None], today: date, days: int, delay_s: float) -> list[tuple[int, str]]:
+    """The pages of the `days` days after today, as (days ahead, html); a missing page is logged and skipped.
+
+    Each request waits `delay_s` first, like the club page requests after the today page.
+    """
+    pages = []
+    for days_ahead in range(1, days + 1):
+        path = day_page_path(today, days_ahead)
+        time.sleep(delay_s)
+        html = fetch(path)
+        if html:
+            pages.append((days_ahead, html))
+        else:
+            logger.error(f"Failed to get the day page {path}.")
+    return pages
+
+
 def in_time_window(
-    matches: list[TodayMatch], now: datetime, min_start: int | None, max_start: int | None
+    matches: list[TodayMatch], filters: MatchFilters, now: datetime, days_ahead: int
 ) -> list[TodayMatch]:
     """Matches kicking off between `min_start` and `max_start` minutes after `now`; unreadable times are dropped.
 
-    `now` must be on the clock the site shows kickoffs in (see `site_clock`).
+    `now` must be on the clock the site shows kickoffs in (see `site_clock`); the matches come from the page
+    `days_ahead` days after `now`'s date.
     """
     kept = []
     for m in matches:
         try:
-            diff_min = minutes_until_kickoff(m.time_local, now)
+            diff_min = minutes_until_kickoff(m.time_local, now, days_ahead)
         except (ValueError, TypeError) as e:
             logger.warning(f"Could not parse time {m.time_local} for {m.match_id}: {e}")
             continue
-        if (min_start is None or diff_min >= min_start) and (max_start is None or diff_min <= max_start):
+        if (filters.min_start is None or diff_min >= filters.min_start) and (
+            filters.max_start is None or diff_min <= filters.max_start
+        ):
             kept.append(m)
     return kept
 
 
-def select_matches(filters: MatchFilters, today_html: str, snapshot_date: str, now: datetime) -> list[TodayMatch]:
-    matches = parse_today_prediction(today_html, snapshot_date, all_leagues=filters.all_leagues)
-    logger.info(f"Loaded {len(matches)} total matches (all matching leagues).")
+def page_matches(filters: MatchFilters, html: str, now: datetime, days_ahead: int) -> list[TodayMatch]:
+    """The matches of one day page within the time window; their ids carry the page's date."""
+    page_date = (now.date() + timedelta(days=days_ahead)).isoformat()
+    matches = parse_today_prediction(html, page_date, all_leagues=filters.all_leagues)
+    logger.info(f"Loaded {len(matches)} total matches for {page_date} (all matching leagues).")
 
     if filters.min_start is not None or filters.max_start is not None:
-        filtered = in_time_window(matches, now, filters.min_start, filters.max_start)
+        filtered = in_time_window(matches, filters, now, days_ahead)
         logger.info(f"Filtered matches: {len(filtered)} (from {len(matches)}) based on time window.")
         matches = filtered
+    return matches
 
+
+def select_matches(filters: MatchFilters, pages: list[tuple[int, str]], now: datetime) -> list[TodayMatch]:
+    """The matches of the day pages, given as (days ahead, html), that pass the time window and the filters."""
+    matches = [m for days_ahead, html in pages for m in page_matches(filters, html, now, days_ahead)]
     return apply_filters(matches, filters.drop)
 
 
@@ -336,10 +388,15 @@ def club_page_candidates(club_html: str, href: str) -> list[dict[str, Any]]:
 
 
 def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
-    """Reads the home, then the away club page; stops at the first page with payload candidates."""
+    """Reads the home, then the away club page; stops at the first page with a payload naming both teams.
+
+    A club page can list another fixture of the team (a day page's match is often not its next one), so the
+    away page is read when the home page names none; the candidates of both pages are returned.
+    """
     team_ratings: tuple[float | None, float | None] = (None, None)
     clubs: dict[int, ClubMeta] = {}
     cups: list[ClubCup] = []
+    found: list[dict[str, Any]] = []
     sides = [(match.home_id, match.home_team, match.home_href), (match.away_id, match.away_team, match.away_href)]
     for side in sides:
         club_html = read_page(side)
@@ -352,11 +409,19 @@ def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
         meta, club_cups = parse_club_page(club_html, team_id)
         clubs[team_id] = meta
         cups.extend(club_cups)
-        candidates = club_page_candidates(club_html, href)
-        # The payload of a match is on both club pages; the opponent's page would only repeat it
-        if candidates:
-            return MatchScan(candidates, team_ratings, clubs, cups)
-    return MatchScan([], team_ratings, clubs, cups)
+        found.extend(club_page_candidates(club_html, href))
+        # The payload of a match is on both club pages; once one names the fixture, the other would repeat it
+        if any(names_fixture(match, c) for c in found):
+            break
+    return MatchScan(found, team_ratings, clubs, cups)
+
+
+def names_fixture(match: TodayMatch, candidate: dict[str, Any]) -> bool:
+    """Whether a payload names both teams of the match (in either order)."""
+    score = name_match_score(
+        match.home_team, match.away_team, candidate["home_team_payload"], candidate["away_team_payload"]
+    )
+    return score > 0
 
 
 def best_odds_development(
@@ -474,9 +539,11 @@ def main() -> None:
     today_html = read_today_page(args.local, fetcher.fetch)
     if today_html is None:
         return
+    now = site_clock(local_now(), args.site_timezone)
+    pages = [(0, today_html), *read_day_pages(fetcher.fetch, now.date(), args.days, args.delay)]
     all_leagues = args.all_leagues or args.leagues is not None
     filters = MatchFilters(all_leagues, args.min_start, args.max_start, match_filters(args))
-    matches = select_matches(filters, today_html, snapshot_date, site_clock(local_now(), args.site_timezone))
+    matches = select_matches(filters, pages, now)
     if not matches:
         logger.warning("No matches match the criteria. Exiting.")
         return
