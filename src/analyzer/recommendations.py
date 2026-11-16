@@ -179,6 +179,19 @@ def number_text(values: pd.Series, decimal: str) -> pd.Series:
     return values.round(2).astype(str).str.replace(".", decimal, regex=False)
 
 
+def sr_only_reasons(ranking: pd.DataFrame, s: Signals, decimal: str) -> pd.Series:
+    """Reason parts only the SR-only mode gives, each ending in "; ": the missing steam and the draw lean."""
+    # SR-only has no motivation data, so a strong signal reaches STRONG BUY only through the Sure Bet Pattern;
+    # its score is mostly the closing price, and odds that do not fall leave it unconfirmed
+    no_steam = (s.score > 0) & s.is_strong_sig & ~s.is_sure_bet & s.steam_aligned
+    lean = pd.Series(np.where(s.score > 0, "Lean: 1X", "Lean: X2"), index=ranking.index)
+    steam_x = number_text(column_or(ranking, "steam_x", 0).fillna(0), decimal)
+    draw = (s.pick == "X") & s.is_home
+    return pd.Series(np.where(no_steam, "(No Steam Confirmation); ", ""), index=ranking.index) + pd.Series(
+        np.where(draw, lean + " (SteamX " + steam_x + "); ", ""), index=ranking.index
+    )
+
+
 def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) -> pd.Series:
     """The `reason` column: the rules that fired, joined with "; ", or "-" when none did.
 
@@ -211,9 +224,7 @@ def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) 
     reason_s += r(s.sr_edge < -REASON_MIN_SR_EDGE, "Market Confidence")
 
     if allow_draws:
-        lean_str = np.where(s.score > 0, "Lean: 1X", "Lean: X2")
-        steam_x_val = number_text(column_or(ranking, "steam_x", 0).fillna(0), decimal)
-        reason_s += r((s.pick == "X") & s.is_home, lean_str + " (SteamX " + steam_x_val + ")")
+        reason_s += sr_only_reasons(ranking, s, decimal)
 
     ao_fair_str = "AO(" + number_text(s.close, decimal) + ") > Fair(" + number_text(s.fair, decimal) + ")"
     reason_s += r(s.val >= HIGH_VALUE, ao_fair_str)

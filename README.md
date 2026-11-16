@@ -107,8 +107,8 @@ The algorithm sums `LAST 16%` and `KO P/O%` when they are consistent, falls back
 | :--- | :--- |
 | **homeTeam / awayTeam** | Match participants. |
 | **pick** | **Recommended Outcome**: `1` (Home), `X` (Draw), `2` (Away). |
-| **expertScore** | Match signal strength from the picked side's view: > 0 favours it (for `X`, the home view). |
-| **recommendation** | Advice based purely on market gaps and steam. |
+| **expertScore** | Match signal strength from the picked side's view: > 0 favours it (for `X`, the home view). In SR-only mode it is mostly the closing price, so a high score marks a clear favourite rather than value over the market. |
+| **recommendation** | Advice based purely on market gaps and steam. Without motivation data a `1` or `2` pick reaches `🟢 STRONG BUY` only through the `Sure Bet Pattern`. |
 
 ### Understanding the 'Reason' Column
 
@@ -123,6 +123,7 @@ The algorithm sums `LAST 16%` and `KO P/O%` when they are consistent, falls back
   - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`).
   - `Steam (+)`: Market odds are dropping for this team.
   - `(Risk: Rising Odds)`: Mathematical value is high, but the market is betting against the team. Recommendation downgraded.
+  - `(No Steam Confirmation)` (SR-only): a `Strong Expert Signal` whose odds did not fall enough for the `Sure Bet Pattern`; the row stays `🟡 CONSIDER` because the market has not confirmed the signal.
 
 ## Soccer-rating Logic
 
