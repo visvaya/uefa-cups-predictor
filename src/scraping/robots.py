@@ -5,9 +5,10 @@ the longest one, and matches user agents by substring.
 """
 
 import re
+import string
 from collections.abc import Iterator
 from dataclasses import dataclass
-from urllib.parse import quote, unquote, urlsplit
+from urllib.parse import quote, urlsplit
 
 
 @dataclass(frozen=True)
@@ -24,8 +25,18 @@ DISALLOW_ALL: Rules = (Rule(allow=False, pattern="/"),)
 SAFE_CHARACTERS = "/?#[]@!$&'()*+,;=:%"
 
 
+UNRESERVED = frozenset(string.ascii_letters + string.digits + "-._~")
+ESCAPE = re.compile("%([0-9A-Fa-f]{2})")
+
+
 def normalise(text: str) -> str:
-    return quote(unquote(text), safe=SAFE_CHARACTERS)
+    """Decodes escapes of unreserved characters only; other escapes keep their meaning, in uppercase hex."""
+
+    def unescape(match: re.Match[str]) -> str:
+        char = chr(int(match.group(1), 16))
+        return char if char in UNRESERVED else "%" + match.group(1).upper()
+
+    return quote(ESCAPE.sub(unescape, text), safe=SAFE_CHARACTERS)
 
 
 def product_token(user_agent: str) -> str:

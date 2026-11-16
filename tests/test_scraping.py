@@ -208,12 +208,15 @@ def test_resolve_url_rejects_other_urls(url_path: str) -> None:
     assert resolve_url(url_path) is None
 
 
-def page(text: str = "", location: str | None = None, status: int = 200) -> SimpleNamespace:
-    """A stand-in for requests.Response with only what fetch reads."""
+def page(
+    text: str = "", location: str | None = None, status: int = 200, content: bytes | None = None
+) -> SimpleNamespace:
+    """A stand-in for requests.Response with only what fetch reads (`content` defaults to `text` in UTF-8)."""
     return SimpleNamespace(
         is_redirect=location is not None,
         headers={"location": location} if location else {},
         text=text,
+        content=text.encode("utf-8") if content is None else content,
         status_code=status,
     )
 
@@ -314,6 +317,16 @@ def test_fetch_waits_the_delay_between_robots_txt_and_the_first_page(monkeypatch
         "https://www.soccer-rating.com/today-prediction",
         "https://www.soccer-rating.com/Ajax/123/",
     ]
+
+
+def test_fetch_reads_robots_txt_as_utf8_whatever_requests_guessed(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Without a charset, requests decodes text/plain as ISO-8859-1; RFC 9309 robots.txt files are UTF-8.
+    robots_utf8 = ("User-Agent: *" + chr(10) + "Disallow: /caf" + chr(0xE9) + "/" + chr(10)).encode("utf-8")
+    robots = page(text=robots_utf8.decode("iso-8859-1"), content=robots_utf8)
+    fetcher, requested = fetcher_with(monkeypatch, [page(text="ok")], robots=robots)
+
+    assert fetcher.fetch("/caf%C3%A9/x") is None
+    assert requested == [ROBOTS_URL]
 
 
 def test_fetch_treats_a_missing_robots_txt_as_allowing_everything(monkeypatch: pytest.MonkeyPatch) -> None:

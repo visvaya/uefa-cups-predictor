@@ -78,7 +78,10 @@ class SoccerRatingFetcher:
         redirect that cannot be followed disallows everything, so the run fetches nothing more."""
         response = self._response(ROBOTS_PATH, ALLOW_ALL)
         if response is not None and response.status_code < 500:
-            return parse_robots(response.text, self.user_agent) if response.status_code < 400 else ALLOW_ALL
+            if response.status_code >= 400:
+                return ALLOW_ALL
+            # RFC 9309 robots.txt is UTF-8; requests guesses ISO-8859-1 for text/plain without a charset.
+            return parse_robots(response.content.decode("utf-8", errors="replace"), self.user_agent)
         logger.error("robots.txt is unreachable; fetching nothing from soccer-rating.com in this run")
         return DISALLOW_ALL
 

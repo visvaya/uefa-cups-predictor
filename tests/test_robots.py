@@ -47,7 +47,17 @@ GROUP_CASES = [
 ]
 
 
-@pytest.mark.parametrize(("lines", "path", "allowed"), CASES + GROUP_CASES)
+ENCODING_CASES = [
+    # an encoded reserved character keeps its meaning: %24 is a literal dollar sign, not the end anchor
+    (["User-agent: *", "Disallow: /report%24"], "/report%24", False),
+    (["User-agent: *", "Disallow: /report$"], "/report%24", True),
+    # escapes of unreserved characters and plain characters compare equal, whatever the hex case
+    (["User-agent: *", "Disallow: /%7euser"], "/~user", False),
+    (["User-agent: *", "Disallow: /caf%c3%a9/"], "/caf%C3%A9/x", False),
+]
+
+
+@pytest.mark.parametrize(("lines", "path", "allowed"), CASES + GROUP_CASES + ENCODING_CASES)
 def test_is_allowed_follows_rfc_9309(lines: list[str], path: str, allowed: bool) -> None:
     assert is_allowed(parse_robots(NL.join(lines), AGENT), SITE + path) is allowed
 
