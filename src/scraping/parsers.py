@@ -80,6 +80,8 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
 
     out: list[TodayMatch] = []
     current_league: str | None = None
+    # Names of the leagues met on this page; a local copy, so unknown leagues never leak into LEAGUES
+    league_names = dict(LEAGUES)
 
     for tr in match_table.find_all("tr"):
         # AD DETECTION: Skip rows with "Live Betting Tips!" or adsbygoogle script
@@ -113,15 +115,9 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
                 else:
                     # Capture whatever is the first token as the league code
                     current_league = code_candidate
-                    # For safety, maybe ensure it looks like a code (uppercase, alphanumeric)
-                    # But the site seems consistent: "AR1 ...", "CLCUP ...", etc.
-                    # We might want to populate LEAGUES dict dynamically?
-                    # For now just pass the code through.
-                    if current_league not in LEAGUES:
-                        # Add dynamic entry to avoid KeyError later if we rely on LEAGUES[code]
-                        # Or just use the rest of the string as name
-                        league_name = parts[1] if len(parts) > 1 else current_league
-                        LEAGUES[current_league] = league_name
+                    # The site is consistent ("AR1 ...", "CLCUP ..."); the rest of the header names the league
+                    if current_league not in league_names:
+                        league_names[current_league] = parts[1] if len(parts) > 1 else current_league
 
             continue
 
@@ -180,7 +176,7 @@ def parse_today_prediction(html: str, snapshot_date: str, all_leagues: bool = Fa
                 match_id=match_id,
                 snapshot_date=snapshot_date,
                 league_code=current_league,
-                league_name=LEAGUES[current_league],
+                league_name=league_names[current_league],
                 time_local=time_str,
                 home_id=home_id,
                 away_id=away_id,

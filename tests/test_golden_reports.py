@@ -1,7 +1,7 @@
 """Golden-file tests that pin the complete CSV reports of the analyzer.
 
-They cover `analyze_league` for both cups and `analyze_sr_only`, each in the default and the `--excel-pl` format,
-so a refactor of `analyze.py` cannot change a value, label, row order or column order unnoticed.
+They cover `run_league` for both cups and `run_sr_only`, each in the default and the `--excel-pl` format,
+so a refactor of the analyzer cannot change a value, label, row order or column order unnoticed.
 
 Inputs: the tracked The Analyst examples (`data/theanalyst/**/*_example.csv`; two rows of the Europa League table
 are edited in `EL_TABLE_EDITS` so that both LOCKED statuses occur) and the synthetic soccer-rating set in
@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-import analyze
+from src.analyzer.cli import run_league, run_sr_only
 
 TESTS_DIR = Path(__file__).resolve().parent
 EXAMPLES_DIR = TESTS_DIR.parent / "data" / "theanalyst"
@@ -35,8 +35,8 @@ FORMATS = pytest.mark.parametrize("excel_pl", [False, True], ids=["default", "ex
 
 
 @pytest.fixture
-def base_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Lays out the inputs under the names `analyze.py` expects and points `BASE_DIR` at them."""
+def base_dir(tmp_path: Path) -> Path:
+    """Lays out the inputs under the names the analyzer expects; the tests pass this directory as `base_dir`."""
     for prefix, league in LEAGUE_DIRS.items():
         league_dir = tmp_path / "data" / "theanalyst" / league
         league_dir.mkdir(parents=True)
@@ -51,7 +51,6 @@ def base_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     el_table.write_text(text, encoding="utf-8", newline="")
 
     shutil.copytree(SR_FIXTURES_DIR, tmp_path / "data" / "soccer-rating")
-    monkeypatch.setattr(analyze, "BASE_DIR", tmp_path)
     return tmp_path
 
 
@@ -72,7 +71,7 @@ def golden_suffix(excel_pl: bool) -> str:
 @FORMATS
 @pytest.mark.parametrize("prefix", ["cl", "el"])
 def test_analyze_league_report_matches_golden(base_dir: Path, prefix: str, excel_pl: bool) -> None:
-    analyze.analyze_league(prefix, excel_pl=excel_pl)
+    run_league(base_dir, prefix, excel_pl=excel_pl)
 
     assert_matches_golden(
         base_dir / f"{prefix}_recommendations.csv", f"{prefix}_recommendations{golden_suffix(excel_pl)}.csv"
@@ -84,7 +83,7 @@ def test_analyze_sr_only_report_matches_golden(base_dir: Path, excel_pl: bool) -
     output_dir = base_dir / "recommendations"
     output_dir.mkdir()
 
-    analyze.analyze_sr_only(base_dir / "data" / "soccer-rating" / SR_ONLY_INPUT, output_dir, excel_pl=excel_pl)
+    run_sr_only(base_dir, base_dir / "data" / "soccer-rating" / SR_ONLY_INPUT, output_dir, excel_pl=excel_pl)
 
     assert_matches_golden(
         output_dir / "sr_analysis_report_2026-01-28.csv", f"sr_analysis_report{golden_suffix(excel_pl)}.csv"

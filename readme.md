@@ -212,7 +212,7 @@ The script performs a "Data Audit" during every run. Here is how to interpret th
 
 ## Customizing Team Names (NAME_FIX)
 
-Team names often differ between lists (e.g., "Real" vs "Real Madrid"). To fix this without editing the raw CSV files, modify the `NAME_FIX` dictionary at the top of `analyze.py`:
+Team names often differ between lists (e.g., "Real" vs "Real Madrid"). To fix this without editing the raw CSV files, modify the `NAME_FIX` dictionary in `src/analyzer/names.py`:
 
 ```python
 NAME_FIX: Dict[str, str] = {

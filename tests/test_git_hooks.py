@@ -100,12 +100,13 @@ def test_text_problems_rejects_em_dash_and_emoji_anywhere() -> None:
 
 
 def test_text_problems_allows_label_emoji_only_where_labels_live() -> None:
-    assert text_problems("analyze.py", 'label = "' + GREEN_LABEL + '"\n') == []
+    assert text_problems("src/analyzer/recommendations.py", 'label = "' + GREEN_LABEL + '"\n') == []
     assert text_problems("readme.md", GREEN_LABEL + "\n") == []
     assert text_problems("tests/golden/cl.csv", GREEN_LABEL + "\n") == []
     assert text_problems("tests/golden/cl.csv", ROCKET + "\n") != []
     assert text_problems("src/x.py", GREEN_LABEL + "\n") != []
-    assert text_problems("analyze.py", ROCKET + "\n") != []
+    assert text_problems("src/analyzer/recommendations.py", ROCKET + "\n") != []
+    assert text_problems("analyze.py", GREEN_LABEL + "\n") != []
 
 
 def test_identity_problems_only_when_owner_identities_are_configured() -> None:

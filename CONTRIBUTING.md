@@ -31,7 +31,7 @@ uv run pytest --cov
 uv run python scripts/git_hooks.py tracked
 ```
 
-Changes to the recommendation logic in `analyze.py` must keep the reports deterministic. If a change is meant to
+Changes to the recommendation logic in `src/analyzer/` must keep the reports deterministic. If a change is meant to
 alter the output, say so in the pull request and update `readme.md` and `interpretation.md` when thresholds or
 weights change.
 
