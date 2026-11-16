@@ -1,7 +1,8 @@
 name: Mutation testing
 
 # Weekly measurement of how well the tests check the model rules (mutmut; settings in pyproject.toml).
-# Survivors are reported in the job summary; the job fails only when mutmut itself cannot run.
+# Survivors are reported in the job summary; the job fails when mutmut cannot run or the score drops below the
+# baseline (first run, 2026-11-16: 1121 of 1385 mutants killed, 80.9 %).
 on:
   schedule:
     - cron: "53 4 * * 1"
@@ -48,3 +49,17 @@ jobs:
             uv run mutmut results | head -50
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Check the mutation score
+        env:
+          # Ratchet: raise it when tests kill more mutants, never lower it to pass.
+          MIN_MUTATION_SCORE_PERCENT: "80"
+        run: |
+          uv run python - <<'PY'
+          import json, os, sys
+          s = json.load(open("mutants/mutmut-cicd-stats.json"))
+          tested = s["total"] - s["skipped"]
+          score = 100 * (s["killed"] + s["timeout"]) / tested if tested else 0.0
+          minimum = float(os.environ["MIN_MUTATION_SCORE_PERCENT"])
+          print(f"Mutation score {score:.1f} % (minimum {minimum:.0f} %)")
+          sys.exit(0 if score >= minimum else 1)
+          PY
