@@ -1,5 +1,5 @@
 team,opp,teamWinProb%,teamRotRisk,teamMot,oppMot,teamStatus,oppStatus,expertScore,srCompleteness,srEdge,srDropping,strangeOdds,recommendation,reason
-Team O,Team P,60.0,1.0,100.0,98.1,IN_PLAY,IN_PLAY,0.87,1.0,0.04,0.21,0.0,🟢 STRONG BUY,Sure Bet Pattern; Good Value; Positive Signal; Steam (+)
+Team O,Team P,60.0,1.0,100.0,98.1,IN_PLAY,IN_PLAY,0.9,1.0,0.04,0.21,0.0,🟢 STRONG BUY,Sure Bet Pattern; Good Value; Positive Signal; Steam (+)
 Team W,Team X,50.0,1.0,61.5,43.1,IN_PLAY,LOCKED_PLAYOFFS,0.57,0.5,0.02,0.15,0.0,🟢 STRONG BUY,Sure Bet Pattern; Good Value; Positive Signal; Steam (+)
 Team K,Team L,50.0,1.0,100.0,100.0,IN_PLAY,IN_PLAY,0.14,1.0,-0.01,0.0,0.0,🟡 CONSIDER,Good Value
 Team R,Team Q,65.0,1.0,87.5,92.5,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,-0.0,0.0,⚪ NEUTRAL,Good Value
@@ -8,7 +8,7 @@ Team C,Team D,55.0,1.0,77.7,80.0,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL
 Team N,Team M,50.0,1.0,100.0,100.0,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,-0.0,0.0,⚪ NEUTRAL,Good Value
 Team F,Team E,50.0,1.0,79.7,80.0,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,-0.0,0.0,⚪ NEUTRAL,-
 Team I,Team J,45.0,1.0,84.6,88.0,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team B,Team A,35.0,1.0,77.2,23.4,IN_PLAY,LOCKED_DIRECT_RO16,-0.86,1.0,-0.02,-0.29,0.0,⚪ NEUTRAL,Positive Signal; Steam (-)
+Team B,Team A,35.0,1.0,77.2,23.4,IN_PLAY,LOCKED_DIRECT_RO16,-0.87,1.0,-0.02,-0.29,0.0,⚪ NEUTRAL,Positive Signal; Steam (-)
 Team V,Team U,45.0,1.0,67.7,72.7,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,-0.0,0.0,⚪ NEUTRAL,-
 Team H,Team G,40.0,1.0,80.8,79.1,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,-0.0,0.0,⚪ NEUTRAL,-
 Team U,Team V,40.0,1.0,72.7,67.7,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
@@ -22,11 +22,11 @@ Team M,Team N,25.0,1.0,100.0,100.0,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTR
 Team L,Team K,25.0,1.0,100.0,100.0,IN_PLAY,IN_PLAY,-0.14,1.0,0.01,-0.0,0.0,⚪ NEUTRAL,-
 Team CC,Team DD,25.0,1.02,36.1,30.9,IN_PLAY,OUT,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
 Team D,Team C,25.0,1.0,80.0,77.7,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,-0.0,0.0,⚪ NEUTRAL,-
-Team P,Team O,20.0,1.0,98.1,100.0,IN_PLAY,IN_PLAY,-0.87,1.0,-0.02,-0.21,0.0,⚪ NEUTRAL,Positive Signal; Steam (-)
+Team P,Team O,20.0,1.0,98.1,100.0,IN_PLAY,IN_PLAY,-0.9,1.0,-0.02,-0.21,0.0,⚪ NEUTRAL,Positive Signal; Steam (-)
 Team E,Team F,20.0,1.0,80.0,79.7,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
 Team Q,Team R,15.0,1.0,92.5,87.5,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
 Team BB,Team AA,15.0,1.01,40.4,46.3,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,-0.0,0.0,⚪ NEUTRAL,-
-Team A,Team B,40.0,1.76,23.4,77.2,LOCKED_DIRECT_RO16,IN_PLAY,0.86,1.0,0.03,0.29,0.0,🟠 CAUTION,High rotation risk; Status LOCKED_DIRECT_RO16; Sure Bet Pattern; Positive Signal; Steam (+)
+Team A,Team B,40.0,1.76,23.4,77.2,LOCKED_DIRECT_RO16,IN_PLAY,0.87,1.0,0.03,0.29,0.0,🟠 CAUTION,High rotation risk; Status LOCKED_DIRECT_RO16; Sure Bet Pattern; Positive Signal; Steam (+)
 Team X,Team W,25.0,1.38,43.1,61.5,LOCKED_PLAYOFFS,IN_PLAY,-0.57,0.5,-0.02,-0.15,0.0,🟠 CAUTION,Status LOCKED_PLAYOFFS; Positive Signal; Steam (-)
 Team DD,Team CC,55.0,2.03,30.9,36.1,OUT,IN_PLAY,-0.0,0.0,0.0,-0.0,0.0,🔴 AVOID,Out of contention; High rotation risk
 Team GG,Team HH,45.0,2.11,19.4,12.0,OUT,OUT,0.0,0.0,0.0,0.0,0.0,🔴 AVOID,Out of contention; High rotation risk

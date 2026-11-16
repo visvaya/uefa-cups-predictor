@@ -174,8 +174,16 @@ def labels(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> np.ndarray:
     return np.select(conditions, [AVOID, CAUTION, STRONG_BUY, STRONG_BUY, CONSIDER], default=NEUTRAL)
 
 
-def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> pd.Series:
-    """The `reason` column: the rules that fired, joined with "; ", or "-" when none did."""
+def number_text(values: pd.Series, decimal: str) -> pd.Series:
+    """The values rounded to 2 decimals as text, with `decimal` as the decimal separator."""
+    return values.round(2).astype(str).str.replace(".", decimal, regex=False)
+
+
+def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) -> pd.Series:
+    """The `reason` column: the rules that fired, joined with "; ", or "-" when none did.
+
+    Numbers in the text use `decimal` as the decimal separator, like the numeric columns of the report.
+    """
 
     def r(cond: pd.Series, text: str | pd.Series) -> np.ndarray:
         return np.where(cond, text + "; ", "")
@@ -204,10 +212,10 @@ def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> pd.Series:
 
     if allow_draws:
         lean_str = np.where(s.score > 0, "Lean: 1X", "Lean: X2")
-        steam_x_val = column_or(ranking, "steam_x", 0).fillna(0).round(2).astype(str)
+        steam_x_val = number_text(column_or(ranking, "steam_x", 0).fillna(0), decimal)
         reason_s += r((s.pick == "X") & s.is_home, lean_str + " (SteamX " + steam_x_val + ")")
 
-    ao_fair_str = "AO(" + s.close.round(2).astype(str) + ") > Fair(" + s.fair.round(2).astype(str) + ")"
+    ao_fair_str = "AO(" + number_text(s.close, decimal) + ") > Fair(" + number_text(s.fair, decimal) + ")"
     reason_s += r(s.val >= HIGH_VALUE, ao_fair_str)
 
     reason_s = reason_s.str.strip().str.rstrip(";")
@@ -226,15 +234,16 @@ def rounded(ranking: pd.DataFrame) -> pd.DataFrame:
     return ranking
 
 
-def format_recommendations(ranking: pd.DataFrame, allow_draws: bool = True) -> pd.DataFrame:
+def format_recommendations(ranking: pd.DataFrame, allow_draws: bool, decimal: str) -> pd.DataFrame:
     """Adds recommendation labels and reasons and rounds numeric values.
 
     Args:
         allow_draws: If False (Analyst mode), skips Draw specific logic.
+        decimal: Decimal separator of the numbers in the reasons.
     """
     s = read_signals(ranking)
     ranking = ranking.assign(recommendation=labels(ranking, s, allow_draws))
-    ranking["reason"] = reasons(ranking, s, allow_draws)
+    ranking["reason"] = reasons(ranking, s, allow_draws, decimal)
     return rounded(ranking)
 
 

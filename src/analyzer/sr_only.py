@@ -68,7 +68,7 @@ def match_features(f2: pd.DataFrame) -> pd.DataFrame:
 
 
 def team_ranking(f2: pd.DataFrame) -> pd.DataFrame:
-    """One row per team and match; away rows flip srDropping and do_drop (expertScore stays the home score)."""
+    """One row per team and match, seen from that team (away rows flip expertScore, srDropping and do_drop)."""
     h = f2.assign(
         Team=f2["HomeTeamName"],
         Opp=f2["AwayTeamName"],
@@ -84,6 +84,7 @@ def team_ranking(f2: pd.DataFrame) -> pd.DataFrame:
         Close=f2["close_2"].fillna(99.0),
         Fair=f2["fair_2"].fillna(99.0),
         SR_edge=f2["edge_2"].fillna(0),
+        expertScore=-f2["expertScore"],
         srDropping=-f2["steam_diff"],
         do_drop=-f2["do_drop"],
         is_home=False,
@@ -106,11 +107,14 @@ def favoured_sides(ranking: pd.DataFrame) -> pd.DataFrame:
 
 
 def sr_only_report(
-    sr: pd.DataFrame, id_to_name: dict[int, str], today_names: dict[str, dict[str, str]]
+    sr: pd.DataFrame, id_to_name: dict[int, str], today_names: dict[str, dict[str, str]], decimal: str
 ) -> pd.DataFrame:
-    """The SR-only report rows for a soccer-rating snapshot with numeric odds columns."""
+    """The SR-only report rows for a soccer-rating snapshot with numeric odds columns.
+
+    `decimal` is the decimal separator of the numbers in the reasons.
+    """
     matches = match_features(with_team_names(sr, id_to_name, today_names))
-    ranking = favoured_sides(format_recommendations(team_ranking(matches), allow_draws=True))
+    ranking = favoured_sides(format_recommendations(team_ranking(matches), allow_draws=True, decimal=decimal))
 
     report = ranking.rename(columns=REPORT_COLUMNS)
     for c in REPORT_COLUMNS.values():

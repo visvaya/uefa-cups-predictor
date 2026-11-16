@@ -27,6 +27,11 @@ from src.csv_safety import neutralize_formulas
 SNAPSHOT_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
+def decimal_separator(excel_pl: bool) -> str:
+    """The decimal separator of a report: a comma for Polish Excel, a point otherwise."""
+    return "," if excel_pl else "."
+
+
 def write_report(report: pd.DataFrame, path: Path, excel_pl: bool) -> None:
     """Writes the report CSV: `;` and decimal comma for Polish Excel, `,` and decimal point otherwise."""
     if excel_pl:
@@ -44,11 +49,13 @@ def run_league(base_dir: Path, prefix: str, excel_pl: bool = False) -> None:
     print("\n".join(integrity_report(table, league_name)))
     matches = match_frame(fixtures, enrich_table(table))
 
-    sr = load_soccer_rating(base_dir, prefix)
+    sr, notes = load_soccer_rating(base_dir, prefix)
+    for line in notes:
+        print(line)
     matches = add_soccer_rating_features(matches, sr)
     if not sr.empty:
         print("\n".join(coverage_report(matches)))
-    report = league_report(calculate_values(matches))
+    report = league_report(calculate_values(matches), decimal_separator(excel_pl))
 
     print(f"\n--- {league_name} TOP 10 RECOMMENDATIONS ---")
     print(report.head(10).to_string(index=False))
@@ -77,8 +84,8 @@ def today_names(path: Path) -> dict[str, dict[str, str]]:
 def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None, excel_pl: bool = False) -> None:
     """SR-only mode: writes `sr_analysis_report[_<date>].csv` to `output_dir` (default `base_dir`)."""
     sr_dir = soccer_rating_dir(base_dir)
-    # The cumulative file unless an existing snapshot is given
-    path = input_file if input_file and input_file.exists() else sr_dir / "match_odds_development.csv"
+    # The named snapshot, or the cumulative file when none is named
+    path = input_file or sr_dir / "match_odds_development.csv"
     if not path.exists():
         raise AnalyzerInputError(f"Input file not found: {path}")
     print(f"INFO: Loading SR data from: {path.name}")
@@ -88,7 +95,8 @@ def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None
     sr = cast_numeric(read_smart_csv(path), ODDS_NUMERIC_COLUMNS)
     if not valid_odds(sr).any():
         raise AnalyzerInputError(f"No match with valid odds in {path.name}")
-    report = sr_only_report(sr, load_club_names(sr_dir / "club_meta.csv"), today_names(sr_dir / "today_matches.csv"))
+    names = load_club_names(sr_dir / "club_meta.csv")
+    report = sr_only_report(sr, names, today_names(sr_dir / "today_matches.csv"), decimal_separator(excel_pl))
 
     print("\n--- SR-ONLY ANALYSIS TOP 10 RECOMMENDATIONS ---")
     print(report.head(10).to_string(index=False))

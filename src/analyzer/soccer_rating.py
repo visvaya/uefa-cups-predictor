@@ -81,19 +81,17 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
     """Merges SR data into the fixtures and calculates value edges with robust normalization."""
     edge_cols = ["edge_1", "edge_x", "edge_2"]
 
-    # do_drop, strangeOdds and srDropping always exist, with or without SR data (computed before the merge)
-    f = with_value_rating_signals(f)
-    f["srDropping"] = 0.0  # Overwritten below when SR data exists
-
     if sr.empty:
-        for c in [*edge_cols, "sr_quality", "steam_diff", "prob_gap_1", "prob_gap_2", "rating_diff", "lineup_adv"]:
+        f = f.copy()
+        zero_cols = ["sr_quality", "steam_diff", "srDropping", "prob_gap_1", "prob_gap_2", "rating_diff", "lineup_adv"]
+        for c in [*edge_cols, *zero_cols]:
             f[c] = 0.0
 
         for side in SIDES:
             f[f"p_close_{side}"] = NEUTRAL_SIDE_PROB if side != "x" else NEUTRAL_DRAW_PROB
             f[f"p_fair_{side}"] = NEUTRAL_SIDE_PROB  # also for x (kept as it was)
 
-        return f
+        return with_value_rating_signals(f)
 
     f2 = f.merge(sr, on=["HomeKey", "AwayKey"], how="left", suffixes=("", "_sr"))
 
@@ -123,7 +121,8 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
 
     f2["sr_quality"] = sr_quality(f2, valid_mask)
     f2["srDropping"] = f2["steam_diff"]
-    return f2
+    # After the merge, so the OO/DO/AO value ratings of the SR data are there
+    return with_value_rating_signals(f2)
 
 
 def coverage_report(f2: pd.DataFrame) -> list[str]:
