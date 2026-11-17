@@ -27,6 +27,7 @@ from scraping.parsers import (
     team_id_from_href,
 )
 from scraping.soccer_rating_cli import (
+    days_to_read,
     minutes_until_kickoff,
     parse_args,
     save_club_meta,
@@ -563,3 +564,19 @@ def test_save_club_meta_writes_the_new_rows_over_an_empty_file(tmp_path: Path) -
     save_club_meta(path, new.assign(rating_away=1850.0))
 
     assert pd.read_csv(path)["team_name"].tolist() == ["New"]
+
+
+@pytest.mark.parametrize(
+    ("now", "max_start", "days", "expected"),
+    [
+        (datetime(2026, 11, 16, 18, 0), 700, 0, 1),  # 18:00 + 700 min reaches 05:40 on the next day
+        (datetime(2026, 11, 16, 18, 0), 300, 0, 0),  # 23:00 stays on today's page
+        (datetime(2026, 11, 16, 18, 0), None, 0, 0),  # no window end: only what --days asks for
+        (datetime(2026, 11, 16, 18, 0), 700, 2, 2),  # --days already covers it
+        (datetime(2026, 11, 16, 18, 0), 100_000, 0, 6),  # capped at the furthest day page
+    ],
+)
+def test_days_to_read_covers_a_window_past_midnight(
+    now: datetime, max_start: int | None, days: int, expected: int
+) -> None:
+    assert days_to_read(now, max_start, days) == expected
