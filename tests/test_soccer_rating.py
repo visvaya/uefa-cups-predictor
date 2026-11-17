@@ -129,3 +129,27 @@ def test_sr_only_match_without_valid_odds_stays_neutral() -> None:
     report = _sr_report(_sr_match("m1", **EVEN_FALLING_HOME), _sr_match("m2", **no_odds, home_id=3, away_id=4))
 
     assert report.loc[report["homeTeam"] == "No Odds FC", "recommendation"].tolist() == [NEUTRAL]
+
+
+def test_sr_only_draw_label_does_not_depend_on_which_side_is_at_home() -> None:
+    odds = {"open_1": 2.60, "open_x": 3.20, "open_2": 2.70, "close_1": 2.60, "close_x": 3.20, "close_2": 2.70}
+    match = _sr_match("m1", **odds, fair_1=2.90, fair_x=3.20, fair_2=2.45)
+    swapped = {"open_1": 2.70, "open_x": 3.20, "open_2": 2.60, "close_1": 2.70, "close_x": 3.20, "close_2": 2.60}
+    mirror = _sr_match("m2", **swapped, fair_1=2.45, fair_x=3.20, fair_2=2.90, home_id=3, away_id=4)
+
+    report = _sr_report(match, mirror)
+
+    assert report["pick"].tolist() == ["X", "X"]
+    assert report["recommendation"].nunique() == 1
+    assert report["srEdge"].nunique() == 1
+
+
+def test_sr_only_steam_follows_the_picked_teams_own_odds() -> None:
+    # The favourite's odds rose (1.60 to 1.65) while the outsider's rose more: no steam on the pick
+    odds = {"open_1": 1.60, "open_x": 4.0, "open_2": 5.0, "close_1": 1.65, "close_x": 4.0, "close_2": 6.5}
+    row = _sr_report(_sr_match("m1", **odds, fair_1=1.70, fair_x=4.0, fair_2=5.0)).iloc[0]
+
+    assert row["pick"] == "1"
+    assert row["srDropping"] < 0
+    assert "Steam (+)" not in row["reason"]
+    assert "Sure Bet Pattern" not in row["reason"]
