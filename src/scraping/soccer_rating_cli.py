@@ -289,6 +289,17 @@ def day_page_path(today: date, days_ahead: int) -> str:
     return f"{TODAY_PATH}/{WEEKDAY_PAGES[(today + timedelta(days=days_ahead)).weekday()]}"
 
 
+def days_to_read(now: datetime, max_start_min: int | None, days: int) -> int:
+    """Day pages to read: the `--days` asked for, or more when the time window ends on a later day.
+
+    A match after midnight is listed on the next day's page, so a window from 18:00 that reaches 05:40 needs it.
+    """
+    if max_start_min is None:
+        return days
+    window_end = now + timedelta(minutes=max_start_min)
+    return min(max(days, (window_end.date() - now.date()).days), MAX_DAYS_AHEAD)
+
+
 def read_day_pages(fetch: Callable[[str], str | None], today: date, days: int, delay_s: float) -> list[tuple[int, str]]:
     """The pages of the `days` days after today, as (days ahead, html); a missing page is logged and skipped.
 
@@ -576,7 +587,11 @@ def main() -> None:
     today_html = read_today_page(args.local, fetcher.fetch)
     if today_html is None:
         return
-    pages = [(0, today_html), *read_day_pages(fetcher.fetch, now.date(), args.days, args.delay)]
+    # The local mode has no day pages (`--days` is refused there), so its window stays on the today page
+    days = args.days if args.local else days_to_read(now, args.max_start, args.days)
+    if days > args.days:
+        logger.info(f"The time window ends {days} day(s) ahead: reading those day pages too.")
+    pages = [(0, today_html), *read_day_pages(fetcher.fetch, now.date(), days, args.delay)]
     all_leagues = args.all_leagues or args.leagues is not None
     filters = MatchFilters(all_leagues, args.min_start, args.max_start, match_filters(args))
     matches = select_matches(filters, pages, now)

@@ -159,7 +159,7 @@ python -m scraping.soccer_rating_cli
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
 - `--separate-snapshots`: Save the snapshot to a file of its day (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of the cumulative `match_odds_development.csv`; a second run on the same day merges into that file, and the newer row of a match wins.
 - `--min-start N`: Process matches starting at least N minutes from now.
-- `--max-start N`: Process matches starting at most N minutes from now. Each kickoff is on the date of the page that lists it: an `00:00` kickoff on the today page has already started.
+- `--max-start N`: Process matches starting at most N minutes from now. Each kickoff is on the date of the page that lists it: an `00:00` kickoff on the today page has already started. When the window ends after midnight, the next day's page is read too (as with `--days`), so matches after midnight are not lost; the local mode stays on the today page.
 - `--days N`: Also read the site's day pages for the next N days (0-6, e.g. `/today-prediction/tuesday`); match ids start with the kickoff date and the snapshot file keeps the scrape date. Needs the live site, so it cannot be combined with `--local`.
 - `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (default `Europe/Paris`); the time window counts real minutes, also across a DST change. The default follows the site's "Timezone" selector, which showed "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established, so override it if the site shows times in another zone.
 
