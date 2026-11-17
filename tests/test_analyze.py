@@ -1,5 +1,7 @@
+import re
 import shutil
 from codecs import BOM_UTF8
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -8,8 +10,9 @@ import pytest
 
 from analyzer.cli import main
 from analyzer.config import ROTATION_RISK_MAX, STRANGE_ODDS_ROTATION_FACTOR
-from analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, read_smart_csv
+from analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, load_league_data, read_smart_csv
 from analyzer.errors import AnalyzerInputError
+from analyzer.league import validated_inputs
 from analyzer.model import enrich_table, pressure_vector, with_strange_odds_rotation
 from analyzer.names import norm_key
 
@@ -135,3 +138,91 @@ def test_sr_only_stops_when_the_named_input_file_is_missing(tmp_path: Path, caps
 @pytest.mark.parametrize("path", sorted((REPO_DIR / "data").glob("**/*_example.csv")), ids=lambda p: p.name)
 def test_example_csv_starts_with_at_most_one_bom(path: Path) -> None:
     assert not path.read_bytes().startswith(BOM_UTF8 * 2)
+
+
+def _league_dir(tmp_path: Path) -> Path:
+    """A base dir holding the CL example inputs under their real names; returns the league folder."""
+    league = tmp_path / "data" / "theanalyst" / "champions-league"
+    league.mkdir(parents=True)
+    shutil.copy(EXAMPLE_TABLE, league / "cl_table_predicted.csv")
+    shutil.copy(EXAMPLE_TABLE.with_name("cl_fixtures_example.csv"), league / "cl_fixtures.csv")
+    return league
+
+
+def _rewrite_table(league: Path, change: Callable[[pd.DataFrame], pd.DataFrame]) -> None:
+    path = league / "cl_table_predicted.csv"
+    change(read_smart_csv(path).astype(str)).to_csv(path, sep=";", index=False)
+
+
+@pytest.mark.parametrize(
+    ("cell", "expected"),
+    [("", "KO P/0%"), ("99,5%", "99,5%"), ("<1", "<1")],
+    ids=["blank", "percent-sign", "less-than"],
+)
+def test_load_league_data_rejects_an_unreadable_table_cell(tmp_path: Path, cell: str, expected: str) -> None:
+    league = _league_dir(tmp_path)
+    _rewrite_table(league, lambda df: df.assign(**{"KO P/0%": [cell, *df["KO P/0%"].iloc[1:]]}))
+
+    with pytest.raises(AnalyzerInputError, match=re.escape(expected)):
+        load_league_data(tmp_path, "cl")
+
+
+def test_load_league_data_rejects_a_misnamed_column(tmp_path: Path) -> None:
+    league = _league_dir(tmp_path)
+    _rewrite_table(league, lambda df: df.rename(columns={"KO P/0%": "KO P/O%"}))
+
+    with pytest.raises(AnalyzerInputError, match=re.escape("KO P/0%")):
+        load_league_data(tmp_path, "cl")
+
+
+def test_load_league_data_rejects_a_table_in_fractions(tmp_path: Path) -> None:
+    league = _league_dir(tmp_path)
+    columns = ["LEAGUE%", "KO P/0%", "LAST 16%", "QF%", "SF%", "FINAL%", "WINNER%"]
+    _rewrite_table(
+        league,
+        lambda df: df.assign(**{c: (df[c].str.replace(",", ".").astype(float) / 100).astype(str) for c in columns}),
+    )
+
+    with pytest.raises(AnalyzerInputError, match="percent"):
+        load_league_data(tmp_path, "cl")
+
+
+def test_validated_inputs_rejects_a_team_playing_twice(tmp_path: Path) -> None:
+    _league_dir(tmp_path)
+    fixtures, table = load_league_data(tmp_path, "cl")
+    fixtures.loc[1, "HomeTeam"] = fixtures.loc[0, "HomeTeam"]
+
+    with pytest.raises(AnalyzerInputError, match="more than once"):
+        validated_inputs(fixtures, table, "cl")
+
+
+def test_validated_inputs_rejects_a_duplicate_table_team(tmp_path: Path) -> None:
+    _league_dir(tmp_path)
+    fixtures, table = load_league_data(tmp_path, "cl")
+    table.loc[1, "TEAM"] = table.loc[0, "TEAM"]
+
+    with pytest.raises(AnalyzerInputError, match="more than once"):
+        validated_inputs(fixtures, table, "cl")
+
+
+def test_enrich_table_treats_a_rounded_sum_just_over_100_as_consistent() -> None:
+    zero = {c: 0.0 for c in TABLE_NUMERIC_COLUMNS}
+    rows = [{**zero, "XPOS": 20.0, "KO P/0%": ko, "LAST 16%": 50.0} for ko in (50.0, 50.01)]
+
+    enriched = enrich_table(pd.DataFrame(rows))
+
+    assert enriched["Motivation"].iloc[1] == pytest.approx(enriched["Motivation"].iloc[0], abs=0.5)
+
+
+@pytest.mark.parametrize(
+    ("analyst", "soccer_rating"),
+    [
+        ("Arsenal", "Arsenal FC"),
+        ("Leverkusen", "Bayer Leverkusen"),
+        ("PSV", "PSV Eindhoven"),
+        ("Barcelona", "FC Barcelona"),
+        ("Inter", "Inter Milan"),
+    ],
+)
+def test_norm_key_matches_the_soccer_rating_names_of_cl_clubs(analyst: str, soccer_rating: str) -> None:
+    assert norm_key(analyst) == norm_key(soccer_rating)

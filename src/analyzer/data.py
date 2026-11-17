@@ -10,6 +10,9 @@ from analyzer.names import norm_key
 LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league"}
 FIXTURES_NUMERIC_COLUMNS = ["HomeWin%", "Draw%", "AwayWin%"]
 TABLE_NUMERIC_COLUMNS = ["XPOS", "XPTS", "LEAGUE%", "KO P/0%", "LAST 16%", "QF%", "SF%", "FINAL%", "WINNER%"]
+# Percent columns of the Analyst table (every fixtures column is one);
+# a file whose values never exceed 1 holds fractions instead
+TABLE_PERCENT_COLUMNS = ["LEAGUE%", "KO P/0%", "LAST 16%", "QF%", "SF%", "FINAL%", "WINNER%"]
 ODDS_NUMERIC_COLUMNS = [
     "oo",
     "do",
@@ -41,6 +44,25 @@ def cast_numeric(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return df
 
 
+def analyst_numbers(df: pd.DataFrame, cols: list[str], percent_cols: list[str], name: str) -> pd.DataFrame:
+    """Copy of an Analyst file with `cols` as floats (dot or comma decimals).
+
+    Raises AnalyzerInputError for a missing column, a blank or unreadable cell, or percent columns that hold
+    fractions (no value above 1): silently reading 0 there would mark teams OUT.
+    """
+    if missing := [c for c in cols if c not in df.columns]:
+        raise AnalyzerInputError(f"{name}: missing columns {missing}")
+    df = df.copy()
+    for c in cols:
+        values = pd.to_numeric(df[c].astype(str).str.strip().str.replace(",", "."), errors="coerce")
+        if bad := df.loc[values.isna(), c].fillna("").astype(str).tolist():
+            raise AnalyzerInputError(f"{name}: unreadable values in column {c}: {bad}")
+        df[c] = values
+    if (df[percent_cols] <= 1).all().all():
+        raise AnalyzerInputError(f"{name}: {percent_cols} must be in percent (0 to 100), not fractions")
+    return df
+
+
 def read_smart_csv(path: Path) -> pd.DataFrame:
     """Reads UTF-8 CSV (BOM optional) with the separator taken from the header (; or ,).
 
@@ -61,9 +83,15 @@ def soccer_rating_dir(base_dir: Path) -> Path:
 def load_league_data(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Loads fixtures and predicted table for a given league prefix (cl/el)."""
     data_dir = base_dir / "data" / "theanalyst" / LEAGUE_DIRS[prefix]
-    fixtures = read_smart_csv(data_dir / f"{prefix}_fixtures.csv")
-    table = read_smart_csv(data_dir / f"{prefix}_table_predicted.csv")
-    return cast_numeric(fixtures, FIXTURES_NUMERIC_COLUMNS), cast_numeric(table, TABLE_NUMERIC_COLUMNS)
+    fixtures_name, table_name = f"{prefix}_fixtures.csv", f"{prefix}_table_predicted.csv"
+    return (
+        analyst_numbers(
+            read_smart_csv(data_dir / fixtures_name), FIXTURES_NUMERIC_COLUMNS, FIXTURES_NUMERIC_COLUMNS, fixtures_name
+        ),
+        analyst_numbers(
+            read_smart_csv(data_dir / table_name), TABLE_NUMERIC_COLUMNS, TABLE_PERCENT_COLUMNS, table_name
+        ),
+    )
 
 
 def cup_rows(sr: pd.DataFrame, prefix: str) -> pd.DataFrame:

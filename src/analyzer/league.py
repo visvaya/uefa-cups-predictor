@@ -65,7 +65,12 @@ def validated_inputs(fixtures: pd.DataFrame, table: pd.DataFrame, prefix: str) -
     fixtures = fixtures.assign(HomeKey=fixtures["HomeTeam"].map(norm_key), AwayKey=fixtures["AwayTeam"].map(norm_key))
     table = table.assign(TeamKey=table["TEAM"].map(norm_key))
 
-    used = set(fixtures["HomeKey"]).union(set(fixtures["AwayKey"]))
+    if twice := sorted(set(table.loc[table["TeamKey"].duplicated(), "TeamKey"])):
+        raise AnalyzerInputError(f"Teams listed more than once in {prefix}_table: {twice}")
+    playing = pd.concat([fixtures["HomeKey"], fixtures["AwayKey"]])
+    if twice := sorted(set(playing[playing.duplicated()])):
+        raise AnalyzerInputError(f"Teams playing more than once in {prefix}_fixtures: {twice}")
+    used = set(playing)
     if missing := sorted(used - set(table["TeamKey"])):
         raise AnalyzerInputError(f"Missing teams in {prefix}_table: {missing}")
     return fixtures, table

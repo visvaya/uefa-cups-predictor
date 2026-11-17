@@ -53,6 +53,12 @@ NAME_FIX: dict[str, str] = {
     "newcastle": "newcastle united",
     "r. union sg": "royal union saint-gilloise",
     "athletic": "athletic bilbao",
+    # Champions League: Analyst -> Soccer-rating (club_meta names, checked 2026-11-17)
+    "arsenal": "arsenal fc",
+    "leverkusen": "bayer leverkusen",
+    "psv": "psv eindhoven",
+    "barcelona": "fc barcelona",
+    "inter": "inter milan",
 }
 
 
