@@ -150,13 +150,13 @@ python -m scraping.soccer_rating_cli
 
 ### Arguments
 
-- `--limit N`: Process only N matches (useful for quick testing).
+- `--limit N`: Process only the first N matches, N at least 1 (useful for quick testing); the payload coverage is counted over those N.
 - `--delay N`: Set delay between requests (default 1.5s).
 - `--user-agent TEXT`: Override the User-Agent header. By default the scraper identifies itself as `uefa-cups-predictor` with a link to this repository. It reads the site's `robots.txt` once per run and skips paths it disallows; a missing `robots.txt` (4xx) allows everything, while a server or network error fetching it stops all requests of the run (RFC 9309).
 - `--local`: Use local HTML files (for debugging without network).
 - `--output-dir PATH`: Custom output directory (default `data/soccer-rating`).
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
-- `--separate-snapshots`: Save snapshot to a separate file (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of merging.
+- `--separate-snapshots`: Save the snapshot to a file of its day (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of the cumulative `match_odds_development.csv`; a second run on the same day merges into that file, and the newer row of a match wins.
 - `--min-start N`: Process matches starting at least N minutes from now.
 - `--max-start N`: Process matches starting at most N minutes from now. Each kickoff is on the date of the page that lists it: an `00:00` kickoff on the today page has already started.
 - `--days N`: Also read the site's day pages for the next N days (0-6, e.g. `/today-prediction/tuesday`); match ids start with the kickoff date and the snapshot file keeps the scrape date. Needs the live site, so it cannot be combined with `--local`.
@@ -167,7 +167,7 @@ Match filters (combinable, applied after the time window; each logs what it drop
 - `--skip-cups`: Skip every cup (league code contains `CUP`, e.g. `FACUP`, `CLCUP`).
 - `--skip-domestic-cups`: Skip cups that are neither UEFA nor other continental club cups. Cup codes are classified in one table (`CUP_CODES` in `src/scraping/match_filters.py`); a `CUP` code missing from it counts as domestic, and the run logs `Unclassified cup code <code> (<name>)` so that it can be classified.
 - `--skip-uefa-cups`: Skip the UEFA club competitions `CLCUP`, `ELCUP`, `ECLCUP` and `WCLCUP` (Women's Champions League).
-- `--skip-other-continental-cups`: Skip continental club cups outside UEFA (`CLICUP`, `AFCCUP`, `CCCUP`, `CPCUP`, `AFCUP`, the codes seen so far; the list is `OTHER_CONTINENTAL_CLUB_CUPS` in `src/scraping/match_filters.py`).
+- `--skip-other-continental-cups`: Skip continental club cups outside UEFA (`CLICUP`, `AFCCUP`, `CCCUP`, `CPCUP`, `AFCUP`, `ASEANCUP`, the codes seen so far; the list is `OTHER_CONTINENTAL_CLUB_CUPS` in `src/scraping/match_filters.py`).
 - `--skip-national-teams`: Skip matches of national teams.
 - `--leagues CODE[,CODE...]`: Keep only the listed league codes (e.g. `CLCUP,ELCUP,AR1`); implies reading all leagues of the page.
 
