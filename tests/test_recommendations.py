@@ -144,3 +144,20 @@ def test_standard_mode_sure_bet_needs_the_model_to_favour_the_team() -> None:
     label, _ = _label_and_reason(_sure_bet(-0.3, team_mot=60, opp_mot=40), allow_draws=False)
 
     assert label == NEUTRAL
+
+
+def test_standard_mode_sure_bet_held_back_by_the_gate_still_warns_of_rising_odds() -> None:
+    ranking = _sure_bet(0.8, team_mot=30, opp_mot=60).assign(srDropping=0.04, do_drop=-0.08, ValFinal=75.0)
+
+    _, reason = _label_and_reason(ranking, allow_draws=False)
+
+    assert "(Risk: Rising Odds)" in reason
+
+
+def test_sr_only_missing_steam_marker_needs_odds_that_did_not_fall() -> None:
+    ranking = _strong_favourite(0.31, Close=1.12, Fair=2.30)
+
+    _, reason = _label_and_reason(ranking, allow_draws=True)
+
+    assert "Steam (+)" in reason
+    assert "No Steam Confirmation" not in reason
