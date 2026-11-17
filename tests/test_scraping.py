@@ -2,13 +2,16 @@ import argparse
 import sys
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 import pytest
 import requests
 
 from scraping.fetcher import DEFAULT_USER_AGENT, MAX_REDIRECTS, REQUEST_TIMEOUT_S, SoccerRatingFetcher, resolve_url
+from scraping.match_filters import OTHER_CONTINENTAL_CLUB_CUPS
 from scraping.parsers import (
     LEAGUES,
     WORLD_CLUB_ID_OFFSET,
@@ -17,12 +20,21 @@ from scraping.parsers import (
     club_page_match_date,
     name_match_score,
     norm_team,
+    parse_clip_payloads,
     parse_today_prediction,
     payload_to_odds_row,
     pick_best_payload,
     team_id_from_href,
 )
-from scraping.soccer_rating_cli import minutes_until_kickoff, parse_args, scan_club_pages, site_clock, timezone_arg
+from scraping.soccer_rating_cli import (
+    minutes_until_kickoff,
+    parse_args,
+    save_club_meta,
+    save_cumulative,
+    scan_club_pages,
+    site_clock,
+    timezone_arg,
+)
 
 BACKSLASH = chr(92)
 ROBOTS_URL = "https://www.soccer-rating.com/robots.txt"
@@ -457,3 +469,78 @@ def test_scan_club_pages_skips_a_page_whose_next_match_is_on_another_day() -> No
     assert [c["_source_href"] for c in scan.candidates] == ["/Away-FC/202/"]
     # The skipped page's ratings belong to its other match, so they are not kept
     assert scan.team_ratings == (None, None)
+
+
+def test_save_cumulative_keeps_the_new_rows_of_a_large_merge(tmp_path: Path) -> None:
+    # Numpy sorts more than 16 rows with an unstable algorithm, which used to keep old rows over new ones
+    path = tmp_path / "snapshot.csv"
+    ids = [f"m{i}" for i in range(60)]
+    pd.DataFrame({"match_id": ids, "snapshot_date": "2026-11-17", "close_1": 2.0}).to_csv(path, index=False)
+    new = pd.DataFrame({"match_id": ids, "snapshot_date": "2026-11-17", "close_1": 1.5})
+
+    save_cumulative(path, new, ["match_id"], "snapshot_date")
+
+    assert set(pd.read_csv(path)["close_1"]) == {1.5}
+
+
+def test_save_club_meta_keeps_known_ratings_when_a_run_did_not_read_the_page(tmp_path: Path) -> None:
+    path = tmp_path / "club_meta.csv"
+    ids = list(range(1, 41))
+    rated = {"rating_total": 1900.0, "rating_home": 1950.0, "rating_away": 1850.0}
+    pd.DataFrame({"team_id": ids, "team_name": "Old", **rated}).to_csv(path, index=False)
+    unread = {"rating_total": None, "rating_home": None, "rating_away": None}
+    new = pd.DataFrame({"team_id": ids, "team_name": "New", **unread}).astype({c: float for c in unread})
+
+    save_club_meta(path, new)
+
+    saved = pd.read_csv(path)
+    assert set(saved["team_name"]) == {"New"}
+    assert set(saved["rating_total"]) == {1900.0}
+
+
+@pytest.mark.parametrize("quote", [chr(92) + "'", "&#39;"], ids=["js-escaped", "html-entity"])
+def test_parse_clip_payloads_reads_a_team_name_with_an_apostrophe(quote: str) -> None:
+    payload = f"Gambia,Cote d{quote}Ivoire,0,CAFQ,0.0,0.0,0.0," + ",".join(["1.50,4.00,6.00"] * 4)
+    html = f"<a href=\"javascript:copyToClipboard('{payload}')\">copy</a>"
+
+    assert parse_clip_payloads(html)[0][:2] == ["Gambia", "Cote d'Ivoire"]
+
+
+def test_norm_team_ignores_apostrophes() -> None:
+    assert norm_team("Newell's Old Boys") == norm_team("Newells Old Boys")
+    assert norm_team("Cote d" + chr(0x2019) + "Ivoire") == norm_team("Cote dIvoire")
+
+
+def test_pick_best_payload_without_todays_odds_is_low_confidence() -> None:
+    fixture = {**_fixture("Home FC", "Away FC"), "odd_1_today": None, "odd_x_today": None, "odd_2_today": None}
+
+    _, debug = pick_best_payload(fixture, [_payload("Home FC", "Away FC")])
+
+    assert debug["match_confidence"] == "LOW"
+
+
+def test_pick_best_payload_rejects_a_payload_with_the_sides_swapped() -> None:
+    # Its odds and ratings are written for the other side, so storing them would put them on the wrong team
+    best, _ = pick_best_payload(_fixture("Home FC", "Away FC"), [_payload("Away FC", "Home FC")])
+
+    assert best is None
+
+
+@pytest.mark.parametrize(
+    ("cell", "expected"),
+    [("∅ 68", (None, 68.0)), ("- ∅ 68", (None, 68.0)), ("1.57 ∅ 8", (1.57, 8.0)), ("1.57 ∅ 68.5", (1.57, 68.5))],
+)
+def test_extract_two_numbers_reads_odds_before_and_rating_after_the_marker(
+    cell: str, expected: tuple[float | None, float | None]
+) -> None:
+    assert _extract_two_numbers(cell) == expected
+
+
+def test_asean_club_championship_is_another_continental_cup() -> None:
+    assert "ASEANCUP" in OTHER_CONTINENTAL_CLUB_CUPS
+
+
+def test_limit_must_be_positive(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["soccer-rating", "--limit", "0"])
+    with pytest.raises(SystemExit):
+        parse_args()

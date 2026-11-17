@@ -1,5 +1,4 @@
 match_id,snapshot_date,home_id,away_id,league_code,source_url,oo,do,ao,open_1,open_x,open_2,drop_1,drop_x,drop_2,close_1,close_x,close_2,fair_1,fair_x,fair_2,name_match_level,matched_odds_stage,odds_distance,oo_match_gap,match_confidence,team_rating_home,team_rating_away
 2026-02-05_CLCUP_101_202,2026-02-05,101,202,CLCUP,https://www.soccer-rating.com/Home-FC/101/,55.1,54.0,53.5,1.6,4.1,5.0,1.58,4.15,5.1,1.57,4.2,5.25,1.52,4.4,5.9,2,close,0.0,0.0,HIGH,2083.96,2029.4
-2026-02-05_CLCUP_303_404,2026-02-05,303,404,CLCUP,https://www.soccer-rating.com/Blue-City/404/,47.5,47.0,46.0,2.2,3.3,3.2,2.15,3.35,3.25,2.14,3.45,3.36,2.05,3.5,3.6,1,close,0.017013828421792703,0.5,MEDIUM,1990.1,1950.2
 2026-02-05_CLCUP_-11_-12,2026-02-05,-11,-12,CLCUP,https://www.soccer-rating.com/Land-A/n11/,50.0,49.5,49.0,1.85,3.45,4.3,1.82,3.48,4.35,1.8,3.5,4.4,1.75,3.6,4.7,2,close,0.0,0.0,HIGH,1985.0,1890.5
 2026-02-05_ELCUP_505_606,2026-02-05,505,606,ELCUP,https://www.soccer-rating.com/Old-Town/606/,60.0,59.5,59.0,1.9,3.5,4.0,1.85,3.6,4.1,1.8,3.7,4.3,1.75,3.8,4.6,2,open,0.0,0.20000000000000284,HIGH,1700.0,1650.5

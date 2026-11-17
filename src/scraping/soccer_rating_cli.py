@@ -178,6 +178,14 @@ class ScrapeResult:
     cups: list[ClubCup]
 
 
+def positive_int(text: str) -> int:
+    """Argparse type: an integer of at least 1."""
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
+    return value
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Soccer-Rating ETL Scraper CLI")
     # The markup check always reads the live site, so it cannot run on local files
@@ -188,7 +196,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Fetch the today page and one team page, report whether the parsers find what they expect, write nothing",
     )
-    parser.add_argument("--limit", type=int, default=None, help="Limit number of matches to process")
+    parser.add_argument("--limit", type=positive_int, default=None, help="Limit number of matches to process")
     parser.add_argument("--delay", type=float, default=1.5, help="Delay between requests in seconds")
     parser.add_argument(
         "--user-agent",
@@ -230,7 +238,7 @@ def parse_args() -> argparse.Namespace:
     filters.add_argument(
         "--skip-other-continental-cups",
         action="store_true",
-        help="Skip continental club cups outside UEFA (CLICUP, AFCCUP, CCCUP, CPCUP, AFCUP)",
+        help="Skip continental club cups outside UEFA (CLICUP, AFCCUP, CCCUP, CPCUP, AFCUP, ASEANCUP)",
     )
     filters.add_argument("--skip-national-teams", action="store_true", help="Skip matches of national teams")
     filters.add_argument(
@@ -465,7 +473,7 @@ def scrape_matches(
     odds_development = []
     clubs: dict[int, ClubMeta] = {}
     cups: list[ClubCup] = []
-    for match in matches[: max(limit, 0)] if limit else matches:
+    for match in matches[:limit]:
         logger.info(f"Processing Match: {match.home_team} vs {match.away_team} ({match.match_id})")
         # Every team gets a row, even when its club page is not read
         for tid, tname in [(match.home_id, match.home_team), (match.away_id, match.away_team)]:
@@ -493,10 +501,22 @@ def save_cumulative(path: Path, df_new: pd.DataFrame, id_cols: list[str], sort_c
         df = df_new
 
     if sort_col:
-        df = df.sort_values(sort_col, ascending=True)
+        # Stable, so rows with equal keys keep their order (old before new) and "keep last" takes the new one
+        df = df.sort_values(sort_col, ascending=True, kind="stable")
 
     df = df.drop_duplicates(subset=id_cols, keep="last")
     neutralize_formulas(df).to_csv(path, index=False)
+    return len(df)
+
+
+def save_club_meta(path: Path, df_new: pd.DataFrame) -> int:
+    """Merges club rows into `path`: the newest name, and the newest rating that is known.
+
+    A run gives every team a row but reads only some club pages, so a missing rating must not erase a known one.
+    """
+    df = pd.concat([pd.read_csv(path), df_new], ignore_index=True) if path.exists() else df_new
+    df = df.groupby("team_id", as_index=False, sort=True).last()  # last non-missing value per column
+    neutralize_formulas(df[list(CLUB_COLUMNS)]).to_csv(path, index=False)
     return len(df)
 
 
@@ -530,8 +550,7 @@ def save_results(output_dir: Path, matches: list[TodayMatch], result: ScrapeResu
     if result.clubs:
         clubs_path = output_dir / "club_meta.csv"
         df_clubs = pd.DataFrame([c.__dict__ for c in result.clubs.values()])[list(CLUB_COLUMNS)]
-        total = save_cumulative(clubs_path, df_clubs, ["team_id"], "team_id")
-        keep_columns(clubs_path, list(CLUB_COLUMNS))
+        total = save_club_meta(clubs_path, df_clubs)
         logger.info(f"Updated club_meta.csv (Total records: {total})")
     if result.cups:
         df_cups = pd.DataFrame([c.__dict__ for c in result.cups])
@@ -548,10 +567,11 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # The clock is read before the today page, so a fetch that ends after midnight still dates the page's day
+    now = site_clock(local_now(), args.site_timezone)
     today_html = read_today_page(args.local, fetcher.fetch)
     if today_html is None:
         return
-    now = site_clock(local_now(), args.site_timezone)
     pages = [(0, today_html), *read_day_pages(fetcher.fetch, now.date(), args.days, args.delay)]
     all_leagues = args.all_leagues or args.leagues is not None
     filters = MatchFilters(all_leagues, args.min_start, args.max_start, match_filters(args))
@@ -566,7 +586,7 @@ def main() -> None:
     snapshot_file = f"match_odds_development_{snapshot_date}.csv" if args.separate_snapshots else None
     save_results(output_dir, matches, result, snapshot_file)
     logger.info(f"ETL Complete. Outputs in {output_dir}")
-    validate_results(matches, result.odds_development)
+    validate_results(matches[: args.limit], result.odds_development)
 
 
 if __name__ == "__main__":

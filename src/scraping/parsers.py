@@ -23,13 +23,20 @@ RE_TIME_COLON = re.compile(r"^\d{1,2}:\d{2}$")  # 21:00
 RE_FLOAT = re.compile(r"(-?\d+(?:\.\d+)?)")
 # Trailing lineup rating, e.g. "1.57 ∅ 68"; must be space-separated so "1.12" does not yield 12
 RE_INT = re.compile(r"\s(\d+)$")
+# The sign between the odds and the lineup rating in an odds cell (U+2205, empty set)
+LINEUP_MARK = chr(0x2205)
+# An apostrophe inside the JavaScript string of a payload
+JS_ESCAPED_QUOTE = chr(92) + "'"
+# A typographic apostrophe (U+2019), as in some club names
+RIGHT_QUOTE = chr(0x2019)
 # Letters that NFKD does not decompose into a base letter plus a combining mark
 NON_DECOMPOSING_LETTERS = str.maketrans({"ø": "o", "æ": "ae", "å": "a", "ł": "l", "đ": "d", "ß": "ss"})
 RE_LEAGUE_STRICT = re.compile(r"\b(CLCUP|ELCUP)\b")
 RE_MATCH_TABLE_HEADER = re.compile(
     r"Football Prediction (Today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)", re.IGNORECASE
 )
-RE_CLIP = re.compile(r"copyToClipboard\('([^']+)'\)")
+# Greedy up to the last "')": a team name may hold an apostrophe, written as ' or as a plain ' (from &#39;)
+RE_CLIP = re.compile(r"copyToClipboard\('(.+)'\)")
 # schema.org SportsEvent of the club's next match: "startDate": "2026-11-18T20:00+0100" (site time)
 RE_START_DATE = re.compile(r'"startDate":\s*"(\d{4}-\d{2}-\d{2})T')
 # Club links end in "/<id>/" or "/w<id>/", national-team links in "/n<id>/"
@@ -76,6 +83,10 @@ def _extract_float(s: str) -> float | None:
 
 def _extract_two_numbers(td_text: str) -> tuple[float | None, float | None]:
     txt = " ".join(td_text.split())
+    if LINEUP_MARK in txt:
+        # "1.57 <lineup mark> 68": the odds come before the mark, the lineup rating after it
+        odds, rating = txt.split(LINEUP_MARK, 1)
+        return _extract_float(odds), _extract_float(rating)
     first = _extract_float(txt)
     second = None
     m = RE_INT.search(txt)
@@ -242,6 +253,7 @@ def norm_team(s: str) -> str:
     s = s.strip().lower().translate(NON_DECOMPOSING_LETTERS)
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))  # remove diacritics
+    s = re.sub(f"['{RIGHT_QUOTE}]", "", s)  # "Newell's" and "Newells" are one name
     s = re.sub(r"[^a-z0-9 ]+", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
@@ -294,7 +306,8 @@ def pick_best_payload(
         nm = same_league and name_match_score(
             match_row["home_team"], match_row["away_team"], p["home_team_payload"], p["away_team_payload"]
         )
-        if not nm:
+        # Only the fixture as listed: a payload with the sides swapped holds the other side's odds and ratings
+        if nm != 2:
             continue
 
         vecs = payload_odds_vectors(p)
@@ -316,10 +329,11 @@ def pick_best_payload(
 
     nm, best_dist, oo_gap, best_stage, best = scored[0]
 
+    # Without today's odds the distance is NaN and the match cannot be confirmed by its odds
     confidence = "HIGH"
-    if best_dist > 0.03:
+    if not best_dist <= 0.03:
         confidence = "LOW"
-    elif best_dist > 0.01 or nm < 2:
+    elif best_dist > 0.01:
         confidence = "MEDIUM"
 
     debug = {
@@ -339,7 +353,7 @@ def parse_clip_payloads(html: str) -> list[list[str]]:
     for a in soup.find_all("a", href=True):
         m = RE_CLIP.search(str(a["href"]))
         if m:
-            payloads.append(m.group(1).split(","))
+            payloads.append(m.group(1).replace(JS_ESCAPED_QUOTE, "'").split(","))
     return payloads
 
 

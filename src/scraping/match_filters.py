@@ -16,7 +16,8 @@ CupKind = Literal["uefa", "other continental", "domestic"]
 # Sources, checked 2026-11-16: the league headers of the day pages ("WCLCUP  Champions League Women" with Chelsea
 # v Paris Saint-Germain, "ESCUP  Copa del Rey") and the "Cups:" field and match lists of club pages
 # (data/soccer-rating/club_cups.csv). AFCCUP is the AFC Champions League Elite (Al Sadd played Al Hilal, Vissel
-# Kobe and Kawasaki Frontale in it); CPCUP and AFCUP were classified from the clubs' opponents.
+# Kobe and Kawasaki Frontale in it); CPCUP and AFCUP were classified from the clubs' opponents. ASEANCUP (2026-11-17,
+# PSM Makassar in club_cups.csv) is the ASEAN Club Championship, a club cup of the ASEAN Football Federation.
 CUP_CODES: dict[str, tuple[CupKind, str]] = {
     "CLCUP": ("uefa", "Champions League"),
     "ELCUP": ("uefa", "Europa League"),
@@ -27,6 +28,7 @@ CUP_CODES: dict[str, tuple[CupKind, str]] = {
     "CCCUP": ("other continental", "CONCACAF Champions Cup"),
     "CPCUP": ("other continental", "Copa Sudamericana"),
     "AFCUP": ("other continental", "AFC Champions League Two"),
+    "ASEANCUP": ("other continental", "ASEAN Club Championship"),
     "ESCUP": ("domestic", "Copa del Rey"),
     "CLCCUP": ("domestic", "Copa Chile"),
     "BRRCUP": ("domestic", "Rio de Janeiro state cup"),
