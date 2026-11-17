@@ -226,3 +226,28 @@ def test_enrich_table_treats_a_rounded_sum_just_over_100_as_consistent() -> None
 )
 def test_norm_key_matches_the_soccer_rating_names_of_cl_clubs(analyst: str, soccer_rating: str) -> None:
     assert norm_key(analyst) == norm_key(soccer_rating)
+
+
+def test_load_league_data_rejects_a_percentage_out_of_range(tmp_path: Path) -> None:
+    league = _league_dir(tmp_path)
+    _rewrite_table(league, lambda df: df.assign(**{"LAST 16%": ["150", *df["LAST 16%"].iloc[1:]]}))
+
+    with pytest.raises(AnalyzerInputError, match=re.escape("LAST 16%")):
+        load_league_data(tmp_path, "cl")
+
+
+def test_load_league_data_rejects_a_table_without_team_names(tmp_path: Path) -> None:
+    league = _league_dir(tmp_path)
+    _rewrite_table(league, lambda df: df.rename(columns={"TEAM": "CLUB"}))
+
+    with pytest.raises(AnalyzerInputError, match="TEAM"):
+        load_league_data(tmp_path, "cl")
+
+
+def test_enrich_table_sums_a_rounded_pair_whose_float_sum_exceeds_the_limit() -> None:
+    zero = {c: 0.0 for c in TABLE_NUMERIC_COLUMNS}
+    rows = [{**zero, "XPOS": 20.0, "KO P/0%": 49.95, "LAST 16%": l16} for l16 in (50.05, 50.06)]
+
+    enriched = enrich_table(pd.DataFrame(rows))
+
+    assert enriched["Motivation"].iloc[1] == pytest.approx(enriched["Motivation"].iloc[0], abs=0.5)

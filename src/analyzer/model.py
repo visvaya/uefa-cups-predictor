@@ -86,8 +86,8 @@ def enrich_table(table: pd.DataFrame) -> pd.DataFrame:
 
     # Survival Probability
     raw_sum = l16 + kpo
-    # Two values rounded to 2 decimals can sum to 100.01 (fractions: 1.0001) without being inconsistent
-    p_surv = np.where(raw_sum <= 1.0001, raw_sum, np.maximum.reduce([l16, kpo, qf, sf, fnl, wnr]))
+    # Two values rounded to 2 decimals can sum to 100.01 (fractions: 1.0001, plus float error) and still be consistent
+    p_surv = np.where(raw_sum <= 1.0001 + 1e-9, raw_sum, np.maximum.reduce([l16, kpo, qf, sf, fnl, wnr]))
     p_surv = np.maximum.reduce([p_surv, qf, sf, fnl, wnr]).clip(0, 1)
 
     p_top8 = l16

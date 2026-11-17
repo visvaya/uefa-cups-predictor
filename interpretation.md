@@ -61,8 +61,8 @@ Lille:        98.91 + 49.85  = 148.76%
 
 **Technical Solution:**
 
-- If `LAST16 + KO ≤ 100.01` (two values rounded to 2 decimals can sum to 100.01): `Top24 = LAST16 + KO`
-- If `LAST16 + KO > 100` (anomaly): **we do not use the sum**, but take a conservative floor `Top24 = max(LAST16, KO, QF, SF, FINAL, WINNER)`. Then we cap the result to `[0, 100]`. This is an **cautious floor-estimate**, not "anomaly ⇒ 100%".
+- If `LAST16 + KO ≤ 100.01` (two values rounded to 2 decimals can sum to 100.01): `Top24 = LAST16 + KO`, capped to `[0, 100]`
+- If `LAST16 + KO > 100.01` (anomaly): **we do not use the sum**, but take a conservative floor `Top24 = max(LAST16, KO, QF, SF, FINAL, WINNER)`. Then we cap the result to `[0, 100]`. This is an **cautious floor-estimate**, not "anomaly ⇒ 100%".
 
 **Note:** This is NOT a mathematical lower bound for P(Top 24), but a **capped floor estimate** ensuring consistency with the stage hierarchy (`WINNER ⊂ FINAL ⊂ SF ⊂ QF ⊂ TOP 24`).
 
@@ -72,8 +72,8 @@ Lille:        98.91 + 49.85  = 148.76%
 
 The system estimates the chance of continuing play using the following logic:
 
-1. **Disjoint Check**: If `LAST 16% + KO P/0%` is less than or equal to 100%, we assume they represent separate finishing positions (1-8 and 9-24) and **sum them**.
-2. **Anomaly Handling**: If the sum exceeds 100%, the data is inconsistent. In this case, we avoid the sum and take the **maximum** value from all available progress columns (`LAST 16`, `KPO`, `QF`, etc.).
+1. **Disjoint Check**: If `LAST 16% + KO P/0%` is at most 100.01% (rounding), we assume they represent separate finishing positions (1-8 and 9-24) and **sum them**.
+2. **Anomaly Handling**: If the sum exceeds 100.01%, the data is inconsistent. In this case, we avoid the sum and take the **maximum** value from all available progress columns (`LAST 16`, `KPO`, `QF`, etc.).
 3. **Knockout Floor**: Finally, we apply a "sanity floor": `P(Top 24)` must be **≥ QF%**. This handles cases where a team's reported chance of winning/reaching late stages is higher than the reported chance of surviving the league phase.
 
 ---

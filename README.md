@@ -84,7 +84,7 @@ The system interprets source data (*Predicted Table*) as a set of probabilities,
 
 The table and fixtures must give every number in percent (0 to 100, dot or comma decimals); a missing column, a blank or unreadable cell (such as `<1` or `99,5%`), a table in fractions, or a team listed or playing twice stops the run with an error.
 
-The algorithm sums `LAST 16%` and `KO P/0%` when they are consistent, falls back to the maximum progress column when the sum exceeds 100%, and never goes below `QF%`. The steps are described in [interpretation.md](interpretation.md#5-ptop-24-calculation-logic).
+The algorithm sums `LAST 16%` and `KO P/0%` when they are consistent, falls back to the maximum progress column when the sum exceeds 100.01% (two rounded values may reach 100.01), and never goes below `QF%`. The steps are described in [interpretation.md](interpretation.md#5-ptop-24-calculation-logic).
 
 ### Report Columns (Main Mode)
 

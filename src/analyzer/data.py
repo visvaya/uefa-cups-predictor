@@ -44,20 +44,28 @@ def cast_numeric(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return df
 
 
+def require_columns(df: pd.DataFrame, cols: list[str], name: str) -> None:
+    """Raises AnalyzerInputError naming the `cols` that `df` (read from file `name`) lacks."""
+    if missing := [c for c in cols if c not in df.columns]:
+        raise AnalyzerInputError(f"{name}: missing columns {missing}")
+
+
 def analyst_numbers(df: pd.DataFrame, cols: list[str], percent_cols: list[str], name: str) -> pd.DataFrame:
     """Copy of an Analyst file with `cols` as floats (dot or comma decimals).
 
-    Raises AnalyzerInputError for a missing column, a blank or unreadable cell, or percent columns that hold
-    fractions (no value above 1): silently reading 0 there would mark teams OUT.
+    Raises AnalyzerInputError for a missing column, a blank or unreadable cell, a percentage outside 0 to 100, or
+    percent columns that hold fractions (no value above 1): silently reading 0 there would mark teams OUT.
     """
-    if missing := [c for c in cols if c not in df.columns]:
-        raise AnalyzerInputError(f"{name}: missing columns {missing}")
+    require_columns(df, cols, name)
     df = df.copy()
     for c in cols:
         values = pd.to_numeric(df[c].astype(str).str.strip().str.replace(",", "."), errors="coerce")
         if bad := df.loc[values.isna(), c].fillna("").astype(str).tolist():
             raise AnalyzerInputError(f"{name}: unreadable values in column {c}: {bad}")
         df[c] = values
+    for c in percent_cols:
+        if bad := df.loc[~df[c].between(0, 100), c].tolist():
+            raise AnalyzerInputError(f"{name}: values outside 0 to 100 in column {c}: {bad}")
     if (df[percent_cols] <= 1).all().all():
         raise AnalyzerInputError(f"{name}: {percent_cols} must be in percent (0 to 100), not fractions")
     return df
@@ -84,13 +92,12 @@ def load_league_data(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, pd.Data
     """Loads fixtures and predicted table for a given league prefix (cl/el)."""
     data_dir = base_dir / "data" / "theanalyst" / LEAGUE_DIRS[prefix]
     fixtures_name, table_name = f"{prefix}_fixtures.csv", f"{prefix}_table_predicted.csv"
+    fixtures, table = read_smart_csv(data_dir / fixtures_name), read_smart_csv(data_dir / table_name)
+    require_columns(fixtures, ["HomeTeam", "AwayTeam"], fixtures_name)
+    require_columns(table, ["TEAM"], table_name)
     return (
-        analyst_numbers(
-            read_smart_csv(data_dir / fixtures_name), FIXTURES_NUMERIC_COLUMNS, FIXTURES_NUMERIC_COLUMNS, fixtures_name
-        ),
-        analyst_numbers(
-            read_smart_csv(data_dir / table_name), TABLE_NUMERIC_COLUMNS, TABLE_PERCENT_COLUMNS, table_name
-        ),
+        analyst_numbers(fixtures, FIXTURES_NUMERIC_COLUMNS, FIXTURES_NUMERIC_COLUMNS, fixtures_name),
+        analyst_numbers(table, TABLE_NUMERIC_COLUMNS, TABLE_PERCENT_COLUMNS, table_name),
     )
 
 
