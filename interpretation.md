@@ -57,23 +57,21 @@ Fenerbahce:   100.00 + 61.17 = 161.17%
 Lille:        98.91 + 49.85  = 148.76%
 ```
 
-**Interpretation:** In some rows, LAST 16% and KO P/0% do not behave as disjoint probabilities of occupying places 1–8 vs 9–24. The cause of inconsistency is unknown (could be a model error from The Analyst, different column definition, or simulation artifact). In these rows, we treat the data as inconsistent and fall back to heuristics. If, after verification with a screenshot / double-entry, LAST16+KO > 100 still occurs, we treat it as source inconsistency (The Analyst).
+**Interpretation (checked 2026-11-17 on the January 2026 CL and EL tables):** the column sums explain these rows. `KO P/0%` sums to exactly 1600 % over the table (16 play-off places), and `LAST 16%` sums to exactly 800 % (8 direct places) over the rows where `LAST 16% + KO P/0% = 100`. So in those rows `LAST 16%` is P(top 8), every other row has no top-8 chance, and in those other rows `LAST 16%` is the chance of reaching the last 16 through the play-off (Leverkusen 38.92 / 93.73 ≈ 0.42, Fenerbahce 61.17 / 100). The Analyst did not define the columns in writing; its current predictions page (checked 2026-11-17) shows separate "Top 8", "9–24" and "L16" columns instead.
 
 **Technical Solution:**
 
-- If `LAST16 + KO ≤ 100.01` (two values rounded to 2 decimals can sum to 100.01): `Top24 = LAST16 + KO`, capped to `[0, 100]`
-- If `LAST16 + KO > 100.01` (anomaly): **we do not use the sum**, but take a conservative floor `Top24 = max(LAST16, KO, QF, SF, FINAL, WINNER)`. Then we cap the result to `[0, 100]`. This is an **cautious floor-estimate**, not "anomaly ⇒ 100%".
-
-**Note:** This is NOT a mathematical lower bound for P(Top 24), but a **capped floor estimate** ensuring consistency with the stage hierarchy (`WINNER ⊂ FINAL ⊂ SF ⊂ QF ⊂ TOP 24`).
-
-- **Safe Stage Heuristic**: Even if data is inconsistent, the system ensures that `P(Top 24)` is at least equal to `QF%` (since you cannot reach the quarter-final without being in the Top 24).
+- A row is **direct** when `LAST16 + KO` is 100 (within 0.01 for rounding) or `QF > LAST16`.
+- When the table's sums match that layout (`Σ KO ≈ 1600` and `Σ LAST16 of the direct rows ≈ 800`, within 0.5 percentage points): `P(top 8) = LAST16` in direct rows and 0 elsewhere, and `Top24 = P(top 8) + KO`. The integrity report says so.
+- Otherwise the meaning of `LAST 16%` cannot be told from the table, and the earlier approximation stays: `P(top 8) = LAST16`; `Top24 = LAST16 + KO` when that is at most 100.01, else the largest progress value (`max(LAST16, KO, QF, SF, FINAL, WINNER)`, a cautious floor estimate). The integrity report warns when such a table has sums above 100.
+- **Safe Stage Heuristic**: in both cases `P(Top 24)` is at least `QF%` (you cannot reach the quarter-final without being in the Top 24) and is capped to `[0, 100]`.
 
 ## 5) P(Top 24) Calculation Logic
 
 The system estimates the chance of continuing play using the following logic:
 
-1. **Disjoint Check**: If `LAST 16% + KO P/0%` is at most 100.01% (rounding), we assume they represent separate finishing positions (1-8 and 9-24) and **sum them**.
-2. **Anomaly Handling**: If the sum exceeds 100.01%, the data is inconsistent. In this case, we avoid the sum and take the **maximum** value from all available progress columns (`LAST 16`, `KPO`, `QF`, etc.).
+1. **Layout Check**: When the column sums show the January 2026 layout (see section 4), `P(Top 24) = P(top 8) + KO P/0%`, with `P(top 8)` taken from `LAST 16%` in direct rows only.
+2. **Approximation**: Otherwise `LAST 16% + KO P/0%` is summed when it is at most 100.01% (rounding), and the **maximum** progress value is taken when it is larger.
 3. **Knockout Floor**: Finally, we apply a "sanity floor": `P(Top 24)` must be **≥ QF%**. This handles cases where a team's reported chance of winning/reaching late stages is higher than the reported chance of surviving the league phase.
 
 ---

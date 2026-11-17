@@ -20,7 +20,7 @@ from analyzer.data import (
 )
 from analyzer.errors import AnalyzerInputError
 from analyzer.league import validated_inputs
-from analyzer.model import enrich_table, pressure_vector, with_strange_odds_rotation
+from analyzer.model import enrich_table, integrity_report, pressure_vector, with_strange_odds_rotation
 from analyzer.names import norm_key
 
 REPO_DIR = Path(__file__).resolve().parents[1]
@@ -309,3 +309,45 @@ def test_main_reports_a_missing_conference_league_file_when_asked_for_it(
         main(tmp_path, ["--ecl"])
 
     assert "conference-league" in capsys.readouterr().out
+
+
+def _mixed_layout_table(rows: list[tuple[float, float]]) -> pd.DataFrame:
+    """A 36-team table in The Analyst's January 2026 layout: (KO P/0%, LAST 16%) per row, other columns 0.
+
+    Eight teams sure of the top 8, then the given rows, then teams out; KO P/0% sums to 1600 and the direct
+    LAST 16% (rows where it adds up with KO P/0% to 100) to 800.
+    """
+    pairs = [(0.0, 100.0)] * 8 + rows
+    pairs += [(0.0, 0.0)] * (36 - len(pairs))
+    zero = {c: 0.0 for c in TABLE_NUMERIC_COLUMNS}
+    return pd.DataFrame(
+        [{**zero, "XPOS": float(i + 1), "KO P/0%": ko, "LAST 16%": l16} for i, (ko, l16) in enumerate(pairs)]
+    )
+
+
+# 14 sure play-off teams, a Fenerbahce-like row (KO 100, LAST 16 61) and a Monaco-like pair whose KO adds up to 100
+MIXED_ROWS = [(100.0, 0.0)] * 14 + [(100.0, 61.17), (72.67, 16.59), (27.33, 5.0)]
+
+
+def test_enrich_table_reads_no_top8_chance_from_a_play_off_route_last16() -> None:
+    enriched = enrich_table(_mixed_layout_table(MIXED_ROWS))
+
+    fenerbahce = enriched.iloc[22]
+    assert fenerbahce["Status"] == "LOCKED_PLAYOFFS"
+
+
+def test_enrich_table_counts_only_the_play_off_chance_of_a_team_that_can_still_drop_out() -> None:
+    table = _mixed_layout_table(MIXED_ROWS)
+    same_without_last16 = table.copy()
+    same_without_last16.loc[23, "LAST 16%"] = 0.0
+
+    monaco = enrich_table(table).iloc[23]
+    expected = enrich_table(same_without_last16).iloc[23]
+
+    assert monaco["Motivation"] == pytest.approx(expected["Motivation"])
+
+
+def test_integrity_report_names_the_reading_of_last16() -> None:
+    lines = integrity_report(_mixed_layout_table(MIXED_ROWS), "CL")
+
+    assert any("LAST 16%" in line and line.startswith("OK") for line in lines)
