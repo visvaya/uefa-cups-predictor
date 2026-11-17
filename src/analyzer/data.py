@@ -7,7 +7,9 @@ import pandas as pd
 from analyzer.errors import AnalyzerInputError
 from analyzer.names import norm_key
 
-LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league"}
+LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league", "ecl": "conference-league"}
+# soccer-rating league code of each cup
+CUP_CODES = {"cl": "CLCUP", "el": "ELCUP", "ecl": "ECLCUP"}
 FIXTURES_NUMERIC_COLUMNS = ["HomeWin%", "Draw%", "AwayWin%"]
 TABLE_NUMERIC_COLUMNS = ["XPOS", "XPTS", "LEAGUE%", "KO P/0%", "LAST 16%", "QF%", "SF%", "FINAL%", "WINNER%"]
 # Percent columns of the Analyst table (every fixtures column is one);
@@ -102,9 +104,8 @@ def load_league_data(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, pd.Data
 
 
 def cup_rows(sr: pd.DataFrame, prefix: str) -> pd.DataFrame:
-    """Rows of the cup's league code: cl -> CLCUP, el -> ELCUP."""
-    league_code = "CLCUP" if prefix == "cl" else "ELCUP"
-    return sr[sr["league_code"] == league_code].copy()
+    """Rows of the cup's soccer-rating league code (`CUP_CODES`)."""
+    return sr[sr["league_code"] == CUP_CODES[prefix]].copy()
 
 
 def by_snapshot_date(sr: pd.DataFrame) -> pd.DataFrame:

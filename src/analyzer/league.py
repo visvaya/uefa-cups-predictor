@@ -14,7 +14,7 @@ from analyzer.recommendations import (
 )
 from analyzer.soccer_rating import expert_score
 
-LEAGUE_NAMES = {"cl": "CHAMPIONS LEAGUE", "el": "EUROPA LEAGUE"}
+LEAGUE_NAMES = {"cl": "CHAMPIONS LEAGUE", "el": "EUROPA LEAGUE", "ecl": "CONFERENCE LEAGUE"}
 
 # Ranking column -> (home row source, away row source); a ranking has one row per team and match
 PERSPECTIVE_COLUMNS = {

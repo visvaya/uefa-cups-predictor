@@ -26,7 +26,7 @@ TESTS_DIR = Path(__file__).resolve().parent
 EXAMPLES_DIR = TESTS_DIR.parent / "data" / "theanalyst"
 SR_FIXTURES_DIR = TESTS_DIR / "fixtures" / "soccer-rating"
 GOLDEN_DIR = TESTS_DIR / "golden"
-LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league"}
+LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league", "ecl": "conference-league"}
 SR_ONLY_INPUT = "match_odds_development_2026-01-28.csv"
 # Team A reaches LAST 16% 99 (LOCKED_DIRECT_RO16), Team X KO P/0% 97 with LAST 16% 2 (LOCKED_PLAYOFFS).
 EL_TABLE_EDITS = {
@@ -71,7 +71,7 @@ def golden_suffix(excel_pl: bool) -> str:
 
 
 @FORMATS
-@pytest.mark.parametrize("prefix", ["cl", "el"])
+@pytest.mark.parametrize("prefix", ["cl", "el", "ecl"])
 def test_analyze_league_report_matches_golden(base_dir: Path, prefix: str, excel_pl: bool) -> None:
     run_league(base_dir, prefix, excel_pl=excel_pl)
 
