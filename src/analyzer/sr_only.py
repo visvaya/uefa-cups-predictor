@@ -57,7 +57,6 @@ def match_features(f2: pd.DataFrame) -> pd.DataFrame:
         f2[c] = 0.0
     if valid_mask.any():
         f2 = with_market_signals(f2, valid_mask)
-    f2["srDropping"] = f2["steam_diff"]
     f2 = with_value_rating_signals(f2)
     f2["srCompleteness"] = sr_quality(f2, valid_mask)
 
@@ -69,14 +68,19 @@ def match_features(f2: pd.DataFrame) -> pd.DataFrame:
 
 
 def team_ranking(f2: pd.DataFrame) -> pd.DataFrame:
-    """One row per team and match, seen from that team (away rows flip expertScore, srDropping and do_drop)."""
+    """One row per team and match, seen from that team (away rows flip expertScore and do_drop).
+
+    srDropping is the team's own odds movement; SR_edge is the team's win edge, or the draw edge for an X pick, so
+    both rows of a draw pick carry the same edge and the label does not depend on which side plays at home.
+    """
+    is_x = f2["pick12"] == "X"
     h = f2.assign(
         Team=f2["HomeTeamName"],
         Opp=f2["AwayTeamName"],
         Close=f2["close_1"].fillna(99.0),
         Fair=f2["fair_1"].fillna(99.0),
-        SR_edge=f2["edge_1"],
-        srDropping=f2["steam_diff"],
+        SR_edge=f2["edge_x"].where(is_x, f2["edge_1"]),
+        srDropping=f2["steam_1"],
         is_home=True,
     )
     a = f2.assign(
@@ -84,9 +88,9 @@ def team_ranking(f2: pd.DataFrame) -> pd.DataFrame:
         Opp=f2["HomeTeamName"],
         Close=f2["close_2"].fillna(99.0),
         Fair=f2["fair_2"].fillna(99.0),
-        SR_edge=f2["edge_2"].fillna(0),
+        SR_edge=f2["edge_x"].where(is_x, f2["edge_2"]).fillna(0),
         expertScore=-f2["expertScore"],
-        srDropping=-f2["steam_diff"],
+        srDropping=f2["steam_2"],
         do_drop=-f2["do_drop"],
         is_home=False,
     )

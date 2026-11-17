@@ -83,7 +83,16 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
 
     if sr.empty:
         f = f.copy()
-        zero_cols = ["sr_quality", "steam_diff", "srDropping", "prob_gap_1", "prob_gap_2", "rating_diff", "lineup_adv"]
+        zero_cols = [
+            "sr_quality",
+            "steam_1",
+            "steam_2",
+            "steam_diff",
+            "prob_gap_1",
+            "prob_gap_2",
+            "rating_diff",
+            "lineup_adv",
+        ]
         for c in [*edge_cols, *zero_cols]:
             f[c] = 0.0
 
@@ -120,7 +129,6 @@ def add_soccer_rating_features(f: pd.DataFrame, sr: pd.DataFrame) -> pd.DataFram
         )
 
     f2["sr_quality"] = sr_quality(f2, valid_mask)
-    f2["srDropping"] = f2["steam_diff"]
     # After the merge, so the OO/DO/AO value ratings of the SR data are there
     return with_value_rating_signals(f2)
 

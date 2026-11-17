@@ -98,9 +98,9 @@ The table and fixtures must give every number in percent (0 to 100, dot or comma
 | **teamRotRisk** | *Rotation Risk* (1.0 - 2.3) – higher means greater risk of squad rotation. Raised by 10 % for both teams of a match with strange odds (see Soccer-rating Logic). |
 | **teamStatus / oppStatus** | Progress status (`IN_PLAY`, `LOCKED`, `OUT`). |
 | **expertScore** | **Synthetic Strength Signal**. Aggregate score from market, ratings, and lineups. If > 0, model favors this team. |
-| **srEdge** | **Probability Edge**: `FairProb - MarketCloseProb`. Positive = Value found by SR model. |
+| **srEdge** | **Probability Edge**: `FairProb - MarketCloseProb` of this team's win, or of the draw for an `X` pick (the same for both sides, so the label does not depend on who plays at home). Positive = Value found by SR model. |
 | **srCompleteness** | **Signal Quality (0.0 - 1.0)**. 1.0 = High Confidence. |
-| **srDropping** | **Market Steam**. Positive = odds are dropping (market confirmation). |
+| **srDropping** | **Market Steam** of this team's own odds: `ln(open / close)`. Positive = its odds are dropping (market confirmation). The expert score uses the difference of both sides' steam instead. |
 | **strangeOdds** | Market anomaly detection (>30), suggests insider info or sudden squad changes. |
 | **recommendation** | Final advice (Strong Buy, Consider, Neutral, Caution, Avoid). |
 | **reason** | List of key factors generating the advice. |
@@ -126,7 +126,7 @@ The table and fixtures must give every number in percent (0 to 100, dot or comma
   - `Close(x) > Fair(y)`: with `High Value`, this team's closing odds next to its fair odds, with `>`, `<` or `=` as they compare; left out without soccer-rating odds.
 - **Market Signals**:
   - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`). It makes the row `🟢 STRONG BUY` ahead of the other signals only when the score favours this team and its pick is `1` or `2` (never an `X` pick); in standard mode the motivation rule of `🟢 STRONG BUY` must hold too (`teamMot` >= 50 and above `oppMot`). Otherwise the other rules decide.
-  - `Steam (+)`: Market odds are dropping for this team.
+  - `Steam (+)`: This team's own odds dropped by more than 0.05 in log terms (`Steam (-)`: rose by more than that). The `Sure Bet Pattern` and `(Risk: Rising Odds)` read the same own steam.
   - `(Risk: Rising Odds)`: Mathematical value is high, but the market is betting against the team. Recommendation downgraded.
   - `No valid odds` (SR-only): the snapshot has no usable odds for the match, so it stays `⚪ NEUTRAL`.
   - `(No Steam Confirmation)` (SR-only): a `Strong Expert Signal` whose odds did not fall enough for the `Sure Bet Pattern`; the row stays `🟡 CONSIDER` because the market has not confirmed the signal.
@@ -159,7 +159,7 @@ python -m scraping.soccer_rating_cli
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
 - `--separate-snapshots`: Save the snapshot to a file of its day (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of the cumulative `match_odds_development.csv`; a second run on the same day merges into that file, and the newer row of a match wins.
 - `--min-start N`: Process matches starting at least N minutes from now.
-- `--max-start N`: Process matches starting at most N minutes from now. Each kickoff is on the date of the page that lists it: an `00:00` kickoff on the today page has already started.
+- `--max-start N`: Process matches starting at most N minutes from now. Each kickoff is on the date of the page that lists it: an `00:00` kickoff on the today page has already started. When the window ends after midnight, the next day's page is read too (as with `--days`), so matches after midnight are not lost; the local mode stays on the today page.
 - `--days N`: Also read the site's day pages for the next N days (0-6, e.g. `/today-prediction/tuesday`); match ids start with the kickoff date and the snapshot file keeps the scrape date. Needs the live site, so it cannot be combined with `--local`.
 - `--site-timezone ZONE`: IANA timezone the site shows kickoff times in (default `Europe/Paris`); the time window counts real minutes, also across a DST change. The default follows the site's "Timezone" selector, which showed "GMT +1 Paris" on 2026-11-16 for a request without cookies; whether that default follows DST or the visitor's location was not established, so override it if the site shows times in another zone.
 
