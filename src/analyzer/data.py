@@ -107,17 +107,23 @@ def cup_rows(sr: pd.DataFrame, prefix: str) -> pd.DataFrame:
     return sr[sr["league_code"] == league_code].copy()
 
 
+def by_snapshot_date(sr: pd.DataFrame) -> pd.DataFrame:
+    """Rows from the oldest snapshot date to the newest; a row without a date counts as the oldest.
+
+    The sort is stable, so rows of one date keep their file order and the later row stays last.
+    """
+    sr = sr.assign(snapshot_date=pd.to_datetime(sr["snapshot_date"], errors="coerce"))
+    return sr.sort_values("snapshot_date", kind="stable", na_position="first")
+
+
 def latest_snapshots(sr: pd.DataFrame) -> pd.DataFrame:
     """The latest snapshot per match (avoids duplicates), with the odds columns cast to float."""
     if "match_id" in sr.columns:
         if "snapshot_date" in sr.columns:
-            sr = sr.assign(snapshot_date=pd.to_datetime(sr["snapshot_date"], errors="coerce"))
-            sr = sr.sort_values("snapshot_date").drop_duplicates(["match_id"], keep="last")
-        else:
-            sr = sr.drop_duplicates(["match_id"], keep="last")
+            sr = by_snapshot_date(sr)
+        sr = sr.drop_duplicates(["match_id"], keep="last")
     elif "snapshot_date" in sr.columns:
-        sr = sr.assign(snapshot_date=pd.to_datetime(sr["snapshot_date"], errors="coerce"))
-        sr = sr.sort_values("snapshot_date").drop_duplicates(["home_id", "away_id"], keep="last")
+        sr = by_snapshot_date(sr).drop_duplicates(["home_id", "away_id"], keep="last")
     return cast_numeric(sr, ODDS_NUMERIC_COLUMNS)
 
 

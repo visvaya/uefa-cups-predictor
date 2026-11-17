@@ -10,7 +10,7 @@ import pytest
 
 from analyzer.cli import main
 from analyzer.config import ROTATION_RISK_MAX, STRANGE_ODDS_ROTATION_FACTOR
-from analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, load_league_data, read_smart_csv
+from analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, latest_snapshots, load_league_data, read_smart_csv
 from analyzer.errors import AnalyzerInputError
 from analyzer.league import validated_inputs
 from analyzer.model import enrich_table, pressure_vector, with_strange_odds_rotation
@@ -251,3 +251,20 @@ def test_enrich_table_sums_a_rounded_pair_whose_float_sum_exceeds_the_limit() ->
     enriched = enrich_table(pd.DataFrame(rows))
 
     assert enriched["Motivation"].iloc[1] == pytest.approx(enriched["Motivation"].iloc[0], abs=0.5)
+
+
+def test_latest_snapshots_keeps_the_later_row_of_a_large_file() -> None:
+    # Numpy sorts more than 16 rows with an unstable algorithm, which used to keep the earlier row
+    ids = [f"m{i}" for i in range(30)]
+    old = pd.DataFrame({"match_id": ids, "snapshot_date": "2026-11-17", "close_1": 2.0})
+    new = old.assign(close_1=1.5)
+
+    latest = latest_snapshots(pd.concat([old, new], ignore_index=True))
+
+    assert set(latest["close_1"]) == {1.5}
+
+
+def test_latest_snapshots_does_not_prefer_a_row_without_a_date() -> None:
+    rows = pd.DataFrame({"match_id": ["m1", "m1"], "snapshot_date": ["2026-11-17", "unknown"], "close_1": [1.5, 2.0]})
+
+    assert latest_snapshots(rows)["close_1"].tolist() == [1.5]
