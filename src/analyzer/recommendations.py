@@ -198,6 +198,13 @@ def sr_only_reasons(ranking: pd.DataFrame, s: Signals, decimal: str) -> pd.Serie
     )
 
 
+def odds_comparison(s: Signals, decimal: str) -> pd.Series:
+    """`Close(x) > Fair(y)`, with `<` or `=` when the rounded odds compare that way."""
+    close, fair = number_text(s.close, decimal), number_text(s.fair, decimal)
+    sign = np.select([s.close.round(2) > s.fair.round(2), s.close.round(2) < s.fair.round(2)], [" > ", " < "], " = ")
+    return "Close(" + close + ")" + sign + "Fair(" + fair + ")"
+
+
 def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) -> pd.Series:
     """The `reason` column: the rules that fired, joined with "; ", or "-" when none did.
 
@@ -232,10 +239,7 @@ def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) 
     if allow_draws:
         reason_s += sr_only_reasons(ranking, s, decimal)
 
-    sign = np.select([s.close > s.fair, s.close < s.fair], [" > ", " < "], default=" = ")
-    odds_str = "Close(" + number_text(s.close, decimal) + ")" + sign + "Fair(" + number_text(s.fair, decimal) + ")"
-    odds_known = (s.close < MISSING_ODDS) & (s.fair < MISSING_ODDS)
-    reason_s += r(s.is_high_val & odds_known, odds_str)
+    reason_s += r(s.is_high_val & (s.close < MISSING_ODDS) & (s.fair < MISSING_ODDS), odds_comparison(s, decimal))
 
     reason_s = reason_s.str.strip().str.rstrip(";")
     return reason_s.where(reason_s != "", "-")

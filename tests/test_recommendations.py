@@ -94,8 +94,8 @@ def test_value_reason_compares_the_closing_and_fair_odds_as_they_are() -> None:
             "TeamStatus": ["IN_PLAY"] * 3,
             "TeamRotRisk": [1.0] * 3,
             "ValFinal": [75.0] * 3,
-            "Close": [1.3, 1.4, None],
-            "Fair": [1.4, 1.4, 1.4],
+            "Close": [1.3, 1.404, None],
+            "Fair": [1.4, 1.401, 1.4],
         }
     )
 
