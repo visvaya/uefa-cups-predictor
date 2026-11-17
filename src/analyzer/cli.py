@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from analyzer.data import (
+    LEAGUE_DIRS,
     ODDS_NUMERIC_COLUMNS,
     cast_numeric,
     load_club_names,
@@ -41,7 +42,7 @@ def write_report(report: pd.DataFrame, path: Path, excel_pl: bool) -> None:
 
 
 def run_league(base_dir: Path, prefix: str, excel_pl: bool = False) -> None:
-    """Standard mode for one cup (cl/el): writes `<prefix>_recommendations.csv` to `base_dir`."""
+    """Standard mode for one cup (cl/el/ecl): writes `<prefix>_recommendations.csv` to `base_dir`."""
     league_name = LEAGUE_NAMES[prefix]
     out_path = base_dir / f"{prefix}_recommendations.csv"
 
@@ -116,6 +117,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UEFA Cups Fantasy Analyzer")
     parser.add_argument("--cl", action="store_true", help="Analyze Champions League")
     parser.add_argument("--el", action="store_true", help="Analyze Europa League")
+    parser.add_argument("--ecl", action="store_true", help="Analyze Conference League")
     parser.add_argument(
         "--excel-pl", action="store_true", help="Output in Polish Excel format (; separator, , decimal)"
     )
@@ -134,10 +136,11 @@ def main(base_dir: Path, argv: list[str] | None = None) -> None:
         if args.sr_only:
             run_sr_only(base_dir, args.input_file, args.output_dir, excel_pl=args.excel_pl)
             return
-        run_all = not (args.cl or args.el)
-        for prefix, selected in (("cl", args.cl), ("el", args.el)):
-            if run_all or selected:
-                run_league(base_dir, prefix, excel_pl=args.excel_pl)
+        chosen = [prefix for prefix in LEAGUE_DIRS if getattr(args, prefix)]
+        # Without a flag: the Champions and Europa League, and the Conference League when its fixtures are there
+        ecl_fixtures = base_dir / "data" / "theanalyst" / LEAGUE_DIRS["ecl"] / "ecl_fixtures.csv"
+        for prefix in chosen or ["cl", "el", *(["ecl"] if ecl_fixtures.exists() else [])]:
+            run_league(base_dir, prefix, excel_pl=args.excel_pl)
     except AnalyzerInputError as err:
         print(f"ERROR: {err}")
         sys.exit(1)

@@ -5,7 +5,7 @@
 
 **Status:** maintained personal tool, run by hand during the UEFA league phase. There are no releases; `main` is the supported version. Contributions: see [CONTRIBUTING.md](CONTRIBUTING.md); security reports: [SECURITY.md](SECURITY.md).
 
-System for predicting results, assessing motivation, and rotation risk in European competitions (Champions League and Europa League) under the new league phase format. The system is based on probabilistic forecasts from Monte Carlo simulations ("The Analyst" data) and odds data from Soccer-rating. It is specifically designed for analyzing the final rounds of the league phase.
+System for predicting results, assessing motivation, and rotation risk in European competitions (Champions League, Europa League and Conference League) under the new league phase format. The system is based on probabilistic forecasts from Monte Carlo simulations ("The Analyst" data) and odds data from Soccer-rating. It is specifically designed for analyzing the final rounds of the league phase.
 
 Allows creating a "lock/in_play/out" map:
 
@@ -65,6 +65,7 @@ The script relies on data exported from **The Analyst** (Opta):
 - **CL Fixtures**: [theanalyst.com/competition/uefa-champions-league/fixtures](https://theanalyst.com/competition/uefa-champions-league/fixtures)
 - **EL Table**: [theanalyst.com/competition/uefa-europa-league/table](https://theanalyst.com/competition/uefa-europa-league/table) (use 'Predicted' tab)
 - **EL Fixtures**: [theanalyst.com/competition/uefa-europa-league/fixtures](https://theanalyst.com/competition/uefa-europa-league/fixtures)
+- **ECL Table and Fixtures**: [theanalyst.com/competition/uefa-conference-league/predictions](https://theanalyst.com/competition/uefa-conference-league/predictions) (save them with the same columns as the CL and EL files, as `ecl_fixtures.csv` and `ecl_table_predicted.csv` in `data/theanalyst/conference-league/`)
 
 Odds (Soccer-rating) data:
 
@@ -194,7 +195,7 @@ It fetches the today page and the first match's home team page (two requests plu
 ## Usage & Structure
 
 ```bash
-# Analyze both cups (CL and EL) - default
+# Analyze CL and EL, and the Conference League when its files are present - default
 python analyze.py
 
 # Analyze only Champions League
@@ -202,6 +203,9 @@ python analyze.py --cl
 
 # Analyze only Europa League
 python analyze.py --el
+
+# Analyze only Conference League
+python analyze.py --ecl
 
 # Analyze with Polish Excel formatting (; separator, comma decimal)
 python analyze.py --excel-pl
@@ -217,6 +221,7 @@ python analyze.py --excel-pl
 
 - `cl_recommendations.csv` – Results for Champions League.
 - `el_recommendations.csv` – Results for Europa League.
+- `ecl_recommendations.csv` – Results for Conference League.
 - `sr_analysis_report_YYYY-MM-DD.csv` – Results for SR-Only mode (the date comes from the input snapshot name; without a dated input the file is `sr_analysis_report.csv`).
 
 ## Data Integrity Requirements

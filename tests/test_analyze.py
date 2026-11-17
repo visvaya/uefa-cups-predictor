@@ -10,7 +10,14 @@ import pytest
 
 from analyzer.cli import main
 from analyzer.config import ROTATION_RISK_MAX, STRANGE_ODDS_ROTATION_FACTOR
-from analyzer.data import TABLE_NUMERIC_COLUMNS, cast_numeric, latest_snapshots, load_league_data, read_smart_csv
+from analyzer.data import (
+    TABLE_NUMERIC_COLUMNS,
+    cast_numeric,
+    cup_rows,
+    latest_snapshots,
+    load_league_data,
+    read_smart_csv,
+)
 from analyzer.errors import AnalyzerInputError
 from analyzer.league import validated_inputs
 from analyzer.model import enrich_table, pressure_vector, with_strange_odds_rotation
@@ -268,3 +275,37 @@ def test_latest_snapshots_does_not_prefer_a_row_without_a_date() -> None:
     rows = pd.DataFrame({"match_id": ["m1", "m1"], "snapshot_date": ["2026-11-17", "unknown"], "close_1": [1.5, 2.0]})
 
     assert latest_snapshots(rows)["close_1"].tolist() == [1.5]
+
+
+def test_cup_rows_takes_the_conference_league_code() -> None:
+    sr = pd.DataFrame({"league_code": ["CLCUP", "ELCUP", "ECLCUP"], "match_id": ["a", "b", "c"]})
+
+    assert cup_rows(sr, "ecl")["match_id"].tolist() == ["c"]
+
+
+def test_main_runs_the_conference_league_only_when_its_files_exist(tmp_path: Path) -> None:
+    examples = REPO_DIR / "data" / "theanalyst"
+    for prefix, league in (("cl", "champions-league"), ("el", "europa-league")):
+        target = tmp_path / "data" / "theanalyst" / league
+        target.mkdir(parents=True)
+        for kind in ("fixtures", "table_predicted"):
+            shutil.copy(examples / league / f"{prefix}_{kind}_example.csv", target / f"{prefix}_{kind}.csv")
+
+    main(tmp_path, [])
+    assert not (tmp_path / "ecl_recommendations.csv").exists()
+
+    target = tmp_path / "data" / "theanalyst" / "conference-league"
+    target.mkdir(parents=True)
+    for kind in ("fixtures", "table_predicted"):
+        shutil.copy(examples / "conference-league" / f"ecl_{kind}_example.csv", target / f"ecl_{kind}.csv")
+    main(tmp_path, [])
+    assert (tmp_path / "ecl_recommendations.csv").exists()
+
+
+def test_main_reports_a_missing_conference_league_file_when_asked_for_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit):
+        main(tmp_path, ["--ecl"])
+
+    assert "conference-league" in capsys.readouterr().out
