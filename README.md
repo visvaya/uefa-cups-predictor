@@ -77,21 +77,23 @@ The system interprets source data (*Predicted Table*) as a set of probabilities,
 ### Key Input Parameters
 
 - **LAST 16%**: Probability of occupying places 1–8 (direct qualification).
-- **KO P/O% / KPO**: Probability of occupying places 9–24 (participation in play-offs).
+- **KO P/0% / KPO** (the header is written with a zero): Probability of occupying places 9–24 (participation in play-offs).
 - **QF%**: P(quarter-final) – used as a safe *floor* for progression chances.
 
 ### Calculating P(Top 24) – "Chance of Continuing Play"
 
-The algorithm sums `LAST 16%` and `KO P/O%` when they are consistent, falls back to the maximum progress column when the sum exceeds 100%, and never goes below `QF%`. The steps are described in [interpretation.md](interpretation.md#5-ptop-24-calculation-logic).
+The table and fixtures must give every number in percent (0 to 100, dot or comma decimals); a missing column, a blank or unreadable cell (such as `<1` or `99,5%`), a table in fractions, or a team listed or playing twice stops the run with an error.
+
+The algorithm sums `LAST 16%` and `KO P/0%` when they are consistent, falls back to the maximum progress column when the sum exceeds 100.01% (two rounded values may reach 100.01), and never goes below `QF%`. The steps are described in [interpretation.md](interpretation.md#5-ptop-24-calculation-logic).
 
 ### Report Columns (Main Mode)
 
 | Column | Description |
 | :--- | :--- |
 | **team / opp** | Analyzed team and its opponent. |
-| **teamWinProb%** | Probability of winning (from predicted table). |
+| **teamWinProb%** | Probability of winning, from the fixtures file (`HomeWin%`, `Draw%`, `AwayWin%` rescaled to sum to 100). |
 | **teamMot** | *Motivation Index* (0-100) – internal pressure for result. |
-| **teamValue** | *Value Index* (0-140): win probability weighted by the team's motivation, raised when the opponent is `OUT`, `LOCKED` or unmotivated, divided by `teamRotRisk` (formula and weights in `src/analyzer/config.py`). 70 or more is `High Value`, 50 or more `Good Value`; rows of one recommendation are ordered by it. |
+| **teamValue** | *Value Index* (0 to about 135; capped at 140): win probability weighted by the team's motivation, raised when the opponent is `OUT`, `LOCKED` or unmotivated, divided by `teamRotRisk` (formula and weights in `src/analyzer/config.py`). 70 or more is `High Value`, 50 or more `Good Value`; rows of one recommendation are ordered by it. |
 | **teamRotRisk** | *Rotation Risk* (1.0 - 2.3) – higher means greater risk of squad rotation. Raised by 10 % for both teams of a match with strange odds (see Soccer-rating Logic). |
 | **teamStatus / oppStatus** | Progress status (`IN_PLAY`, `LOCKED`, `OUT`). |
 | **expertScore** | **Synthetic Strength Signal**. Aggregate score from market, ratings, and lineups. If > 0, model favors this team. |

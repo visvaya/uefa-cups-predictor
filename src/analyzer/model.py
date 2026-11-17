@@ -66,7 +66,7 @@ def integrity_report(df: pd.DataFrame, league_name: str) -> list[str]:
 
     # Top 24 Consistency
     raw_sum = df["LAST 16%"] + df["KO P/0%"]
-    anom = raw_sum > 100.0001
+    anom = raw_sum > 100.01
     if anom.any():
         lines.append(f"WARNING: INCONSISTENT TOP 24 (Sum > 100% for {anom.sum() or 0} teams)")
     else:
@@ -86,7 +86,8 @@ def enrich_table(table: pd.DataFrame) -> pd.DataFrame:
 
     # Survival Probability
     raw_sum = l16 + kpo
-    p_surv = np.where(raw_sum <= 1.000001, raw_sum, np.maximum.reduce([l16, kpo, qf, sf, fnl, wnr]))
+    # Two values rounded to 2 decimals can sum to 100.01 (fractions: 1.0001, plus float error) and still be consistent
+    p_surv = np.where(raw_sum <= 1.0001 + 1e-9, raw_sum, np.maximum.reduce([l16, kpo, qf, sf, fnl, wnr]))
     p_surv = np.maximum.reduce([p_surv, qf, sf, fnl, wnr]).clip(0, 1)
 
     p_top8 = l16
