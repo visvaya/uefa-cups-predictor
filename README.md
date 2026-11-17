@@ -119,9 +119,10 @@ The algorithm sums `LAST 16%` and `KO P/O%` when they are consistent, falls back
   - `High rotation risk`: `teamRotRisk` >= 1.39. Always `🟠 CAUTION`.
 - **Value/Signal**:
   - `High Value / Good Value`: High mathematical advantage based on motivation and win prob.
-  - `Strong Expert Signal`: `|expertScore| > 1.50`, a strong model signal for either side; `Positive Signal` is the same for `|expertScore| > 0.50`. Apart from the `Sure Bet Pattern` and SR-only `X` picks, a row reaches `🟡 CONSIDER` or `🟢 STRONG BUY` only with a positive score (this row's team favoured).
+  - `Strong Expert Signal`: `expertScore > 1.50`, a strong model signal for this row's team; `Positive Signal` is the same for `expertScore > 0.50`. The team the score is against gets neither. Apart from the SR-only `Sure Bet Pattern` and `X` picks, a row reaches `🟡 CONSIDER` or `🟢 STRONG BUY` only with a positive score (this row's team favoured).
+  - `Close(x) > Fair(y)`: with `High Value`, this team's closing odds next to its fair odds, with `>`, `<` or `=` as they compare; left out without soccer-rating odds.
 - **Market Signals**:
-  - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`).
+  - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`). It makes the row `🟢 STRONG BUY` ahead of the other signals; in standard mode only when the score favours this team and the motivation rule of `🟢 STRONG BUY` holds (`teamMot` >= 50 and above `oppMot`), otherwise the other rules decide.
   - `Steam (+)`: Market odds are dropping for this team.
   - `(Risk: Rising Odds)`: Mathematical value is high, but the market is betting against the team. Recommendation downgraded.
   - `(No Steam Confirmation)` (SR-only): a `Strong Expert Signal` whose odds did not fall enough for the `Sure Bet Pattern`; the row stays `🟡 CONSIDER` because the market has not confirmed the signal.

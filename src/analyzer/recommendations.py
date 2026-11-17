@@ -44,6 +44,9 @@ SIGNAL_REPORT_COLUMNS = {
     "reason": "reason",
 }
 
+# Odds of a row without soccer-rating data (no bet)
+MISSING_ODDS = 99.0
+
 ROUND_2_COLUMNS = (
     "TeamRotRisk",
     "SR_edge",
@@ -96,9 +99,9 @@ def column_or(ranking: pd.DataFrame, column: str, default: object) -> pd.Series:
 def read_signals(ranking: pd.DataFrame) -> Signals:
     val = ranking.get("ValFinal", ranking.get("Val", pd.Series(0, index=ranking.index)))
     score = column_or(ranking, "expertScore", 0)
-    # Missing odds fall back to 99 (no bet), missing steam to 0
-    close = column_or(ranking, "Close", 99.0).fillna(99.0)
-    fair = column_or(ranking, "Fair", 99.0).fillna(99.0)
+    # Missing odds fall back to MISSING_ODDS, missing steam to 0
+    close = column_or(ranking, "Close", MISSING_ODDS).fillna(MISSING_ODDS)
+    fair = column_or(ranking, "Fair", MISSING_ODDS).fillna(MISSING_ODDS)
     sr_drop = column_or(ranking, "srDropping", 0).fillna(0)
     do_drop = column_or(ranking, "do_drop", 0).fillna(0)
 
@@ -118,8 +121,9 @@ def read_signals(ranking: pd.DataFrame) -> Signals:
         is_sure_bet=(close < SURE_BET_MAX_CLOSE) & (fair < SURE_BET_MAX_FAIR) & (sr_drop > SURE_BET_MIN_STEAM),
         is_high_val=val >= HIGH_VALUE,
         is_good_val=val >= GOOD_VALUE,
-        is_strong_sig=score.abs() > STRONG_SIGNAL,
-        is_pos_sig=score.abs() > POSITIVE_SIGNAL,
+        # Every row is seen from its team, so a signal belongs to the team the score favours
+        is_strong_sig=score > STRONG_SIGNAL,
+        is_pos_sig=score > POSITIVE_SIGNAL,
     )
 
 
@@ -158,6 +162,8 @@ def labels(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> np.ndarray:
         is_my_pick = is_my_pick | (s.pick == "X")
 
     cond_strong = is_my_pick & (s.is_high_val | s.is_strong_sig) & s.steam_aligned & is_motivated
+    # SR-only has no motivation data; the standard mode holds the pattern to the same model and motivation test
+    sure_bet = s.is_sure_bet if allow_draws else s.is_sure_bet & is_my_pick & is_motivated
     cond_consider = is_my_pick & (s.is_good_val | (s.sr_edge > GOOD_SR_EDGE) | s.is_pos_sig)
     if allow_draws and "edge_x" in ranking.columns:
         cond_strong_x, cond_consider_x = draw_conditions(ranking, s)
@@ -167,9 +173,9 @@ def labels(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> np.ndarray:
     conditions = [
         s.is_out,
         s.rot_high | s.is_locked,  # absolute priority over market signals
-        s.is_sure_bet,
+        sure_bet,
         cond_strong,
-        cond_consider | (cond_strong & ~s.steam_aligned),
+        cond_consider,
     ]
     return np.select(conditions, [AVOID, CAUTION, STRONG_BUY, STRONG_BUY, CONSIDER], default=NEUTRAL)
 
@@ -190,6 +196,13 @@ def sr_only_reasons(ranking: pd.DataFrame, s: Signals, decimal: str) -> pd.Serie
     return pd.Series(np.where(no_steam, "(No Steam Confirmation); ", ""), index=ranking.index) + pd.Series(
         np.where(draw, lean + " (SteamX " + steam_x + "); ", ""), index=ranking.index
     )
+
+
+def odds_comparison(s: Signals, decimal: str) -> pd.Series:
+    """`Close(x) > Fair(y)`, with `<` or `=` when the rounded odds compare that way."""
+    close, fair = number_text(s.close, decimal), number_text(s.fair, decimal)
+    sign = np.select([s.close.round(2) > s.fair.round(2), s.close.round(2) < s.fair.round(2)], [" > ", " < "], " = ")
+    return "Close(" + close + ")" + sign + "Fair(" + fair + ")"
 
 
 def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) -> pd.Series:
@@ -226,8 +239,7 @@ def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) 
     if allow_draws:
         reason_s += sr_only_reasons(ranking, s, decimal)
 
-    ao_fair_str = "AO(" + number_text(s.close, decimal) + ") > Fair(" + number_text(s.fair, decimal) + ")"
-    reason_s += r(s.val >= HIGH_VALUE, ao_fair_str)
+    reason_s += r(s.is_high_val & (s.close < MISSING_ODDS) & (s.fair < MISSING_ODDS), odds_comparison(s, decimal))
 
     reason_s = reason_s.str.strip().str.rstrip(";")
     return reason_s.where(reason_s != "", "-")

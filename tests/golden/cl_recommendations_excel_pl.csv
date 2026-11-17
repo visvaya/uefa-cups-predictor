@@ -21,11 +21,11 @@ Team L;Team K;30,0;1,0;100,0;30,0;92,6;IN_PLAY;IN_PLAY;-0,0;0,0;0,0;-0,0;0,0;⚪
 Team B;Team A;30,0;1,0;78,5;27,5;74,6;IN_PLAY;IN_PLAY;-0,0;0,0;0,0;-0,0;0,0;⚪ NEUTRAL;-
 Team Y;Team Z;30,0;1,0;69,1;27,3;55,6;IN_PLAY;IN_PLAY;0,0;0,0;0,0;0,0;0,0;⚪ NEUTRAL;-
 Team M;Team N;25,0;1,0;100,0;25,0;100,0;IN_PLAY;IN_PLAY;0,0;0,0;0,0;0,0;0,0;⚪ NEUTRAL;-
-Team X;Team W;20,0;1,0;84,3;18,8;86,6;IN_PLAY;IN_PLAY;-1,72;1,0;-0,03;-0,4;0,0;⚪ NEUTRAL;"Strong Expert Signal; (Risk: Rising Odds); Steam (-)"
-Team D;Team C;19,5;1,1;84,3;16,6;81,7;IN_PLAY;IN_PLAY;-1,62;0,5;-0,0;0,29;-36,0;⚪ NEUTRAL;"Strong Expert Signal; Steam (+); Strange Odds (-36)"
+Team X;Team W;20,0;1,0;84,3;18,8;86,6;IN_PLAY;IN_PLAY;-1,72;1,0;-0,03;-0,4;0,0;⚪ NEUTRAL;Steam (-)
+Team D;Team C;19,5;1,1;84,3;16,6;81,7;IN_PLAY;IN_PLAY;-1,62;0,5;-0,0;0,29;-36,0;⚪ NEUTRAL;"Steam (+); Strange Odds (-36)"
 Team E;Team F;15,0;1,0;86,6;14,2;88,7;IN_PLAY;IN_PLAY;0,0;0,0;0,0;0,0;0,0;⚪ NEUTRAL;-
-Team P;Team O;15,0;1,1;99,0;13,6;100,0;IN_PLAY;IN_PLAY;-1,24;1,0;-0,03;-0,29;35,0;⚪ NEUTRAL;"Positive Signal; Steam (-); Strange Odds (35)"
-Team Q;Team R;10,0;1,0;96,8;9,9;95,7;IN_PLAY;IN_PLAY;-0,76;0,5;-0,02;0,0;0,0;⚪ NEUTRAL;Positive Signal
+Team P;Team O;15,0;1,1;99,0;13,6;100,0;IN_PLAY;IN_PLAY;-1,24;1,0;-0,03;-0,29;35,0;⚪ NEUTRAL;"Steam (-); Strange Odds (35)"
+Team Q;Team R;10,0;1,0;96,8;9,9;95,7;IN_PLAY;IN_PLAY;-0,76;0,5;-0,02;0,0;0,0;⚪ NEUTRAL;-
 Team DD;Team CC;60,0;2,05;28,0;28,1;33,1;OUT;OUT;-0,0;0,0;0,0;-0,0;0,0;🔴 AVOID;"Out of contention; High rotation risk"
 Team GG;Team HH;50,0;2,16;12,0;20,2;12,0;OUT;OUT;0,0;0,0;0,0;0,0;0,0;🔴 AVOID;"Out of contention; High rotation risk"
 Team EE;Team FF;40,0;2,08;24,5;18,2;21,4;OUT;OUT;0,0;0,0;0,0;0,0;0,0;🔴 AVOID;"Out of contention; High rotation risk"
