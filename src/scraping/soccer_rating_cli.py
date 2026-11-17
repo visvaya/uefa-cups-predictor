@@ -437,11 +437,11 @@ def scan_club_pages(match: TodayMatch, read_page: ClubPageReader) -> MatchScan:
 
 
 def names_fixture(match: TodayMatch, candidate: dict[str, Any]) -> bool:
-    """Whether a payload names both teams of the match (in either order)."""
+    """Whether a payload names both teams of the match as listed (a swapped payload is not used)."""
     score = name_match_score(
         match.home_team, match.away_team, candidate["home_team_payload"], candidate["away_team_payload"]
     )
-    return score > 0
+    return score == 2
 
 
 def best_odds_development(
@@ -491,14 +491,7 @@ def scrape_matches(
 
 def save_cumulative(path: Path, df_new: pd.DataFrame, id_cols: list[str], sort_col: str | None = None) -> int:
     """Merges `df_new` into the CSV at `path` (later rows win per `id_cols`); returns the number of rows written."""
-    if path.exists():
-        try:
-            df = pd.concat([pd.read_csv(path), df_new], ignore_index=True)
-        except (OSError, UnicodeDecodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as e:
-            logger.warning(f"Could not read existing {path.name}: {e}")
-            df = df_new
-    else:
-        df = df_new
+    df = with_existing_rows(path, df_new)
 
     if sort_col:
         # Stable, so rows with equal keys keep their order (old before new) and "keep last" takes the new one
@@ -509,13 +502,24 @@ def save_cumulative(path: Path, df_new: pd.DataFrame, id_cols: list[str], sort_c
     return len(df)
 
 
+def with_existing_rows(path: Path, df_new: pd.DataFrame) -> pd.DataFrame:
+    """The rows of the CSV at `path` followed by `df_new`; only `df_new` when the file is missing or unreadable."""
+    if not path.exists():
+        return df_new
+    try:
+        return pd.concat([pd.read_csv(path), df_new], ignore_index=True)
+    except (OSError, UnicodeDecodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as e:
+        logger.warning(f"Could not read existing {path.name}: {e}")
+        return df_new
+
+
 def save_club_meta(path: Path, df_new: pd.DataFrame) -> int:
     """Merges club rows into `path`: the newest name, and the newest rating that is known.
 
     A run gives every team a row but reads only some club pages, so a missing rating must not erase a known one.
     """
-    df = pd.concat([pd.read_csv(path), df_new], ignore_index=True) if path.exists() else df_new
-    df = df.groupby("team_id", as_index=False, sort=True).last()  # last non-missing value per column
+    # groupby().last() takes the last non-missing value of each column
+    df = with_existing_rows(path, df_new).groupby("team_id", as_index=False, sort=True).last()
     neutralize_formulas(df[list(CLUB_COLUMNS)]).to_csv(path, index=False)
     return len(df)
 

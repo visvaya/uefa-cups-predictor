@@ -544,3 +544,22 @@ def test_limit_must_be_positive(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["soccer-rating", "--limit", "0"])
     with pytest.raises(SystemExit):
         parse_args()
+
+
+def test_scan_club_pages_reads_the_away_page_when_the_home_page_has_the_sides_swapped() -> None:
+    match = parse_today_prediction(_today_page(_today_row("/Home-FC/101/", "/Away-FC/202/")), "2026-02-05")[0]
+    pages = {101: _club_page("Away FC", "Home FC"), 202: _club_page("Home FC", "Away FC")}
+
+    scan = scan_club_pages(match, lambda side: pages[side[0]])
+
+    assert [c["away_team_payload"] for c in scan.candidates][-1] == "Away FC"
+
+
+def test_save_club_meta_writes_the_new_rows_over_an_empty_file(tmp_path: Path) -> None:
+    path = tmp_path / "club_meta.csv"
+    path.write_text("", encoding="utf-8")
+    new = pd.DataFrame({"team_id": [1], "team_name": ["New"], "rating_total": [1900.0], "rating_home": [1950.0]})
+
+    save_club_meta(path, new.assign(rating_away=1850.0))
+
+    assert pd.read_csv(path)["team_name"].tolist() == ["New"]
