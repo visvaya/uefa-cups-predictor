@@ -29,7 +29,7 @@ PERSPECTIVE_COLUMNS = {
     "OppStatus": ("Status_A", "Status_H"),
     "SR_edge": ("edge_1", "edge_2"),
     "sr_quality": ("sr_quality", "sr_quality"),
-    "srDropping": ("srDropping", "srDropping"),
+    "srDropping": ("steam_1", "steam_2"),  # the team's own odds movement
     "strangeOdds": ("strangeOdds", "strangeOdds"),
     "do_drop": ("do_drop", "do_drop"),
     "Close": ("close_1", "close_2"),
@@ -105,12 +105,12 @@ def with_match_pick(f: pd.DataFrame) -> pd.DataFrame:
 
 
 def team_ranking(f: pd.DataFrame) -> pd.DataFrame:
-    """One row per team and match, seen from that team (away rows flip expertScore, srDropping and do_drop)."""
+    """One row per team and match, seen from that team (away rows flip expertScore and do_drop)."""
     names = list(PERSPECTIVE_COLUMNS)
     h = f[[home for home, _ in PERSPECTIVE_COLUMNS.values()]].set_axis(names, axis=1)
     a = f[[away for _, away in PERSPECTIVE_COLUMNS.values()]].set_axis(names, axis=1)
     h = h.assign(is_home=True, expertScore=h["matchExpertScore"])
-    a = a.assign(is_home=False, expertScore=-a["matchExpertScore"], srDropping=-a["srDropping"], do_drop=-a["do_drop"])
+    a = a.assign(is_home=False, expertScore=-a["matchExpertScore"], do_drop=-a["do_drop"])
 
     ranking = pd.concat([h, a], ignore_index=True)
     for c in ["SR_edge", "sr_quality", "srDropping", "strangeOdds"]:
