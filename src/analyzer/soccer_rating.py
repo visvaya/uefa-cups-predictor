@@ -143,7 +143,8 @@ def expert_score(df: pd.DataFrame) -> pd.Series:
 
     Positive favours the home team. Standard mode adds the lineup term (`W_LINEUP`) to this sum.
     """
-    s_rating = df["rating_diff"] / RATING_DIFF_SCALE
+    # A missing team rating adds nothing, like the other terms (NaN would turn every pick into X)
+    s_rating = df["rating_diff"].fillna(0.0) / RATING_DIFF_SCALE
     p1 = df.get("p_close_1", pd.Series(0.5, index=df.index)).fillna(0.5)
     p2 = df.get("p_close_2", pd.Series(0.5, index=df.index)).fillna(0.5)
     s_close = np.log((p1 / p2).clip(0.01, 100))

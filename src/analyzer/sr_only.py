@@ -52,6 +52,7 @@ def match_features(f2: pd.DataFrame) -> pd.DataFrame:
     valid_mask = valid_odds(f2)
 
     f2 = f2.copy()
+    f2["odds_valid"] = valid_mask
     for c in ["edge_1", "edge_x", "edge_2", "steam_diff", "prob_gap_1", "prob_gap_2", "rating_diff"]:
         f2[c] = 0.0
     if valid_mask.any():

@@ -150,11 +150,24 @@ def draw_conditions(ranking: pd.DataFrame, s: Signals) -> tuple[pd.Series, pd.Se
     return cond_strong_x, cond_consider_x
 
 
+def motivated(ranking: pd.DataFrame) -> pd.Series:
+    """The STRONG BUY motivation rule: TeamMot at least MIN_MOTIVATION and above OppMot."""
+    team_mot = column_or(ranking, "TeamMot", 0)
+    return (team_mot >= MIN_MOTIVATION) & (team_mot > column_or(ranking, "OppMot", 0))
+
+
+def counted_sure_bet(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> pd.Series:
+    """Rows whose Sure Bet Pattern makes them STRONG BUY: the pattern on this team's own 1 or 2 pick.
+
+    The standard mode also needs the motivation rule; SR-only has no motivation data.
+    """
+    own_pick = s.is_sure_bet & (s.score > 0) & (s.pick != "X")
+    return own_pick if allow_draws else own_pick & motivated(ranking)
+
+
 def labels(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> np.ndarray:
     """Recommendation per row. Priority: status, then the sure bet pattern, then the model and market signals."""
-    team_mot = column_or(ranking, "TeamMot", 0)
-    opp_mot = column_or(ranking, "OppMot", 0)
-    is_motivated = (team_mot >= MIN_MOTIVATION) & (team_mot > opp_mot)
+    is_motivated = motivated(ranking)
 
     # Away rows carry a flipped expertScore in standard mode, so score > 0 means this row's team is favoured
     is_my_pick = s.score > 0
@@ -162,8 +175,6 @@ def labels(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> np.ndarray:
         is_my_pick = is_my_pick | (s.pick == "X")
 
     cond_strong = is_my_pick & (s.is_high_val | s.is_strong_sig) & s.steam_aligned & is_motivated
-    # SR-only has no motivation data; the standard mode holds the pattern to the same model and motivation test
-    sure_bet = s.is_sure_bet if allow_draws else s.is_sure_bet & is_my_pick & is_motivated
     cond_consider = is_my_pick & (s.is_good_val | (s.sr_edge > GOOD_SR_EDGE) | s.is_pos_sig)
     if allow_draws and "edge_x" in ranking.columns:
         cond_strong_x, cond_consider_x = draw_conditions(ranking, s)
@@ -173,11 +184,12 @@ def labels(ranking: pd.DataFrame, s: Signals, allow_draws: bool) -> np.ndarray:
     conditions = [
         s.is_out,
         s.rot_high | s.is_locked,  # absolute priority over market signals
-        sure_bet,
+        ~column_or(ranking, "odds_valid", True).astype(bool),  # SR-only: no market data, no signal
+        counted_sure_bet(ranking, s, allow_draws),
         cond_strong,
         cond_consider,
     ]
-    return np.select(conditions, [AVOID, CAUTION, STRONG_BUY, STRONG_BUY, CONSIDER], default=NEUTRAL)
+    return np.select(conditions, [AVOID, CAUTION, NEUTRAL, STRONG_BUY, STRONG_BUY, CONSIDER], default=NEUTRAL)
 
 
 def number_text(values: pd.Series, decimal: str) -> pd.Series:
@@ -189,12 +201,15 @@ def sr_only_reasons(ranking: pd.DataFrame, s: Signals, decimal: str) -> pd.Serie
     """Reason parts only the SR-only mode gives, each ending in "; ": the missing steam and the draw lean."""
     # SR-only has no motivation data, so a strong signal reaches STRONG BUY only through the Sure Bet Pattern;
     # its score is mostly the closing price, and odds that do not fall leave it unconfirmed
-    no_steam = (s.score > 0) & s.is_strong_sig & ~s.is_sure_bet & s.steam_aligned
+    no_steam = (s.score > 0) & s.is_strong_sig & (s.sr_drop <= SURE_BET_MIN_STEAM) & s.steam_aligned
     lean = pd.Series(np.where(s.score > 0, "Lean: 1X", "Lean: X2"), index=ranking.index)
     steam_x = number_text(column_or(ranking, "steam_x", 0).fillna(0), decimal)
     draw = (s.pick == "X") & s.is_home
-    return pd.Series(np.where(no_steam, "(No Steam Confirmation); ", ""), index=ranking.index) + pd.Series(
-        np.where(draw, lean + " (SteamX " + steam_x + "); ", ""), index=ranking.index
+    no_odds = ~column_or(ranking, "odds_valid", True).astype(bool)
+    return (
+        pd.Series(np.where(no_odds, "No valid odds; ", ""), index=ranking.index)
+        + pd.Series(np.where(no_steam, "(No Steam Confirmation); ", ""), index=ranking.index)
+        + pd.Series(np.where(draw, lean + " (SteamX " + steam_x + "); ", ""), index=ranking.index)
     )
 
 
@@ -226,7 +241,7 @@ def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) 
     reason_s += r(~s.is_strong_sig & s.is_pos_sig, "Positive Signal")
 
     had_stats = s.is_high_val | s.is_strong_sig
-    reason_s += r(had_stats & ~s.steam_aligned & ~s.is_sure_bet, "(Risk: Rising Odds)")
+    reason_s += r(had_stats & ~s.steam_aligned & ~counted_sure_bet(ranking, s, allow_draws), "(Risk: Rising Odds)")
     reason_s += r(s.sr_drop > REASON_MIN_STEAM, "Steam (+)")
     reason_s += r(s.sr_drop < -REASON_MIN_STEAM, "Steam (-)")
 
