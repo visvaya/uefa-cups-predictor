@@ -8,6 +8,12 @@ Probabilities are fractions (0..1) unless the name says `PCT`; odds are decimal 
 LEAGUE_TABLE_TEAMS = 36
 ROUND_FIXTURES = 18
 
+# The Analyst's January 2026 table: LAST 16% is P(top 8) only in rows where it adds up with KO P/0% to 100 (or is
+# below QF%); elsewhere it is the chance of reaching the last 16 through the play-off. The column sums tell the layout.
+DIRECT_QUALIFIERS = 8  # top 8: LAST 16% of the direct rows sums to 100 times this
+PLAYOFF_PLACES = 16  # places 9 to 24: KO P/0% sums to 100 times this
+COLUMN_SUM_TOLERANCE_PCT = 0.5  # percentage points a column sum may miss by, from rounding each row to 2 decimals
+
 # Team status from the predicted table
 OUT_MAX_SURVIVAL_PROB = 0.015  # survival (top 24) at or below: OUT
 LOCKED_MIN_PROB = 0.985  # top 8 at or above: LOCKED_DIRECT_RO16; survival at or above: LOCKED_PLAYOFFS

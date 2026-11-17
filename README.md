@@ -77,7 +77,7 @@ The system interprets source data (*Predicted Table*) as a set of probabilities,
 
 ### Key Input Parameters
 
-- **LAST 16%**: Probability of occupying places 1–8 (direct qualification).
+- **LAST 16%**: Probability of occupying places 1–8 (direct qualification) in the rows where it adds up with `KO P/0%` to 100; see below for the other rows.
 - **KO P/0% / KPO** (the header is written with a zero): Probability of occupying places 9–24 (participation in play-offs).
 - **QF%**: P(quarter-final) – used as a safe *floor* for progression chances.
 
@@ -85,7 +85,7 @@ The system interprets source data (*Predicted Table*) as a set of probabilities,
 
 The table and fixtures must give every number in percent (0 to 100, dot or comma decimals); a missing column, a blank or unreadable cell (such as `<1` or `99,5%`), a table in fractions, or a team listed or playing twice stops the run with an error.
 
-The algorithm sums `LAST 16%` and `KO P/0%` when they are consistent, falls back to the maximum progress column when the sum exceeds 100.01% (two rounded values may reach 100.01), and never goes below `QF%`. The steps are described in [interpretation.md](interpretation.md#5-ptop-24-calculation-logic).
+`LAST 16%` is P(top 8) only in the rows where it adds up with `KO P/0%` to 100; in the other rows of The Analyst's January 2026 tables it is the chance of reaching the last 16 through the play-off. When the column sums confirm that layout (`KO P/0%` sums to 1600 and the direct `LAST 16%` to 800), P(top 24) is P(top 8) plus `KO P/0%`; otherwise the algorithm sums both columns when they are consistent, falls back to the maximum progress column when the sum exceeds 100.01% (two rounded values may reach 100.01), and warns. It never goes below `QF%`. The steps are described in [interpretation.md](interpretation.md#5-ptop-24-calculation-logic).
 
 ### Report Columns (Main Mode)
 
