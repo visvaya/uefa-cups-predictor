@@ -264,3 +264,13 @@ def test_sr_rows_without_quality_have_no_edge_or_fair_odds(ranking: pd.DataFrame
 )
 def test_odds_below_one_are_missing(value: float, odds: float | None) -> None:
     assert odds_or_none(value) == odds
+
+
+def test_sr_rows_take_the_draw_odds_movement_for_an_x_pick(ranking: pd.DataFrame) -> None:
+    rows = {row.home: row for row in sr_match_rows(ranking)}
+    epsilon = ranking.loc[ranking["HomeTeamName"] == "Epsilon Club"].iloc[0]
+
+    assert rows["Epsilon Club"].pick == "X"
+    assert epsilon["steam_x"] != epsilon["steam_1"]
+    assert rows["Epsilon Club"].sr is not None
+    assert rows["Epsilon Club"].sr.steam == pytest.approx(epsilon["steam_x"])

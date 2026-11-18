@@ -5,7 +5,6 @@ from html import escape
 
 from analyzer.page.model import MatchRow, PageData, SrFacts
 from analyzer.page.render_parts import (
-    ODDS_RANGE,
     SEARCH,
     Group,
     RangeSpec,
@@ -24,6 +23,7 @@ from analyzer.page.render_parts import (
     match_button,
     number_or,
     odds_move,
+    odds_range,
     range_field,
     row_open,
     section,
@@ -123,7 +123,7 @@ def _row(index: int, row: MatchRow) -> str:
             ("s-time", None if kickoff is None else f"{kickoff:%Y-%m-%d %H:%M}"),
             ("s-ocena", row.score),
             ("pick", row.pick),
-            ("ocena", row.score),
+            ("ocena", None if row.score is None else round(row.score, 2)),
             ("start", None if kickoff is None else kickoff.isoformat()),
         ],
     )
@@ -161,7 +161,6 @@ def _filters(rows: tuple[MatchRow, ...]) -> str:
     leagues = counted((row.group, _league(row)) for row in rows)
     by_size = dict(sorted(leagues.items(), key=lambda item: (-item[1][1], item[0])))
     picks = counted((pick, PICK_NAMES[pick]) for pick in ("1", "X", "2") for row in rows if row.pick == pick)
-    closes = [row.odds.close for row in rows if row.odds.close is not None]
     return f"""{SEARCH}
 {level_filter(rows)}
 <fieldset data-group="league">
@@ -182,8 +181,8 @@ aria-label="{LABELS["search_competition"]}"></p>
 <legend>{term("pick", HEADS["pick"])}</legend>
 {group_checks("pick", picks)}
 </fieldset>
-{range_field(ODDS_RANGE, closes)}
-{range_field(_SCORE_RANGE, [row.score for row in rows if row.score is not None])}
+{odds_range(rows)}
+{range_field(_SCORE_RANGE, [round(row.score, 2) for row in rows if row.score is not None])}
 {signal_box(rows)}
 <fieldset>
 <legend>{LABELS["time"]}</legend>

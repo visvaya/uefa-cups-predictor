@@ -420,3 +420,18 @@ def test_render_shows_a_match_without_soccer_rating_quality_as_missing() -> None
 
     assert "Przewaga modelu</button></dt> <dd>brak danych</dd>" in text
     assert "Kurs uczciwy</button></dt> <dd>brak danych</dd>" in text
+
+
+def test_render_filters_on_the_shown_values() -> None:
+    team = replace(TEAM, win_pct=54.96, value=60.04)
+    cup = replace(CUP_ROW, odds=PickOdds(1.8, 1.604, 1.5), cup=replace(CUP_FACTS, home=team))
+    sr = replace(SR_ROW, score=0.704, odds=PickOdds(1.8, 1.604, 1.5))
+
+    page = render_page(page_data((sr,), (el_section(cup),)), TEMPLATE)
+
+    # 54,96 is shown as 55,0, so a minimum of 55 keeps the row
+    assert 'data-win="55.0"' in page
+    assert 'data-range="win" data-bound="min" data-min="55"' in page
+    assert 'data-value="60.0"' in page
+    assert page.count('data-odds="1.6"') == 2
+    assert 'data-ocena="0.7"' in page

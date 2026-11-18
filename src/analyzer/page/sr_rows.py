@@ -55,7 +55,8 @@ def _row(r: pd.Series) -> MatchRow:
         score=float(r["expertScore"]),
         sr=SrFacts(
             edge=_fact(r["SR_edge"]) if quality else None,
-            steam=_fact_or_none(r["srDropping"]),
+            # The odds movement of the pick: the team's own, or the draw's for an X pick
+            steam=_fact_or_none(r["steam_x"] if pick == "X" else r["srDropping"]),
             ao=_fact(r["strangeOdds"]),
             quality=quality,
             home_href=_text(r["home_href"]) or None,

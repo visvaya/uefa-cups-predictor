@@ -164,3 +164,18 @@ def test_footer_sources_names_the_scrape_time_only_when_known() -> None:
     assert ", pobrane 16.11.2026 o 17:57." in known
     assert "pobrane" not in footer_sources(None)
     assert "przykładowe" not in footer_sources(None)
+
+
+def test_steam_explanations_describe_the_own_odds_movement() -> None:
+    for key in ("steamup", "steamdown", "steamval"):
+        assert "rywala" not in TERMS[key][1]
+        assert "w skali logarytmicznej" in TERMS[key][1]
+    assert "Kurs na typ spadł od otwarcia o więcej niż 0,03 w skali logarytmicznej." in TERMS["sure"][1]
+    assert "Przy typie X to ruch kursu na remis." in TERMS["steamval"][1]
+
+
+def test_level_explanations_name_the_draw_rule() -> None:
+    assert "a typowi X reguła remisu" in TERMS["strong"][1]
+    assert TERMS["consider"][1].endswith(
+        "Typ X trafia tu, gdy ocena jest bliska zera, a rynek nie faworyzuje żadnej ze stron."
+    )

@@ -6,7 +6,6 @@ from html import escape
 
 from analyzer.page.model import CupFacts, CupSection, MatchRow, TeamFacts
 from analyzer.page.render_parts import (
-    ODDS_RANGE,
     SEARCH,
     Group,
     RangeSpec,
@@ -25,6 +24,7 @@ from analyzer.page.render_parts import (
     match_button,
     number_or,
     odds_move,
+    odds_range,
     range_field,
     row_open,
     section,
@@ -198,9 +198,9 @@ def _row(index: int, row: MatchRow) -> str:
             ("s-mot", team.motivation),
             ("s-value", team.value),
             ("status", team.status),
-            ("win", team.win_pct),
+            ("win", round(team.win_pct, 1)),
             ("mot", _shown_motivation(team.motivation)),
-            ("value", team.value),
+            ("value", round(team.value, 1)),
         ],
     )
     numbers = [
@@ -261,7 +261,6 @@ def _filters(rows: tuple[MatchRow, ...]) -> str:
     teams = [_picked(row)[1] for row in rows]
     cups = counted((row.group, row.group_name) for row in rows)
     statuses = counted((team.status, STATUS_NAMES.get(team.status, team.status)) for team in teams)
-    closes = [row.odds.close for row in rows if row.odds.close is not None]
     return f"""{SEARCH}
 {level_filter(rows)}
 <fieldset>
@@ -272,10 +271,10 @@ def _filters(rows: tuple[MatchRow, ...]) -> str:
 <legend>{term("status", LABELS["status_filter"])}</legend>
 {group_checks("status", statuses)}
 </fieldset>
-{range_field(ODDS_RANGE, closes)}
-{range_field(_WIN_RANGE, [team.win_pct for team in teams])}
+{odds_range(rows)}
+{range_field(_WIN_RANGE, [round(team.win_pct, 1) for team in teams])}
 {range_field(_MOT_RANGE, [_shown_motivation(team.motivation) for team in teams])}
-{range_field(_VALUE_RANGE, [team.value for team in teams])}
+{range_field(_VALUE_RANGE, [round(team.value, 1) for team in teams])}
 {signal_box(rows)}
 """
 

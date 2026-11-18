@@ -122,20 +122,22 @@ TERMS: dict[str, tuple[str, str]] = {
     "strong": (
         "Mocny",
         (
-            "Najwyższy poziom. W europejskich pucharach daje go wysoka wartość albo mocny sygnał, jeśli spełnione "
-            "są jeszcze trzy warunki. Model wskazuje tę drużynę. Kurs na nią nie rośnie. Jej motywacja wynosi co "
+            "Najwyższy poziom. W europejskich pucharach daje go wysoka wartość albo mocny sygnał, jeśli spełnione są "
+            "jeszcze trzy warunki. Model wskazuje tę drużynę. Kurs na nią nie rośnie. Jej motywacja wynosi co "
             "najmniej 50 i jest wyższa niż motywacja rywala. Daje go też wzorzec „Sure Bet Pattern”, w pucharach "
             "tylko wtedy, gdy model wskazuje tę drużynę i spełniony jest ten sam warunek motywacji. Zakładka "
-            "„Soccer-rating” nie zna motywacji, więc tam poziom „mocny” daje tylko „Sure Bet Pattern”. Dlatego "
-            "typ „mocny” może mieć niższą ocenę niż typ „do rozważenia”."
+            "„Soccer-rating” nie zna motywacji, więc tam poziom „mocny” daje „Sure Bet Pattern”, a typowi X reguła "
+            "remisu: ocena bardzo bliska zera, rynek nie faworyzuje żadnej ze stron i potwierdza remis. Dlatego typ "
+            "„mocny” może mieć niższą ocenę niż typ „do rozważenia”."
         ),
     ),
     "consider": (
         "Do rozważenia",
         (
             "Model wskazuje tę drużynę i spełniony jest co najmniej jeden warunek. Ocena powyżej 0,50. Przewaga "
-            "modelu powyżej 4 punktów procentowych. W europejskich pucharach także wartość co najmniej 50. Tu "
-            "trafia też mocny sygnał, którego rynek nie potwierdza."
+            "modelu powyżej 4 punktów procentowych. W europejskich pucharach także wartość co najmniej 50. Tu trafia "
+            "też mocny sygnał, którego rynek nie potwierdza. Typ X trafia tu, gdy ocena jest bliska zera, a rynek nie "
+            "faworyzuje żadnej ze stron."
         ),
     ),
     "neutral": (
@@ -146,8 +148,8 @@ TERMS: dict[str, tuple[str, str]] = {
         "Sure Bet Pattern",
         (
             "Trzy warunki naraz. Kurs zamknięcia jest niższy niż 2,00. Kurs uczciwy według modelu jest niższy niż "
-            "2,20. Kurs na typ spadł od otwarcia wyraźniej niż kurs na rywala. W zakładce „Soccer-rating” zawsze "
-            "daje poziom „mocny”. W europejskich pucharach tylko wtedy, gdy model wskazuje tę drużynę, a jej "
+            "2,20. Kurs na typ spadł od otwarcia o więcej niż 0,03 w skali logarytmicznej. W zakładce „Soccer-rating” "
+            "zawsze daje poziom „mocny”. W europejskich pucharach tylko wtedy, gdy model wskazuje tę drużynę, a jej "
             "motywacja wynosi co najmniej 50 i jest wyższa niż motywacja rywala."
         ),
     ),
@@ -168,13 +170,16 @@ TERMS: dict[str, tuple[str, str]] = {
     "steamup": (
         "Steam (+)",
         (
-            "Kurs na tę drużynę spadł od otwarcia wyraźniej niż kurs na rywala. Rynek coraz mocniej na nią "
-            "stawia. To dobry znak dla typu."
+            "Kurs na tę drużynę spadł od otwarcia o więcej niż 0,05 w skali logarytmicznej. Rynek coraz mocniej na "
+            "nią stawia. To dobry znak dla typu."
         ),
     ),
     "steamdown": (
         "Steam (" + MINUS + ")",
-        "Kurs na tę drużynę wzrósł względem kursu na rywala. Rynek się od niej odwraca. To zły znak dla typu.",
+        (
+            "Kurs na tę drużynę wzrósł od otwarcia o więcej niż 0,05 w skali logarytmicznej. Rynek się od niej "
+            "odwraca. To zły znak dla typu."
+        ),
     ),
     "strange": (
         "Strange Odds",
@@ -223,8 +228,8 @@ TERMS: dict[str, tuple[str, str]] = {
     "steamval": (
         "Ruch kursu",
         (
-            "O ile kurs na typ spadł od otwarcia bardziej niż kurs na rywala. Skala logarytmiczna: 0,10 to około "
-            "10%. Dodatni jest dobry: rynek stawia na typ. Ujemny oznacza, że rynek się od typu odwraca."
+            "O ile kurs na typ spadł od otwarcia, w skali logarytmicznej: 0,10 to około 10%. Dodatni jest dobry: "
+            "rynek stawia na typ. Ujemny oznacza, że rynek się od typu odwraca. Przy typie X to ruch kursu na remis."
         ),
     ),
     "aoval": (

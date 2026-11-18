@@ -169,7 +169,8 @@ def row_open(row: MatchRow, own: list[tuple[str, object]]) -> str:
         ("s-odds", row.odds.close),
         ("s-level", LEVEL_RANKS[row.level]),
         ("league", row.group),
-        ("odds", row.odds.close),
+        # Filters compare the value as shown (two decimals), so a range keeps what the reader sees
+        ("odds", None if row.odds.close is None else round(row.odds.close, 2)),
         *own,
         ("signals", " ".join(signal_keys(row.reason))),
         ("teams", f"{fold(row.home)} {fold(row.away)}"),
@@ -263,7 +264,7 @@ def _spin_box(spec: RangeSpec, bounds: tuple[float, float], bound: str) -> str:
     )
 
 
-ODDS_RANGE = RangeSpec("odds", "odds", HEADS["odds"], HEADS["odds"], 0.05, 2)
+_ODDS_RANGE = RangeSpec("odds", "odds", HEADS["odds"], HEADS["odds"], 0.05, 2)
 
 
 def range_field(spec: RangeSpec, values: list[float]) -> str:
@@ -281,6 +282,11 @@ def range_field(spec: RangeSpec, values: list[float]) -> str:
 <small class="rng-msg" role="status"></small>
 <small class="edge-msg" role="status"></small>
 </fieldset>"""
+
+
+def odds_range(rows: tuple[MatchRow, ...]) -> str:
+    """The closing odds filter over the odds as shown; empty when no row has odds."""
+    return range_field(_ODDS_RANGE, [round(row.odds.close, 2) for row in rows if row.odds.close is not None])
 
 
 def signal_box(rows: tuple[MatchRow, ...]) -> str:
