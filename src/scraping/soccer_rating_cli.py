@@ -145,6 +145,8 @@ def validate_results(matches: list[TodayMatch], all_odds_dev: list[OddsDevelopme
 TODAY_PAGE = "today-prediction.html"
 # Columns written first, in this order; the rest follow in model order
 ODDS_ID_COLUMNS = ("match_id", "snapshot_date", "scraped_at", "home_id", "away_id", "league_code", "source_url")
+# The newest reading of a match wins a merge: later page date, then later scrape (a slower run may save last)
+ODDS_ORDER = ("snapshot_date", "scraped_at")
 CLUB_COLUMNS = ("team_id", "team_name", "rating_total", "rating_home", "rating_away")
 
 # One side of a match: team id, team name and the link to its club page
@@ -500,13 +502,16 @@ def scrape_matches(
     return ScrapeResult(odds_development, clubs, cups)
 
 
-def save_cumulative(path: Path, df_new: pd.DataFrame, id_cols: list[str], sort_col: str | None = None) -> int:
-    """Merges `df_new` into the CSV at `path` (later rows win per `id_cols`); returns the number of rows written."""
+def save_cumulative(path: Path, df_new: pd.DataFrame, id_cols: list[str], sort_cols: tuple[str, ...] = ()) -> int:
+    """Merges `df_new` into the CSV at `path` (the last row per `id_cols` after sorting wins); returns the row count.
+
+    Rows sort by `sort_cols`, a missing value first; rows with equal values keep their order, old before new.
+    """
     df = with_existing_rows(path, df_new)
 
-    if sort_col:
+    if sort_cols:
         # Stable, so rows with equal keys keep their order (old before new) and "keep last" takes the new one
-        df = df.sort_values(sort_col, ascending=True, kind="stable")
+        df = df.sort_values(list(sort_cols), ascending=True, kind="stable", na_position="first")
 
     df = df.drop_duplicates(subset=id_cols, keep="last")
     neutralize_formulas(df).to_csv(path, index=False)
@@ -552,11 +557,11 @@ def save_odds_development(
     df_dev = df_dev[columns]
     if snapshot_file:
         # One file per day, merged so that a second run on the same day does not duplicate matches
-        total = save_cumulative(output_dir / snapshot_file, df_dev, ["match_id"], "snapshot_date")
+        total = save_cumulative(output_dir / snapshot_file, df_dev, ["match_id"], ODDS_ORDER)
         logger.info(f"Saved snapshot to {snapshot_file} (Total records in file: {total})")
     else:
         path = output_dir / "match_odds_development.csv"
-        total = save_cumulative(path, df_dev, ["match_id"], "snapshot_date")
+        total = save_cumulative(path, df_dev, ["match_id"], ODDS_ORDER)
         keep_columns(path, columns)
         logger.info(f"Updated match_odds_development.csv (Total records: {total})")
 
