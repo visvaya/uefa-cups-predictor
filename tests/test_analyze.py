@@ -22,7 +22,7 @@ from analyzer.data import (
     read_smart_csv,
 )
 from analyzer.errors import AnalyzerInputError
-from analyzer.league import validated_inputs
+from analyzer.league import league_ranking, validated_inputs
 from analyzer.model import enrich_table, integrity_report, pressure_vector, with_strange_odds_rotation
 from analyzer.names import norm_key
 from analyzer.sr_only import sr_only_ranking, sr_only_report
@@ -413,7 +413,8 @@ def _el_base_dir(tmp_path: Path) -> Path:
 
 
 def test_league_ranking_links_team_rows_to_their_match(tmp_path: Path) -> None:
-    f, ranking, _ = league_frames(_el_base_dir(tmp_path), "el")
+    f, _ = league_frames(_el_base_dir(tmp_path), "el")
+    ranking = league_ranking(f, ".")
 
     assert len(ranking) == 2 * len(f)
     for row in ranking.itertuples():
@@ -422,12 +423,14 @@ def test_league_ranking_links_team_rows_to_their_match(tmp_path: Path) -> None:
 
 
 def test_league_frames_keep_kickoff_and_odds(tmp_path: Path) -> None:
-    f, _, lines = league_frames(_el_base_dir(tmp_path), "el")
+    f, lines = league_frames(_el_base_dir(tmp_path), "el")
 
     assert {"snapshot_date", "open_1", "close_x", "fair_2", "HomeTeam", "AwayTeam", "Draw%"} <= set(f.columns)
-    team_o = f.set_index("HomeTeam").loc["Team O"]
-    assert team_o["time_local"] == "18:45"
-    assert team_o["close_x"] == pytest.approx(3.9)
+    by_home = f.set_index("HomeTeam")
+    assert by_home.loc["Team O", "time_local"] == "18:45"
+    assert by_home.loc["Team O", "close_x"] == pytest.approx(3.9)
+    # Team A - Team B has soccer-rating odds but no row in today's file
+    assert by_home.loc["Team A", "time_local"] == ""
     assert any(line.startswith("INFO: Soccer-rating coverage") for line in lines)
 
 

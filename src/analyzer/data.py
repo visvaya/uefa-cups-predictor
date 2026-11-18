@@ -144,8 +144,10 @@ def with_today_columns(sr: pd.DataFrame, today: pd.DataFrame) -> pd.DataFrame:
             "lineup_rating_away_today",
             "lineup_type_today",
         ]
-        # reindex: a today file from before the kickoff column still merges (NaN where a column is missing)
-        return sr.merge(today.reindex(columns=today_cols), on="match_id", how="left")
+        # reindex: a today file without time_local or without the lineup columns merges with empty values instead
+        # of raising; "" is the one value of a missing kickoff
+        merged = sr.merge(today.reindex(columns=today_cols), on="match_id", how="left")
+        return merged.assign(time_local=merged["time_local"].fillna(""))
     return sr.assign(
         time_local="",
         lineup_rating_home_today=float("nan"),

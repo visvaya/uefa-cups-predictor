@@ -19,7 +19,7 @@ from analyzer.data import (
     soccer_rating_dir,
 )
 from analyzer.errors import AnalyzerInputError
-from analyzer.league import LEAGUE_NAMES, league_ranking, league_report, match_frame, validated_inputs
+from analyzer.league import LEAGUE_NAMES, league_report, match_frame, validated_inputs
 from analyzer.model import calculate_values, enrich_table, integrity_report, with_strange_odds_rotation
 from analyzer.soccer_rating import add_soccer_rating_features, coverage_report
 from analyzer.sr_only import sr_only_report, valid_odds
@@ -41,8 +41,8 @@ def write_report(report: pd.DataFrame, path: Path, excel_pl: bool) -> None:
         neutralize_formulas(report).to_csv(path, sep=",", index=False, encoding="utf-8", decimal=".")
 
 
-def league_frames(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
-    """One cup's match frame, its team ranking (decimal point in reasons) and the console lines on its inputs.
+def league_frames(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, list[str]]:
+    """One cup's match frame and the console lines on its inputs (the ranking is built with `league_ranking`).
 
     The lines are the integrity report, the soccer-rating notes and, with soccer-rating data, its coverage.
     """
@@ -51,8 +51,7 @@ def league_frames(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, pd.DataFra
     sr, notes = load_soccer_rating(base_dir, prefix)
     matches = add_soccer_rating_features(match_frame(fixtures, enrich_table(table)), sr)
     lines = [*lines, *notes, *([] if sr.empty else coverage_report(matches))]
-    f = calculate_values(with_strange_odds_rotation(matches))
-    return f, league_ranking(f, "."), lines
+    return calculate_values(with_strange_odds_rotation(matches)), lines
 
 
 def run_league(base_dir: Path, prefix: str, excel_pl: bool = False) -> None:
@@ -60,7 +59,7 @@ def run_league(base_dir: Path, prefix: str, excel_pl: bool = False) -> None:
     league_name = LEAGUE_NAMES[prefix]
     out_path = base_dir / f"{prefix}_recommendations.csv"
 
-    f, _, lines = league_frames(base_dir, prefix)
+    f, lines = league_frames(base_dir, prefix)
     print("\n".join(lines))
     report = league_report(f, decimal_separator(excel_pl))
 
