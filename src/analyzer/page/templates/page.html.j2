@@ -246,7 +246,7 @@ tr.avoid .lv { text-decoration: line-through; text-decoration-thickness: 1px; }
 .mode-lab { padding-block: 0.25em; margin-right: -0.3em; }
 .modes { display: flex; flex-wrap: wrap; gap: 0.3em 0.9em; margin: 0.6em 0 0.2em; }
 /* Each link is as wide as its bold text (a hidden bold copy of its label), so switching modes moves nothing */
-.modes a { padding-block: 0.25em; display: inline-flex; flex-direction: column; }
+.modes a { padding-block: 0.25em; display: flex; flex-direction: column; }
 .modes a::after { content: attr(data-label); font-weight: bold; height: 0; overflow: hidden; visibility: hidden; }
 /* The active mode: bold with a heavy underline, no ▸ (that sign opens details on this page) */
 .modes a[aria-current="page"] { font-weight: bold; text-decoration-thickness: 3px; }
@@ -666,10 +666,9 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         const mx = x === "", my = y === "";
         if (mx !== my) return mx ? 1 : -1;
         const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
-        // Within one recommendation the better pick first: higher score (soccer-rating) or value (cups), then lower odds
-        const better = sortKey === "level" ? byNumber(a, b, "ocena", -1) || byNumber(a, b, "value", -1) || byNumber(a, b, "odds", 1) : 0;
-        // Other ties keep the default order: kickoff (unknown last), then (full mode) the higher value, then the match name
-        return (sortDir === "desc" ? -c : c) || better || ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
+        // Within one recommendation the better pick first: higher score (soccer-rating) or value (cups), then lower odds;
+        // other ties keep the default order: kickoff (unknown last), then (full mode) the higher value, then the match name
+        return (sortDir === "desc" ? -c : c) || (sortKey === "level" && (byNumber(a, b, "ocena", -1) || byNumber(a, b, "value", -1) || byNumber(a, b, "odds", 1))) || ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
       };
       saveState();
       for (const tbody of view.querySelectorAll("tbody")) {
