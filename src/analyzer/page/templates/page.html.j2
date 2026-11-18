@@ -194,6 +194,9 @@ th.num button.sort { text-align: right; }
 .sort-line > span { margin-right: 0.3em; }
 .sort-line button.sort { font-weight: normal; margin-right: 0.7em; text-decoration: underline; text-underline-offset: 0.2em; }
 .sort-line button.sort[aria-pressed="true"] { font-weight: bold; }
+/* Each label is as wide as its bold form (a hidden bold copy), so the active button moves nothing */
+.sort-line .lb { display: inline-flex; flex-direction: column; text-decoration: inherit; }
+.sort-line .lb::after { content: attr(data-label); font-weight: bold; height: 0; overflow: hidden; visibility: hidden; }
 @media (min-width: 52.01em) { .sort-line { display: none; } }
 /* Wide screens: filter boxes in rows, each box as tall as the tallest in its row, one gap both ways */
 @media (min-width: 52.01em) {
@@ -227,6 +230,10 @@ tr.strong .lv { font-weight: bold; background: var(--fg); color: var(--bg); padd
   content: ""; display: inline-block; width: calc(0.66em * 9 / 12); height: 0.66em; margin-right: 0.3em; vertical-align: 0;
   background-color: currentColor; -webkit-mask: var(--icon) 0 0 / 100% 100% no-repeat; mask: var(--icon) 0 0 / 100% 100% no-repeat;
 }
+/* The sort arrow takes no room: it sits in the space after the label (the cell's right padding or the gap to the next
+   button), so the active button is no wider and no label moves */
+button.sort { position: relative; }
+.dir { position: absolute; left: 100%; top: 0; }
 .dir[data-dir]::before { margin: 0 0 0 0.25em; width: calc(0.66em * 6.4 / 12); }
 .dir[data-dir="asc"]::before { --icon: var(--i-up); }
 .dir[data-dir="desc"]::before { --icon: var(--i-down); }
@@ -555,6 +562,11 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
     const sortBox = view.querySelector(".sort-by");
     const NUMERIC = new Set(["odds", "ocena", "win", "mot", "value", "level"]);
     const FIRST_DIR = { time: "asc", match: "asc", pick: "asc", odds: "asc", ocena: "desc", win: "desc", mot: "desc", value: "desc", level: "asc" };
+    // Keys where higher means a better pick; their first direction is best first
+    const QUALITY = new Set(["level", "ocena", "win", "mot", "value"]);
+    // The direction in words that fit the key, for the phone row's button names
+    const ORDER_WORDS = { time: ["od najwcześniejszej", "od najpóźniejszej"], match: ["A–Z", "Z–A"], pick: ["najpierw 1", "najpierw 2"], odds: ["od najniższego", "od najwyższego"] };
+    const directionWords = (key, dir) => QUALITY.has(key) ? (dir === FIRST_DIR[key] ? "od najlepszych" : "od najgorszych") : ORDER_WORDS[key][dir === "asc" ? 0 : 1];
 
     // Settings survive a reload in this browser only; storage may be missing (private mode), so every access is guarded
     // v3: only what the viewer changed is stored (unticked options, the ticked signals, moved range bounds), so
@@ -644,14 +656,16 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
       for (const btn of view.querySelectorAll("button.sort")) {
         const on = btn.dataset.key === sortKey;
         const th = btn.closest("th");
+        // The arrow points down for best first on every quality key; the recommendation's rank runs the other way
+        const arrow = sortKey === "level" ? (sortDir === "asc" ? "desc" : "asc") : sortDir;
         // Heads report the sort with aria-sort; the phone row's buttons are toggles with the direction in their name
-        if (th) th.setAttribute("aria-sort", on ? (sortDir === "asc" ? "ascending" : "descending") : "none");
+        if (th) th.setAttribute("aria-sort", on ? (arrow === "asc" ? "ascending" : "descending") : "none");
         else {
           btn.setAttribute("aria-pressed", String(on));
-          btn.setAttribute("aria-label", btn.firstChild.textContent + (on ? (sortDir === "asc" ? ", rosnąco" : ", malejąco") : ""));
+          btn.setAttribute("aria-label", btn.firstChild.textContent + (on ? `, ${directionWords(sortKey, sortDir)}` : ""));
         }
         const dir = btn.querySelector(".dir");
-        if (on) dir.dataset.dir = sortDir; else delete dir.dataset.dir;
+        if (on) dir.dataset.dir = arrow; else delete dir.dataset.dir;
       }
       const field = (tr, key) => tr.dataset["s" + key[0].toUpperCase() + key.slice(1)] ?? "";
       // A number in the given direction (1 low first, -1 high first); a row without it sorts last
@@ -660,10 +674,11 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         if ((x === "") !== (y === "")) return x === "" ? 1 : -1;
         return x === "" ? 0 : dir * (Number(x) - Number(y));
       };
-      // Ties on any key, the same in both directions: the better pick first (recommendation, then the higher score on the
-      // soccer-rating tab or value on the cups tab, then the lower odds), then the earlier kickoff (unknown last), then
-      // the match name
+      // Ties: the better pick first (recommendation, then the higher score on the soccer-rating tab or value on the cups
+      // tab, then the lower odds), then the earlier kickoff (unknown last), then the match name. A quality key sorted
+      // worst first runs the pick part the other way too, so the list gets steadily worse; kickoff and name never turn
       const TIES = [["level", 1], ["ocena", -1], ["value", -1], ["odds", 1]];
+      const turn = QUALITY.has(sortKey) && sortDir !== FIRST_DIR[sortKey] ? -1 : 1;
       const compare = (a, b) => {
         const x = field(a, sortKey), y = field(b, sortKey);
         // A row without the value (no data attribute) sorts last in both directions
@@ -672,7 +687,7 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
         if (c) return sortDir === "desc" ? -c : c;
         for (const [key, dir] of TIES) {
-          const t = key === sortKey ? 0 : byNumber(a, b, key, dir);
+          const t = key === sortKey ? 0 : byNumber(a, b, key, turn * dir);
           if (t) return t;
         }
         return ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || field(a, "match").localeCompare(field(b, "match"), "pl");
