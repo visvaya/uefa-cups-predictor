@@ -25,7 +25,7 @@ class PickOdds:
 class SrFacts:
     """Soccer-rating details of a match; the hrefs are site paths of the clubs' pages."""
 
-    edge: float
+    edge: float | None
     steam: float | None
     ao: float
     quality: float

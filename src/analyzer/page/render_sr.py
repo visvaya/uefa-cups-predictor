@@ -102,7 +102,7 @@ def _details(row: MatchRow, sr: SrFacts) -> str:
             (LABELS["start"], kickoff_text(row)),
             (term("oddsmove", HEADS["odds"]), odds_move(row.odds, ", ")),
             (term("fair", LABELS["fair"]), number_or(row.odds.fair, LABELS["no_data"])),
-            (term("edgeval", LABELS["edge"]), edge_text(sr.edge)),
+            (term("edgeval", LABELS["edge"]), number_or(sr.edge, LABELS["no_data"], edge_text)),
             (term("steamval", LABELS["steam"]), number_or(sr.steam, LABELS["no_data"], _signed)),
             (term("aoval", LABELS["ao"]), LABELS["none"] if sr.ao == 0 else pl_number(sr.ao, 0, sign=True)),
             (term("quality", LABELS["quality"]), pl_number(sr.quality, 1)),

@@ -294,7 +294,7 @@ WORST_SR = (
         reason="-",
         kickoff=None,
         odds=PickOdds(None, None, None),
-        sr=SrFacts(edge=0.0, steam=0.0, ao=0.0, quality=0.0, home_href=None, away_href=None),
+        sr=SrFacts(edge=None, steam=None, ao=0.0, quality=0.0, home_href=None, away_href=None),
     ),
 )
 WORST_CUP_TEAM = replace(TEAM, team=LONG_HOME, edge=-0.12, reason=EVERY_SIGNAL, close=34.5)
@@ -411,3 +411,12 @@ def test_render_shows_missing_soccer_rating_values_as_missing() -> None:
     assert '<span role="cell">0,00</span><span role="cell">brak danych</span>' in text
     assert '<span role="cell">+0 pp</span><span role="cell">brak danych</span>' in text
     assert "Ruch kursu</button></dt> <dd>brak danych</dd>" in text
+
+
+def test_render_shows_a_match_without_soccer_rating_quality_as_missing() -> None:
+    row = replace(SR_ROW, odds=PickOdds(3.3, 3.3, None), sr=replace(SR_FACTS, edge=None, quality=0.0))
+
+    text = text_of(render_page(page_data((row,), ()), TEMPLATE))
+
+    assert "Przewaga modelu</button></dt> <dd>brak danych</dd>" in text
+    assert "Kurs uczciwy</button></dt> <dd>brak danych</dd>" in text

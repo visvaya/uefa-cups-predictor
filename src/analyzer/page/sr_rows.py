@@ -10,11 +10,13 @@ from analyzer.recommendations import MISSING_ODDS
 
 # pick12 -> the pick and the suffix of its odds columns
 _PICKS: dict[str, tuple[Pick, str]] = {"1": ("1", "1"), "X": ("X", "x"), "2": ("2", "2")}
+# Decimal odds below 1.0 cannot occur; the frames write 0 for odds they do not have
+_MIN_DECIMAL_ODDS = 1.0
 
 
 def odds_or_none(value: float) -> float | None:
-    """Odds as a number, or None for the frames' missing odds (99 or NaN)."""
-    return None if pd.isna(value) or value == MISSING_ODDS else float(value)
+    """Odds as a number, or None for the frames' missing odds (99, NaN, or below 1.0 such as 0)."""
+    return None if pd.isna(value) or value == MISSING_ODDS or value < _MIN_DECIMAL_ODDS else float(value)
 
 
 def pick_odds(r: pd.Series, side: str) -> PickOdds:
@@ -37,6 +39,8 @@ def _text(value: object) -> str:
 def _row(r: pd.Series) -> MatchRow:
     pick, side = _PICKS[r["pick12"]]
     day = date.fromisoformat(r["snapshot_date"])
+    # Quality 0: no soccer-rating view of the match, so its edge is missing, not zero
+    quality = _fact(r["srCompleteness"])
     return MatchRow(
         home=r["HomeTeamName"],
         away=r["AwayTeamName"],
@@ -50,10 +54,10 @@ def _row(r: pd.Series) -> MatchRow:
         odds=pick_odds(r, side),
         score=float(r["expertScore"]),
         sr=SrFacts(
-            edge=_fact(r["SR_edge"]),
+            edge=_fact(r["SR_edge"]) if quality else None,
             steam=_fact_or_none(r["srDropping"]),
             ao=_fact(r["strangeOdds"]),
-            quality=_fact(r["srCompleteness"]),
+            quality=quality,
             home_href=_text(r["home_href"]) or None,
             away_href=_text(r["away_href"]) or None,
         ),

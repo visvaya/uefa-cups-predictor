@@ -8,7 +8,7 @@ from analyzer.cli import league_frames
 from analyzer.league import league_ranking
 from analyzer.page.cup_rows import cup_section, cup_section_without_data
 from analyzer.page.model import CupSection, PickOdds, TeamFacts
-from analyzer.page.sr_rows import sr_match_rows
+from analyzer.page.sr_rows import odds_or_none, sr_match_rows
 from analyzer.page.texts import CUP_NAMES, LEVEL_NAMES, kickoff_at
 from analyzer.sr_only import sr_only_ranking
 from tests.inputs import el_base_dir, fixture_sr_only
@@ -247,3 +247,20 @@ def test_cup_rows_without_soccer_rating_have_no_odds() -> None:
 
 def test_cup_section_without_data_is_empty() -> None:
     assert cup_section_without_data("cl") == CupSection(prefix="cl", name=CUP_NAMES["cl"], rows=())
+
+
+def test_sr_rows_without_quality_have_no_edge_or_fair_odds(ranking: pd.DataFrame) -> None:
+    rows = {row.home: row for row in sr_match_rows(ranking)}
+
+    # ID_999 has srCompleteness 0 and fair odds 0: no soccer-rating view of the match
+    assert rows["ID_999"].sr is not None
+    assert (rows["ID_999"].sr.edge, rows["ID_999"].odds.fair) == (None, None)
+    assert rows["Alpha FC"].sr is not None
+    assert rows["Alpha FC"].sr.edge == pytest.approx(0.04)
+
+
+@pytest.mark.parametrize(
+    ("value", "odds"), [(0.0, None), (0.99, None), (99.0, None), (float("nan"), None), (1.01, 1.01)]
+)
+def test_odds_below_one_are_missing(value: float, odds: float | None) -> None:
+    assert odds_or_none(value) == odds
