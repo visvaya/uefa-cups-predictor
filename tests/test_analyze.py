@@ -370,7 +370,9 @@ def test_latest_snapshots_prefers_the_later_scrape_over_file_order() -> None:
     assert latest_snapshots(rows)["close_1"].tolist() == [1.5]
 
 
-def _fixture_sr_only(function: Callable[..., pd.DataFrame]) -> pd.DataFrame:
+def _fixture_sr_only(
+    function: Callable[[pd.DataFrame, dict[int, str], dict[str, dict[str, str]], str], pd.DataFrame],
+) -> pd.DataFrame:
     sr = cast_numeric(read_smart_csv(SR_FIXTURES_DIR / "match_odds_development_2026-01-28.csv"), ODDS_NUMERIC_COLUMNS)
     today = load_today_names(SR_FIXTURES_DIR / "today_matches.csv") or {}
     return function(sr, load_club_names(SR_FIXTURES_DIR / "club_meta.csv"), today, ".")
@@ -396,3 +398,14 @@ def test_sr_only_ranking_keeps_the_match_columns() -> None:
     assert alpha["close_1"] == pytest.approx(1.6)
     assert alpha[["home_href", "league_name"]].tolist() == ["/Alpha-FC/201/", "Synthetic League"]
     assert ranking.loc["2026-01-28_XX1_203_204", "home_href"] == ""
+
+
+def test_sr_only_report_falls_back_to_the_club_name_for_an_empty_today_name(tmp_path: Path) -> None:
+    today = tmp_path / "today_matches.csv"
+    today.write_text("match_id,home_team,away_team\n2026-01-28_XX1_201_202,,Beta United\n", encoding="utf-8")
+    sr = cast_numeric(read_smart_csv(SR_FIXTURES_DIR / "match_odds_development_2026-01-28.csv"), ODDS_NUMERIC_COLUMNS)
+
+    report = sr_only_report(sr, {201: "Alpha Club"}, load_today_names(today) or {}, ".")
+
+    assert "Alpha Club" in report["homeTeam"].tolist()
+    assert "" not in report["homeTeam"].tolist()

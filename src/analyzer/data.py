@@ -6,6 +6,7 @@ import pandas as pd
 
 from analyzer.errors import AnalyzerInputError
 from analyzer.names import norm_key
+from analyzer.sr_only import TODAY_MATCH_COLUMNS
 
 LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league", "ecl": "conference-league"}
 # soccer-rating league code of each cup
@@ -191,7 +192,7 @@ def load_club_names(path: Path) -> dict[int, str]:
     return names
 
 
-TODAY_COLUMNS = ["home_team", "away_team", "time_local", "league_name", "home_href", "away_href"]
+TODAY_COLUMNS = ["home_team", "away_team", *TODAY_MATCH_COLUMNS]
 
 
 def load_today_names(path: Path) -> dict[str, dict[str, str]] | None:
@@ -201,7 +202,7 @@ def load_today_names(path: Path) -> dict[str, dict[str, str]] | None:
     """
     today = read_smart_csv(path)
     if "match_id" in today.columns and "home_team" in today.columns and "away_team" in today.columns:
-        rows = today.set_index("match_id").reindex(columns=TODAY_COLUMNS).fillna("").astype(str)
+        rows = today.set_index("match_id").reindex(columns=TODAY_COLUMNS).astype(object).fillna("").astype(str)
         names: dict[str, dict[str, str]] = rows.to_dict("index")
         return names
     return None
