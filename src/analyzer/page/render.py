@@ -49,6 +49,6 @@ def render_page(data: PageData, template: str) -> str:
     return (
         template.replace("{{TERMS_JSON}}", _script_json(TERMS))
         .replace("{{TAB_TITLES_JSON}}", _script_json(_tab_titles(data)))
-        .replace("{{FOOTER}}", _footer(data))
+        .replace("{{FOOTER}}", bind_short_words(_footer(data)))
         .replace("{{VIEWS}}", views)
     )

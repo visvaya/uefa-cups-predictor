@@ -483,10 +483,13 @@ SR_PAGE_TIME = "Godziny są w czasie polskim."
 SR_SCRAPED = "Dane pobrano {stamp}."
 CUPS_TITLE = "Pełna analiza: faza ligowa europejskich pucharów"
 CUPS_COUNT = "Kolejka fazy ligowej: {matches}."
-CUP_DAY = "{cup} gra {on_weekday} {day}."
+CUP_DAY = "{cup} gra {days}."
 CUPS_ONE_TIME = "Wszystkie mecze zaczynają się o {time} czasu polskiego."
 CUPS_TIMES = "Mecze zaczynają się o {times} czasu polskiego."
+CUPS_KNOWN_TIMES = "Znane godziny: {times} ({without})."
 CUPS_NO_TIMES = "Godziny i kursy: brak danych soccer-rating dla tych meczów."
+# The count of matches whose kickoff the inputs do not have
+WITHOUT_TIME = "{matches} bez godziny"
 CUPS_SOURCES = (
     "Szanse, tabela i statusy pochodzą z prognozy The Analyst sprzed kolejki. Rekomendacje policzył analizator."
 )
@@ -554,16 +557,20 @@ def date_span(first: date, last: date) -> str:
     return f"{start} {EN_DASH} {end}"
 
 
-def short_date_span(first: date, last: date) -> str:
-    """The days of a set of matches in a tab title, such as "16-18.11.2026" with an en dash."""
-    end = f"{last.day}.{last.month:02d}.{last.year}"
+def day_month_span(first: date, last: date) -> str:
+    """Days without the year, such as "28.01", "20-21.01" or "30.11-2.12" with an en dash."""
+    end = f"{last.day}.{last.month:02d}"
     if first == last:
         return end
+    start = str(first.day) if first.month == last.month else f"{first.day}.{first.month:02d}"
+    return f"{start}{EN_DASH}{end}"
+
+
+def short_date_span(first: date, last: date) -> str:
+    """The days of a set of matches in a tab title, such as "16-18.11.2026" with an en dash."""
     if first.year != last.year:
-        return f"{first.day}.{first.month:02d}.{first.year}{EN_DASH}{end}"
-    if first.month != last.month:
-        return f"{first.day}.{first.month:02d}{EN_DASH}{end}"
-    return f"{first.day}{EN_DASH}{end}"
+        return f"{first.day}.{first.month:02d}.{first.year}{EN_DASH}{last.day}.{last.month:02d}.{last.year}"
+    return f"{day_month_span(first, last)}.{last.year}"
 
 
 def and_list(items: Sequence[str]) -> str:

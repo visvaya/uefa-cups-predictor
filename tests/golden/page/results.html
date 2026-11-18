@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Europejskie puchary – uefa-cups-predictor</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='black'/><path d='M5.2 13V3.6M3 5.8L5.2 3.6L7.4 5.8M10.8 13V3.6M8.6 5.8L10.8 3.6L13 5.8' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='square'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,6 +18,7 @@
   --bg: #fff;
   --fg: #000;
   --rule: #000;
+  color-scheme: light;
   /* One family for everything, a finer Times; figures line up through tabular-nums */
   --serif: "STIX Two Text", "Times New Roman", Times, "Liberation Serif", serif;
 }
@@ -23,7 +27,7 @@
 }
 :root[data-theme="dark"] { --bg: #000; --fg: #fff; --rule: #fff; color-scheme: dark; }
 
-html { background: var(--bg); }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* The phone layout sets display on rows; filtered rows must stay hidden */
 [hidden] { display: none !important; }
 body {
@@ -353,7 +357,7 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
 <h1>Soccer-rating: typy na <span class="nw">28 stycznia 2026</span></h1>
 <details class="fold about" open>
 <summary>W skrócie</summary>
-<div class="keys"><ul><li><b>Rekomendacja</b>: zacznij od <span class="nw"><span class="mk mk-strong" aria-hidden="true"></span>„mocny”</span>, potem <span class="nw"><span class="mk mk-consider" aria-hidden="true"></span>„do rozważenia”</span>.</li><li><b>Ocena</b>: powyżej 0,50 to wyraźny sygnał. Zależy jednak głównie od kursu.</li><li><b>Przewaga modelu</b> w&nbsp;szczegółach meczu: dodatnia oznacza okazję.</li></ul></div><p>9 meczów z&nbsp;soccer-rating.com. Pierwszy zaczyna się: środa 28.01.2026, 20:00. Ostatni: środa 28.01.2026, 20:00. Godziny są w&nbsp;czasie polskim. Dane pobrano 28.01.2026 o&nbsp;10:00.</p>
+<div class="keys"><ul><li><b>Rekomendacja</b>: zacznij od <span class="nw"><span class="mk mk-strong" aria-hidden="true"></span>„mocny”</span>, potem <span class="nw"><span class="mk mk-consider" aria-hidden="true"></span>„do rozważenia”</span>.</li><li><b>Ocena</b>: powyżej 0,50 to wyraźny sygnał. Zależy jednak głównie od kursu.</li><li><b>Przewaga modelu</b> w&nbsp;szczegółach meczu: dodatnia oznacza okazję.</li></ul></div><p>9 meczów z&nbsp;soccer-rating.com. Pierwszy zaczyna się: środa 28.01.2026, 20:00. Ostatni: środa 28.01.2026, 20:00. 7 meczów bez godziny. Godziny są w&nbsp;czasie polskim. Dane pobrano 28.01.2026 o&nbsp;10:00.</p>
 </details>
 <hr>
 <p><small>Słowa podkreślone kropkami mają objaśnienie. Dotknij ich albo najedź na nie myszą. Znak <span class="mk mk-more" role="img" aria-label="strzałka w prawo"></span> przy meczu otwiera jego szczegóły. Pogrubiona drużyna to typ.</small></p>
@@ -580,7 +584,7 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
 <h1>Pełna analiza: faza ligowa europejskich pucharów</h1>
 <details class="fold about" open>
 <summary>W skrócie</summary>
-<div class="keys"><ul><li><b>Rekomendacja</b>: zacznij od <span class="nw"><span class="mk mk-strong" aria-hidden="true"></span>„mocny”</span>, potem <span class="nw"><span class="mk mk-consider" aria-hidden="true"></span>„do rozważenia”</span>.</li><li><b>Wartość</b>: im wyższa, tym lepiej. Od 70 jest wysoka, od 50 dobra.</li><li><b>Kurs</b>: niski oznacza faworyta i&nbsp;małą wygraną.</li></ul></div><p>Kolejka fazy ligowej: 18 meczów. Liga Europy gra w&nbsp;środę 28.01.2026. Wszystkie mecze zaczynają się o&nbsp;18:45 czasu polskiego.</p><p>Szanse, tabela i&nbsp;statusy pochodzą z&nbsp;prognozy The Analyst sprzed kolejki. Rekomendacje policzył analizator.</p>
+<div class="keys"><ul><li><b>Rekomendacja</b>: zacznij od <span class="nw"><span class="mk mk-strong" aria-hidden="true"></span>„mocny”</span>, potem <span class="nw"><span class="mk mk-consider" aria-hidden="true"></span>„do rozważenia”</span>.</li><li><b>Wartość</b>: im wyższa, tym lepiej. Od 70 jest wysoka, od 50 dobra.</li><li><b>Kurs</b>: niski oznacza faworyta i&nbsp;małą wygraną.</li></ul></div><p>Kolejka fazy ligowej: 18 meczów. Liga Europy gra w&nbsp;środę 28.01.2026. Znane godziny: 18:45 (17 meczów bez godziny).</p><p>Szanse, tabela i&nbsp;statusy pochodzą z&nbsp;prognozy The Analyst sprzed kolejki. Rekomendacje policzył analizator.</p>
 </details>
 <hr>
 <p><small>Słowa podkreślone kropkami mają objaśnienie. Dotknij ich albo najedź na nie myszą. Znak <span class="mk mk-more" role="img" aria-label="strzałka w prawo"></span> przy meczu otwiera jego szczegóły. Pogrubiona drużyna to typ.</small></p>
@@ -661,7 +665,7 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
 <input type="hidden" class="sort-by" value="level:asc" data-default="level:asc"></div>
 <hr>
 <section class="day-sec"><h2 class="nodata">Liga Mistrzów</h2><p>Brak danych: prognozy The Analyst dla tych rozgrywek nie zostały jeszcze pobrane. Prognozy są na <a href="https://theanalyst.com/competition/uefa-champions-league/predictions" target="_blank" rel="noopener" title="theanalyst.com, otwiera się w nowej karcie">theanalyst.com</a>.</p></section>
-<section class="day-sec"><h2><button type="button" class="day" aria-expanded="true" aria-controls="full-g-1">Liga Europy, 28.01 <small>· 18:45</small></button></h2>
+<section class="day-sec"><h2><button type="button" class="day" aria-expanded="true" aria-controls="full-g-1">Liga Europy, 28.01 <small class="day-count"></small></button></h2>
 <div class="wrap" id="full-g-1"><table class="t-full">
 <colgroup><col class="f-g"><col class="f-p"><col class="f-k"><col class="f-w"><col class="f-m"><col class="f-s"><col class="f-r"></colgroup>
 <thead><tr><th aria-sort="none"><button type="button" class="sort" data-key="match">Mecz<span class="dir" aria-hidden="true"></span></button></th><th aria-sort="none"><button type="button" class="sort" data-key="pick" data-term="pick">Typ<span class="dir" aria-hidden="true"></span></button></th><th class="num" aria-sort="none"><button type="button" class="sort" data-key="odds" data-term="odds">Kurs<span class="dir" aria-hidden="true"></span></button></th><th class="num" aria-sort="none"><button type="button" class="sort" data-key="win" data-term="winprob">Szansa<span class="dir" aria-hidden="true"></span></button></th><th class="num" aria-sort="none"><button type="button" class="sort" data-key="mot" data-term="motivation">Motyw.<span class="dir" aria-hidden="true"></span></button></th><th class="num" aria-sort="none"><button type="button" class="sort" data-key="value" data-term="value">Wartość<span class="dir" aria-hidden="true"></span></button></th><th aria-sort="none"><button type="button" class="sort" data-key="level" data-term="levels">Rekomendacja<span class="dir" aria-hidden="true"></span></button></th></tr></thead>
@@ -997,9 +1001,9 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
 </main>
 <footer>
 <p><a href="#top" class="top">Do góry</a></p>
-<p><small>Zakładka „Soccer-rating”: mecze i kursy z <a href="https://www.soccer-rating.com/" target="_blank" rel="noopener" title="soccer-rating.com, otwiera się w nowej karcie">soccer-rating.com</a>, pobrane 28.01.2026 o 10:00. Zakładka „Europejskie puchary”: szanse i tabela z <a href="https://theanalyst.com/" target="_blank" rel="noopener" title="The Analyst, otwiera się w nowej karcie">The Analyst</a>. Oceny i rekomendacje liczy model uefa-cups-predictor. Strona wygenerowana 28.01.2026 o 12:00.</small></p>
-<p><small>To wynik modelu, a nie pewny typ: każdy zakład może przegrać. Graj tylko u legalnych bukmacherów, tylko jeśli masz ukończone 18 lat, i tylko za kwoty, których stratę możesz przyjąć. Jeśli granie przestaje być rozrywką albo martwi cię, ile na nie wydajesz, możesz porozmawiać z kimś anonimowo i bezpłatnie: Ogólnopolski Telefon Zaufania Uzależnienia, <a href="tel:800199990">800 199 990</a>. Placówki i poradnia online: <a href="https://uzaleznieniabehawioralne.pl/" target="_blank" rel="noopener" title="uzaleznieniabehawioralne.pl, otwiera się w nowej karcie">uzaleznieniabehawioralne.pl</a>.</small></p>
-<p><small>Projekt niezależny, bez związku z UEFA, soccer-rating.com i The Analyst. Strona zapamiętuje filtry tylko w twojej przeglądarce; nie używa ciasteczek ani statystyk odwiedzin.</small></p>
+<p><small>Zakładka „Soccer-rating”: mecze i&nbsp;kursy z&nbsp;<a href="https://www.soccer-rating.com/" target="_blank" rel="noopener" title="soccer-rating.com, otwiera się w nowej karcie">soccer-rating.com</a>, pobrane 28.01.2026 o&nbsp;10:00. Zakładka „Europejskie puchary”: szanse i&nbsp;tabela z&nbsp;<a href="https://theanalyst.com/" target="_blank" rel="noopener" title="The Analyst, otwiera się w nowej karcie">The Analyst</a>. Oceny i&nbsp;rekomendacje liczy model uefa-cups-predictor. Strona wygenerowana 28.01.2026 o&nbsp;12:00.</small></p>
+<p><small>To wynik modelu, a&nbsp;nie pewny typ: każdy zakład może przegrać. Graj tylko u&nbsp;legalnych bukmacherów, tylko jeśli masz ukończone 18 lat, i&nbsp;tylko za kwoty, których stratę możesz przyjąć. Jeśli granie przestaje być rozrywką albo martwi cię, ile na nie wydajesz, możesz porozmawiać z&nbsp;kimś anonimowo i&nbsp;bezpłatnie: Ogólnopolski Telefon Zaufania Uzależnienia, <a href="tel:800199990">800 199 990</a>. Placówki i&nbsp;poradnia online: <a href="https://uzaleznieniabehawioralne.pl/" target="_blank" rel="noopener" title="uzaleznieniabehawioralne.pl, otwiera się w nowej karcie">uzaleznieniabehawioralne.pl</a>.</small></p>
+<p><small>Projekt niezależny, bez związku z&nbsp;UEFA, soccer-rating.com i&nbsp;The Analyst. Strona zapamiętuje filtry tylko w&nbsp;twojej przeglądarce; nie używa ciasteczek ani statystyk odwiedzin.</small></p>
 <p><small>© 2026 visvaya · kod na licencji <a href="https://github.com/visvaya/uefa-cups-predictor/blob/main/LICENSE" target="_blank" rel="noopener" title="Licencja MIT na GitHubie, otwiera się w nowej karcie">MIT</a> · <a href="https://github.com/visvaya/uefa-cups-predictor/blob/main/interpretation.md" target="_blank" rel="noopener" title="Opis modelu na GitHubie, otwiera się w nowej karcie">jak działa model</a> · <a href="https://github.com/visvaya/uefa-cups-predictor/issues" target="_blank" rel="noopener" title="Zgłoszenia na GitHubie, otwiera się w nowej karcie">zgłoś błąd</a></small></p>
 </footer>
 
@@ -1266,7 +1270,7 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         && ranges.every(([k, side, v]) => (side === "min" ? Number(tr.dataset[k]) >= v : Number(tr.dataset[k]) <= v))
         && (!signals.size || tr.dataset.signals.split(" ").some((s) => signals.has(s)))
         && (!query || tr.dataset.teams.includes(query))
-        && (!upcoming || Date.parse(tr.dataset.start) > now);
+        && (!upcoming || !tr.dataset.start || Date.parse(tr.dataset.start) > now);
       const active = names.filter((n) => sets[n].size < total(n)).map((n) => labels[n]);
       for (const k of new Set(ranges.map((x) => x[0]))) active.push(RANGE_NAMES[k]);
       if (signals.size) active.push("sygnały");
@@ -1296,6 +1300,9 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
       const field = (tr, key) => tr.dataset["s" + key[0].toUpperCase() + key.slice(1)] ?? "";
       const compare = (a, b) => {
         const x = field(a, sortKey), y = field(b, sortKey);
+        // A row without the value (no data attribute) sorts last in both directions
+        const mx = x === "", my = y === "";
+        if (mx !== my) return mx ? 1 : -1;
         const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
         // Ties keep the default order: kickoff, then (full mode) the higher value, then the match name
         return (sortDir === "desc" ? -c : c) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");

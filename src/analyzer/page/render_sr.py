@@ -48,6 +48,7 @@ from analyzer.page.texts import (
     SR_TITLE,
     SR_TITLE_ON,
     WEEKDAYS,
+    WITHOUT_TIME,
     club_link,
     date_span,
     day_heading,
@@ -194,8 +195,13 @@ def _when(kickoff: datetime) -> str:
 def _intro(data: PageData) -> str:
     kickoffs = sorted(row.kickoff for row in data.sr_rows if row.kickoff is not None)
     sentences = [SR_COUNT.format(matches=matches_phrase(len(data.sr_rows)))]
+    untimed = len(data.sr_rows) - len(kickoffs)
     if kickoffs:
-        sentences += [SR_FIRST_LAST.format(first=_when(kickoffs[0]), last=_when(kickoffs[-1])), SR_PAGE_TIME]
+        sentences.append(SR_FIRST_LAST.format(first=_when(kickoffs[0]), last=_when(kickoffs[-1])))
+    if untimed:
+        sentences.append(f"{WITHOUT_TIME.format(matches=matches_phrase(untimed))}.")
+    if kickoffs:
+        sentences.append(SR_PAGE_TIME)
     if data.scraped_at is not None:
         sentences.append(SR_SCRAPED.format(stamp=stamp(data.scraped_at)))
     return f"{key_points(KEY_POINTS_SR)}<p>{' '.join(sentences)}</p>"

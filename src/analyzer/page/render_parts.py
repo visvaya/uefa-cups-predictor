@@ -120,9 +120,9 @@ def signals_term(reasons: list[str]) -> str:
     )
 
 
-def number_or(value: float | None, missing: str, digits: int = 2) -> str:
-    """A number as Polish text writes it, or `missing` when the inputs have none."""
-    return missing if value is None else pl_number(value, digits)
+def number_or(value: float | None, missing: str) -> str:
+    """A number with two decimals as Polish text writes it, or `missing` when the inputs have none."""
+    return missing if value is None else pl_number(value)
 
 
 def edge_text(edge: float) -> str:

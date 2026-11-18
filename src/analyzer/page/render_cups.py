@@ -41,6 +41,7 @@ from analyzer.page.texts import (
     CUP_DAY,
     CUP_NO_DATA,
     CUPS_COUNT,
+    CUPS_KNOWN_TIMES,
     CUPS_NO_TIMES,
     CUPS_ONE_TIME,
     CUPS_SOURCES,
@@ -53,7 +54,9 @@ from analyzer.page.texts import (
     LEVEL_NAMES,
     ON_WEEKDAYS,
     STATUS_NAMES,
+    WITHOUT_TIME,
     and_list,
+    day_month_span,
     matches_phrase,
     pl_number,
 )
@@ -99,8 +102,29 @@ def _shown_motivation(motivation: float) -> float:
     return float(f"{motivation:.0f}")
 
 
-def _first_day(rows: tuple[MatchRow, ...]) -> date | None:
-    return min((row.day for row in rows if row.day is not None), default=None)
+def _days(rows: tuple[MatchRow, ...]) -> list[date]:
+    """The distinct days of the rows, in order."""
+    return sorted({row.day for row in rows if row.day is not None})
+
+
+def _days_phrase(days: list[date]) -> str:
+    """Every day of a cup, such as "we wtorek 20.01 i w środę 21.01.2026" (the year once, at the end)."""
+    parts = [f"{ON_WEEKDAYS[day.weekday()]} {day:%d.%m}" for day in days]
+    return and_list([*parts[:-1], f"{parts[-1]}.{days[-1].year}"])
+
+
+def _times_sentence(rows: tuple[MatchRow, ...]) -> str:
+    """The kickoff times; "all matches start at" only when every match has a known kickoff."""
+    times = _times(rows)
+    untimed = sum(row.kickoff is None for row in rows)
+    if not times:
+        return CUPS_NO_TIMES
+    if untimed:
+        without = WITHOUT_TIME.format(matches=matches_phrase(untimed))
+        return CUPS_KNOWN_TIMES.format(times=and_list(times), without=without)
+    if len(times) == 1:
+        return CUPS_ONE_TIME.format(time=times[0])
+    return CUPS_TIMES.format(times=and_list(times))
 
 
 def _times(rows: tuple[MatchRow, ...]) -> list[str]:
@@ -190,19 +214,20 @@ def _row(index: int, row: MatchRow) -> str:
 
 
 def _section(index: int, cup: CupSection, first_row: int) -> str:
-    """A cup's matches under its name and first day; without rows its no-data notice with a link to the data."""
+    """A cup's matches under its name and days; without rows its no-data notice with a link to the data."""
     if not cup.rows:
         notice = CUP_NO_DATA.format(slug=ANALYST_SLUGS[cup.prefix])
         return f'<section class="day-sec"><h2 class="nodata">{cup.name}</h2><p>{notice}</p></section>'
-    day = _first_day(cup.rows)
-    times = _times(cup.rows)
+    days = _days(cup.rows)
+    timed = all(row.kickoff is not None for row in cup.rows)
     return section(
         _SHAPE,
         Group(
             index,
-            cup.name if day is None else f"{cup.name}, {day.day}.{day.month:02d}",
-            # A round of the league phase has a fixed count of matches, so the bar gives the kickoff times
-            f"· {and_list(times)}" if times else "",
+            f"{cup.name}, {day_month_span(days[0], days[-1])}" if days else cup.name,
+            # A round of the league phase has a fixed count of matches, so the bar gives the kickoff times when
+            # every match has one, and the count of shown matches otherwise
+            f"· {and_list(_times(cup.rows))}" if timed else "",
             "\n".join(_row(first_row + n, row) for n, row in enumerate(cup.rows)),
         ),
     )
@@ -219,14 +244,10 @@ def _sections(cups: tuple[CupSection, ...]) -> str:
 def _intro(cups: tuple[CupSection, ...], rows: tuple[MatchRow, ...]) -> str:
     sentences = [CUPS_COUNT.format(matches=matches_phrase(len(rows)))]
     for cup in cups:
-        day = _first_day(cup.rows)
-        if day is not None:
-            sentences.append(CUP_DAY.format(cup=cup.name, on_weekday=ON_WEEKDAYS[day.weekday()], day=f"{day:%d.%m.%Y}"))
-    times = _times(rows)
-    if len(times) == 1:
-        sentences.append(CUPS_ONE_TIME.format(time=times[0]))
-    else:
-        sentences.append(CUPS_TIMES.format(times=and_list(times)) if times else CUPS_NO_TIMES)
+        days = _days(cup.rows)
+        if days:
+            sentences.append(CUP_DAY.format(cup=cup.name, days=_days_phrase(days)))
+    sentences.append(_times_sentence(rows))
     return f"{key_points(KEY_POINTS_FULL)}<p>{' '.join(sentences)}</p><p>{CUPS_SOURCES}</p>"
 
 

@@ -155,11 +155,17 @@ def test_render_has_no_fixed_mockup_dates() -> None:
     assert "Dane pobrano 04.03.2026 o 10:00." in text_of(page)
     assert "Strona wygenerowana 04.03.2026 o 12:00." in text_of(page)
     assert '"sr": "Soccer-rating 4.03.2026' in page
+    assert "Wszystkie mecze zaczynają się o 21:00 czasu polskiego." in text_of(page)
+    assert "Strona wygenerowana 04.03.2026 o&nbsp;12:00." in page
 
 
-def test_render_cups_intro_names_days_and_times() -> None:
-    tuesday = replace(CUP_ROW, group="cl", day=date(2026, 3, 3), kickoff=datetime(2026, 3, 3, 21, 0, tzinfo=PAGE_ZONE))
-    thursday = replace(CUP_ROW, day=date(2026, 3, 5), kickoff=datetime(2026, 3, 5, 18, 45, tzinfo=PAGE_ZONE))
+def kicking_off(row: MatchRow, day: date, hour: int, minute: int) -> MatchRow:
+    return replace(row, day=day, kickoff=datetime(day.year, day.month, day.day, hour, minute, tzinfo=PAGE_ZONE))
+
+
+def test_render_cups_intro_says_which_kickoffs_are_known() -> None:
+    tuesday = kicking_off(replace(CUP_ROW, group="cl"), date(2026, 3, 3), 21, 0)
+    thursday = kicking_off(CUP_ROW, date(2026, 3, 5), 18, 45)
     cups = (CupSection("cl", CUP_NAMES["cl"], (tuesday,)), el_section(thursday, replace(thursday, kickoff=None)))
 
     text = text_of(render_page(page_data((), cups), TEMPLATE))
@@ -167,8 +173,28 @@ def test_render_cups_intro_names_days_and_times() -> None:
     assert "Kolejka fazy ligowej: 3 mecze." in text
     assert f"{CUP_NAMES['cl']} gra we wtorek 03.03.2026." in text
     assert f"{CUP_NAMES['el']} gra w czwartek 05.03.2026." in text
+    assert "Znane godziny: 18:45 i 21:00 (1 mecz bez godziny)." in text
+    assert "zaczynają się" not in text
+    # A cup with a match of unknown kickoff counts its shown matches instead of naming times
+    assert f"{CUP_NAMES['cl']}, 3.03 <small>· 21:00</small>" in text
+    assert f'{CUP_NAMES["el"]}, 5.03 <small class="day-count"></small>' in text
+
+
+def test_render_cups_over_two_days() -> None:
+    rows = (kicking_off(CUP_ROW, date(2026, 1, 20), 18, 45), kicking_off(CUP_ROW, date(2026, 1, 21), 21, 0))
+
+    text = text_of(render_page(page_data((), (el_section(*rows),)), TEMPLATE))
+
+    assert f"{CUP_NAMES['el']} gra we wtorek 20.01 i w środę 21.01.2026." in text
     assert "Mecze zaczynają się o 18:45 i 21:00 czasu polskiego." in text
-    assert f"{CUP_NAMES['el']}, 5.03 <small>· 18:45</small>" in text
+    assert f"{CUP_NAMES['el']}, 20{EN_DASH}21.01 <small>· 18:45 i 21:00</small>" in text
+
+
+def test_render_cups_without_kickoffs() -> None:
+    text = text_of(render_page(page_data((), (el_section(replace(CUP_ROW, kickoff=None)),)), TEMPLATE))
+
+    assert "Godziny i kursy: brak danych soccer-rating dla tych meczów." in text
+    assert "Znane godziny" not in text
 
 
 def test_render_without_rows_shows_the_no_data_notices() -> None:
@@ -198,7 +224,7 @@ def test_render_sr_intro_without_kickoffs_or_scrape_time() -> None:
 
     text = text_of(render_page(data, TEMPLATE))
 
-    assert "<p>1 mecz z soccer-rating.com.</p>" in text
+    assert "<p>1 mecz z soccer-rating.com. 1 mecz bez godziny.</p>" in text
     assert 'class="t">' + EN_DASH + "</td>" in text
     assert 'data-start="2026' not in text
 
@@ -209,3 +235,22 @@ def test_render_sr_intro_without_kickoffs_or_scrape_time() -> None:
 def test_render_refuses_rows_without_their_facts(sr_rows: tuple[MatchRow, ...], cups: tuple[CupSection, ...]) -> None:
     with pytest.raises(ValueError, match="Home FC - Away FC"):
         render_page(page_data(sr_rows, cups), TEMPLATE)
+
+
+def test_render_sr_intro_with_some_kickoffs_unknown() -> None:
+    rows = (
+        SR_ROW,
+        kicking_off(replace(SR_ROW, home="Late FC"), DAY, 22, 30),
+        replace(SR_ROW, home="Open FC", kickoff=None),
+        replace(SR_ROW, home="Quiet FC", kickoff=None, odds=PickOdds(None, None, None)),
+    )
+
+    page = render_page(page_data(rows, ()), TEMPLATE)
+
+    assert (
+        "4 mecze z soccer-rating.com. Pierwszy zaczyna się: środa 4.03.2026, 21:00. Ostatni: środa 4.03.2026, 22:30. "
+        "2 mecze bez godziny. Godziny są w czasie polskim."
+    ) in text_of(page)
+    # Missing values carry no sort attribute, so the page script sorts them last
+    assert page.count(" data-s-time=") == 2
+    assert page.count(" data-s-odds=") == 3

@@ -9,6 +9,7 @@ from analyzer.page.texts import (
     club_link,
     date_span,
     day_heading,
+    day_month_span,
     fold,
     footer_sources,
     kickoff_at,
@@ -48,7 +49,20 @@ def test_pl_number_writes_a_decimal_comma_and_a_real_minus() -> None:
 
 @pytest.mark.parametrize(
     ("n", "phrase"),
-    [(1, "1 mecz"), (2, "2 mecze"), (5, "5 meczów"), (12, "12 meczów"), (22, "22 mecze")],
+    [
+        (0, "0 meczów"),
+        (1, "1 mecz"),
+        (2, "2 mecze"),
+        (4, "4 mecze"),
+        (5, "5 meczów"),
+        (12, "12 meczów"),
+        (14, "14 meczów"),
+        (21, "21 meczów"),
+        (22, "22 mecze"),
+        (25, "25 meczów"),
+        (112, "112 meczów"),
+        (122, "122 mecze"),
+    ],
 )
 def test_matches_phrase_follows_polish_plurals(n: int, phrase: str) -> None:
     assert matches_phrase(n) == phrase
@@ -63,6 +77,12 @@ def test_date_span_joins_days_and_months() -> None:
     assert date_span(date(2026, 11, 30), date(2026, 12, 2)) == f"30 listopada {EN_DASH} 2 grudnia 2026"
     assert date_span(date(2026, 12, 30), date(2027, 1, 2)) == f"30 grudnia 2026 {EN_DASH} 2 stycznia 2027"
     assert date_span(date(2026, 11, 18), date(2026, 11, 18)) == "18 listopada 2026"
+
+
+def test_day_month_span_leaves_out_the_year() -> None:
+    assert day_month_span(date(2026, 1, 28), date(2026, 1, 28)) == "28.01"
+    assert day_month_span(date(2026, 1, 20), date(2026, 1, 21)) == f"20{EN_DASH}21.01"
+    assert day_month_span(date(2026, 11, 30), date(2026, 12, 2)) == f"30.11{EN_DASH}2.12"
 
 
 def test_short_date_span_writes_the_tab_title_days() -> None:

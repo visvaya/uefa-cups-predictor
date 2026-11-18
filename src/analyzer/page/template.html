@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Europejskie puchary – uefa-cups-predictor</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='black'/><path d='M5.2 13V3.6M3 5.8L5.2 3.6L7.4 5.8M10.8 13V3.6M8.6 5.8L10.8 3.6L13 5.8' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='square'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,6 +18,7 @@
   --bg: #fff;
   --fg: #000;
   --rule: #000;
+  color-scheme: light;
   /* One family for everything, a finer Times; figures line up through tabular-nums */
   --serif: "STIX Two Text", "Times New Roman", Times, "Liberation Serif", serif;
 }
@@ -23,7 +27,7 @@
 }
 :root[data-theme="dark"] { --bg: #000; --fg: #fff; --rule: #fff; color-scheme: dark; }
 
-html { background: var(--bg); }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* The phone layout sets display on rows; filtered rows must stay hidden */
 [hidden] { display: none !important; }
 body {
@@ -619,7 +623,7 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         && ranges.every(([k, side, v]) => (side === "min" ? Number(tr.dataset[k]) >= v : Number(tr.dataset[k]) <= v))
         && (!signals.size || tr.dataset.signals.split(" ").some((s) => signals.has(s)))
         && (!query || tr.dataset.teams.includes(query))
-        && (!upcoming || Date.parse(tr.dataset.start) > now);
+        && (!upcoming || !tr.dataset.start || Date.parse(tr.dataset.start) > now);
       const active = names.filter((n) => sets[n].size < total(n)).map((n) => labels[n]);
       for (const k of new Set(ranges.map((x) => x[0]))) active.push(RANGE_NAMES[k]);
       if (signals.size) active.push("sygnały");
@@ -649,6 +653,9 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
       const field = (tr, key) => tr.dataset["s" + key[0].toUpperCase() + key.slice(1)] ?? "";
       const compare = (a, b) => {
         const x = field(a, sortKey), y = field(b, sortKey);
+        // A row without the value (no data attribute) sorts last in both directions
+        const mx = x === "", my = y === "";
+        if (mx !== my) return mx ? 1 : -1;
         const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
         // Ties keep the default order: kickoff, then (full mode) the higher value, then the match name
         return (sortDir === "desc" ? -c : c) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
