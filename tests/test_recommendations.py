@@ -83,6 +83,35 @@ def test_sr_only_strong_signal_with_falling_odds_is_a_sure_bet_without_the_marke
     assert "No Steam Confirmation" not in reason
 
 
+def test_sure_bet_needs_a_non_negative_sr_edge() -> None:
+    priced_below = _label_and_reason(_strong_favourite(0.05, SR_edge=-0.01), allow_draws=True)
+    priced_even = _label_and_reason(_strong_favourite(0.05, SR_edge=0.0), allow_draws=True)
+
+    assert priced_below[0] == CONSIDER
+    assert "Sure Bet Pattern" not in priced_below[1]
+    assert priced_even[0] == STRONG_BUY
+
+
+def _balanced_draw(steam_x: float) -> pd.DataFrame:
+    """An X pick in a balanced match the market favours neither side of, with a high fair draw probability."""
+    return pd.DataFrame(
+        {
+            "TeamStatus": ["IN_PLAY"],
+            "TeamRotRisk": [1.0],
+            "expertScore": [0.0],
+            "pick12": ["X"],
+            "steam_x": [steam_x],
+            "p_fair_x": [0.3],
+            "edge_x": [0.0],
+        }
+    )
+
+
+def test_strong_draw_needs_falling_draw_odds() -> None:
+    assert _label_and_reason(_balanced_draw(0.0), allow_draws=True)[0] == CONSIDER
+    assert _label_and_reason(_balanced_draw(0.01), allow_draws=True)[0] == STRONG_BUY
+
+
 def test_sr_only_strong_signal_with_rising_odds_names_the_risk_not_the_missing_steam() -> None:
     _, reason = _label_and_reason(_strong_favourite(-0.05), allow_draws=True)
 

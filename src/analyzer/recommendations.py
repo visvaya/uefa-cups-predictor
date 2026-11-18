@@ -8,7 +8,6 @@ import pandas as pd
 from analyzer.config import (
     CONSIDER_DRAW_MAX_SCORE,
     DOMINANT_STEAM_DIFF,
-    DRAW_MIN_FAIR_PROB,
     DRAW_MIN_SR_EDGE,
     DRAW_MIN_STEAM,
     GOOD_SR_EDGE,
@@ -25,6 +24,7 @@ from analyzer.config import (
     STRONG_SIGNAL,
     SURE_BET_MAX_CLOSE,
     SURE_BET_MAX_FAIR,
+    SURE_BET_MIN_SR_EDGE,
     SURE_BET_MIN_STEAM,
 )
 
@@ -104,6 +104,7 @@ def read_signals(ranking: pd.DataFrame) -> Signals:
     fair = column_or(ranking, "Fair", MISSING_ODDS).fillna(MISSING_ODDS)
     sr_drop = column_or(ranking, "srDropping", 0).fillna(0)
     do_drop = column_or(ranking, "do_drop", 0).fillna(0)
+    sr_edge = column_or(ranking, "SR_edge", 0).fillna(0)
 
     return Signals(
         is_out=ranking["TeamStatus"] == "OUT",
@@ -115,10 +116,13 @@ def read_signals(ranking: pd.DataFrame) -> Signals:
         close=close,
         fair=fair,
         sr_drop=sr_drop,
-        sr_edge=column_or(ranking, "SR_edge", 0).fillna(0),
+        sr_edge=sr_edge,
         is_home=column_or(ranking, "is_home", True),
         steam_aligned=(sr_drop + do_drop) >= STEAM_ALIGNED_MIN,
-        is_sure_bet=(close < SURE_BET_MAX_CLOSE) & (fair < SURE_BET_MAX_FAIR) & (sr_drop > SURE_BET_MIN_STEAM),
+        is_sure_bet=(close < SURE_BET_MAX_CLOSE)
+        & (fair < SURE_BET_MAX_FAIR)
+        & (sr_drop > SURE_BET_MIN_STEAM)
+        & (sr_edge >= SURE_BET_MIN_SR_EDGE),
         is_high_val=val >= HIGH_VALUE,
         is_good_val=val >= GOOD_VALUE,
         # Every row is seen from its team, so a signal belongs to the team the score favours
@@ -138,12 +142,10 @@ def draw_conditions(ranking: pd.DataFrame, s: Signals) -> tuple[pd.Series, pd.Se
     is_away_dominant = (steam_2 > steam_1) & (steam_diff_abs > DOMINANT_STEAM_DIFF)
     market_undecided = ~(is_home_dominant | is_away_dominant)
 
-    p_fair_x = column_or(ranking, "p_fair_x", 0).fillna(0)
-    market_or_fair_confirm = (steam_x >= DRAW_MIN_STEAM) | (p_fair_x > DRAW_MIN_FAIR_PROB)
     edge_ok = s.sr_edge > DRAW_MIN_SR_EDGE
 
     is_perfect_x = (s.pick == "X") & (s.score.abs() < PERFECT_DRAW_MAX_SCORE)
-    cond_strong_x = is_perfect_x & market_undecided & market_or_fair_confirm & edge_ok
+    cond_strong_x = is_perfect_x & market_undecided & (steam_x >= DRAW_MIN_STEAM) & edge_ok
 
     is_consider_x = (s.pick == "X") & (s.score.abs() < CONSIDER_DRAW_MAX_SCORE)
     cond_consider_x = is_consider_x & market_undecided & (steam_x >= 0.0) & edge_ok
