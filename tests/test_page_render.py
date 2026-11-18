@@ -344,11 +344,13 @@ WORD_JOINER = chr(0x2060)
 NBSP = chr(0xA0)
 
 
-def test_render_keeps_the_last_two_words_of_headings_together() -> None:
+def test_render_joins_the_last_two_words_of_headings_only_when_short() -> None:
     page = render_page(page_data((SR_ROW,), (el_section(CUP_ROW), cup_section_without_data("ecl"))), TEMPLATE)
 
-    assert "europejskich&nbsp;pucharów</h1>" in page
-    assert 'typy na&nbsp;<span class="nw">' in page
+    # A long last pair stays breakable, so it never overflows a narrow phone
+    assert "europejskich pucharów</h1>" in page
+    # A heading with markup keeps its own no-break span
+    assert 'typy na <span class="nw">' in page
     assert "Środa,&nbsp;4.03 <small" in page
     assert "Liga Europy,&nbsp;4.03 <small" in page
     assert '<h2 class="nodata">Liga&nbsp;Konferencji</h2>' in page

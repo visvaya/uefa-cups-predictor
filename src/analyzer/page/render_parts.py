@@ -31,6 +31,9 @@ from analyzer.page.texts import (
 
 # The order both tabs start in: best recommendation first
 DEFAULT_SORT = "level:asc"
+# The longest last pair of heading words (both words and the space) that is joined; a 21-character pair overflowed
+# the column of a 320 px phone
+_JOINED_PAIR_MAX_CHARS = 16
 # One letter words that must not end a line, after a space or an opening parenthesis (Polish typesetting)
 _SHORT_WORD = re.compile(r"(?<=[\s(])([aiouwzAIOUWZ]) ")
 # Text between tags: attributes, data values and URLs are inside tags and stay as they are
@@ -379,10 +382,16 @@ def view_block(view: ViewParts) -> str:
 
 
 def keep_last_words(title: str) -> str:
-    """A heading whose last line never holds one word: the last space before any markup becomes a no-break space."""
-    text, tag, markup = title.partition("<")
-    head, space, tail = text.rpartition(" ")
-    return f"{head}&nbsp;{tail}{tag}{markup}" if space else title
+    """A heading's last two words joined by a no-break space, so its last line never holds one word.
+
+    Only a short pair is joined: a longer one could be wider than a narrow phone's column (`text-wrap: pretty`
+    handles it where the browser supports it). A heading with markup keeps its own no-break span.
+    """
+    head, space, tail = title.rpartition(" ")
+    pair = f"{head.rpartition(' ')[2]} {tail}"
+    if not space or "<" in title or len(pair) > _JOINED_PAIR_MAX_CHARS:
+        return title
+    return f"{head}&nbsp;{tail}"
 
 
 def typeset(text: str, space: str) -> str:

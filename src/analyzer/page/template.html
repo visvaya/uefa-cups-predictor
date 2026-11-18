@@ -40,10 +40,10 @@ body {
   max-width: 60em;
   margin: 0 auto;
 }
-h1 { font-size: 1.6em; margin: 0.4em 0 0.2em; text-wrap: balance; }
+h1 { font-size: 1.6em; margin: 0.4em 0 0.2em; text-wrap: pretty; }
 /* The day stays in view while its matches scroll by */
 /* A day or competition starts with a reversed bar (owner, 2026-11-17), so a new section cannot be read as another match */
-h2 { font-size: 1.2em; margin: 1.4em 0 0; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--fg); color: var(--bg); padding: 0.36em 0.25em 0.24em 0.5em; } /* more above than below: the capitals sit in the middle, not the line box */
+h2 { font-size: 1.2em; margin: 1.4em 0 0; text-wrap: pretty; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--fg); color: var(--bg); padding: 0.36em 0.25em 0.24em 0.5em; } /* more above than below: the capitals sit in the middle, not the line box */
 h2 :focus-visible { outline-color: var(--bg); outline-offset: -3px; }
 /* The space under the bar sits on the list, not on the bar: a sticky bar never enters its own margin, so it would stop short of the section's last rule */
 h2 + .wrap, h2 + p { margin-top: 0.4em; }
