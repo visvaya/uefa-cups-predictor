@@ -11,17 +11,21 @@ import pytest
 from analyzer.cli import main
 from analyzer.config import ROTATION_RISK_MAX, STRANGE_ODDS_ROTATION_FACTOR
 from analyzer.data import (
+    ODDS_NUMERIC_COLUMNS,
     TABLE_NUMERIC_COLUMNS,
     cast_numeric,
     cup_rows,
     latest_snapshots,
+    load_club_names,
     load_league_data,
+    load_today_names,
     read_smart_csv,
 )
 from analyzer.errors import AnalyzerInputError
 from analyzer.league import validated_inputs
 from analyzer.model import enrich_table, integrity_report, pressure_vector, with_strange_odds_rotation
 from analyzer.names import norm_key
+from analyzer.sr_only import sr_only_ranking, sr_only_report
 
 REPO_DIR = Path(__file__).resolve().parents[1]
 EXAMPLE_TABLE = REPO_DIR / "data" / "theanalyst" / "champions-league" / "cl_table_predicted_example.csv"
@@ -364,3 +368,31 @@ def test_latest_snapshots_prefers_the_later_scrape_over_file_order() -> None:
     )
 
     assert latest_snapshots(rows)["close_1"].tolist() == [1.5]
+
+
+def _fixture_sr_only(function: Callable[..., pd.DataFrame]) -> pd.DataFrame:
+    sr = cast_numeric(read_smart_csv(SR_FIXTURES_DIR / "match_odds_development_2026-01-28.csv"), ODDS_NUMERIC_COLUMNS)
+    today = load_today_names(SR_FIXTURES_DIR / "today_matches.csv") or {}
+    return function(sr, load_club_names(SR_FIXTURES_DIR / "club_meta.csv"), today, ".")
+
+
+def test_sr_only_report_has_kickoff_columns() -> None:
+    report = _fixture_sr_only(sr_only_report).set_index(["homeTeam", "awayTeam"])
+
+    assert list(report.reset_index().columns[:5]) == ["homeTeam", "awayTeam", "date", "time", "league"]
+    # Alpha FC - Beta United is in today's rows, Gamma SC - Delta Town is not
+    assert report.loc[("Alpha FC", "Beta United"), ["date", "time", "league"]].tolist() == [
+        "2026-01-28",
+        "20:00",
+        "XX1",
+    ]
+    assert report.loc[("Gamma SC", "Delta Town"), "time"] == ""
+
+
+def test_sr_only_ranking_keeps_the_match_columns() -> None:
+    ranking = _fixture_sr_only(sr_only_ranking).set_index("match_id")
+
+    alpha = ranking.loc["2026-01-28_XX1_201_202"]
+    assert alpha["close_1"] == pytest.approx(1.6)
+    assert alpha[["home_href", "league_name"]].tolist() == ["/Alpha-FC/201/", "Synthetic League"]
+    assert ranking.loc["2026-01-28_XX1_203_204", "home_href"] == ""

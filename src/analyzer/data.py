@@ -191,10 +191,17 @@ def load_club_names(path: Path) -> dict[int, str]:
     return names
 
 
+TODAY_COLUMNS = ["home_team", "away_team", "time_local", "league_name", "home_href", "away_href"]
+
+
 def load_today_names(path: Path) -> dict[str, dict[str, str]] | None:
-    """Match id -> {home_team, away_team} from today_matches.csv; None when the file lacks these columns."""
+    """Match id -> today's TODAY_COLUMNS (missing ones as "") from today_matches.csv.
+
+    None when the file lacks match_id, home_team or away_team.
+    """
     today = read_smart_csv(path)
     if "match_id" in today.columns and "home_team" in today.columns and "away_team" in today.columns:
-        names: dict[str, dict[str, str]] = today.set_index("match_id")[["home_team", "away_team"]].to_dict("index")
+        rows = today.set_index("match_id").reindex(columns=TODAY_COLUMNS).fillna("").astype(str)
+        names: dict[str, dict[str, str]] = rows.to_dict("index")
         return names
     return None

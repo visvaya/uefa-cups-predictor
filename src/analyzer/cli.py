@@ -68,7 +68,7 @@ def run_league(base_dir: Path, prefix: str, excel_pl: bool = False) -> None:
 
 
 def today_names(path: Path) -> dict[str, dict[str, str]]:
-    """Today's team names by match id for the SR-only report; empty, with a warning, when unavailable."""
+    """Today's names, kickoff and links by match id for the SR-only report; empty, with a warning, when unavailable."""
     if not path.exists():
         return {}
     try:
