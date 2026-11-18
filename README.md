@@ -113,7 +113,7 @@ The table and fixtures must give every number in percent (0 to 100, dot or comma
 | **date** | Snapshot date of the match (`snapshot_date`). |
 | **time** | Kickoff time from `today_matches.csv` as the site shows it (site time, Europe/Paris by default); empty when the match is not in that file. |
 | **league** | Soccer-rating league code (`league_code`). |
-| **pick** | **Recommended Outcome**: `1` (Home), `X` (Draw), `2` (Away). |
+| **pick** | **Recommended Outcome**: `1` (Home), `X` (Draw), `2` (Away). In SR-only mode `X` comes only from a near-even match (`expertScore` between -0.10 and 0.10), never from the draw's own value: soccer-rating's fair draw probability was below the market's in all 282 matches of the archived 2026 scrapes, so `X` is rare. |
 | **expertScore** | Match signal strength from the picked side's view: > 0 favours it (for `X`, the home view). In SR-only mode it is mostly the closing price, so a high score marks a clear favourite rather than value over the market. |
 | **recommendation** | Advice based purely on market gaps and steam. Without motivation data a `1` or `2` pick reaches `🟢 STRONG BUY` only through the `Sure Bet Pattern`. |
 
@@ -130,7 +130,7 @@ Every limit below is compared with the value as the report shows it (rounded), s
   - `Strong Expert Signal`: `expertScore > 1.50`, a strong model signal for this row's team; `Positive Signal` is the same for `expertScore > 0.50`. The team the score is against gets neither. Apart from the SR-only `Sure Bet Pattern` and `X` picks, a row reaches `🟡 CONSIDER` or `🟢 STRONG BUY` only with a positive score (this row's team favoured).
   - `Close(x) > Fair(y)`: with `High Value`, this team's closing odds next to its fair odds, with `>`, `<` or `=` as they compare; left out without soccer-rating odds.
 - **Market Signals**:
-  - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`). It counts, and is named in the reason, only when the score favours this team and its pick is `1` or `2` (never an `X` pick); in standard mode the motivation rule of `🟢 STRONG BUY` must hold too (`teamMot` >= 50 and above `oppMot`). When it counts, the row is `🟢 STRONG BUY` ahead of the other signals; otherwise the other rules decide.
+  - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), a model that also sees a favourite (`Fair<2.20`) and does not price it below the market (`srEdge` >= 0), and strong Steam (`>0.03`). It counts, and is named in the reason, only when the score favours this team and its pick is `1` or `2` (never an `X` pick); in standard mode the motivation rule of `🟢 STRONG BUY` must hold too (`teamMot` >= 50 and above `oppMot`). When it counts, the row is `🟢 STRONG BUY` ahead of the other signals; otherwise the other rules decide.
   - `Steam (+)`: This team's own odds dropped by more than 0.05 in log terms (`Steam (-)`: rose by more than that). The `Sure Bet Pattern` and `(Risk: Rising Odds)` read the same own steam.
   - `(Risk: Rising Odds)`: `High Value` or a `Strong Expert Signal` (either is enough), while this team's odds are rising (own steam plus the soccer-rating drop below -0.01) and no counted `Sure Bet Pattern` overrides it. In standard mode it keeps the row from `🟢 STRONG BUY`; in SR-only mode it is a warning only, because there `🟢 STRONG BUY` comes from the `Sure Bet Pattern` or a draw rule.
   - `Lean: 1X` / `Lean: X2` (SR-only, `X` picks): the side the score leans to; a score of exactly 0 reads `Lean: X2`. `SteamX` is the steam on the draw.

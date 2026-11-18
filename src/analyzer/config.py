@@ -83,6 +83,7 @@ STEAM_ALIGNED_MIN = -0.01  # srDropping (own odds movement) + do_drop at or abov
 SURE_BET_MAX_CLOSE = 2.00
 SURE_BET_MAX_FAIR = 2.20
 SURE_BET_MIN_STEAM = 0.03
+SURE_BET_MIN_SR_EDGE = 0.0  # SR edge at or above: the model does not price the sure bet below the market
 REASON_MIN_STEAM = 0.05  # |srDropping| (own odds movement) above: Steam (+) or Steam (-)
 REASON_MIN_SR_EDGE = 0.05  # SR edge below minus this: Market Confidence (SR Edge uses GOOD_SR_EDGE)
 
@@ -90,8 +91,7 @@ REASON_MIN_SR_EDGE = 0.05  # SR edge below minus this: Market Confidence (SR Edg
 PERFECT_DRAW_MAX_SCORE = 0.05  # STRONG BUY X: |expertScore| below this
 CONSIDER_DRAW_MAX_SCORE = 0.10  # CONSIDER X: |expertScore| below this
 DOMINANT_STEAM_DIFF = 0.30  # |steam_1 - steam_2| above: the market favours one side
-DRAW_MIN_STEAM = 0.01  # steam on X at or above confirms a strong draw
-DRAW_MIN_FAIR_PROB = 0.2  # or a fair draw probability above this
+DRAW_MIN_STEAM = 0.01  # STRONG BUY X: steam on X at or above this (the draw odds are falling)
 DRAW_MIN_SR_EDGE = -0.03  # draws need an SR edge above this
 
 # Results page
