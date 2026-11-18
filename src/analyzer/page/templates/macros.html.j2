@@ -41,7 +41,7 @@
 
 {# The card layout's counterpart of the column heads; both tabs start with the best recommendation first #}
 {% macro sort_line(view, keys) %}
-<div class="sort-line" role="group" aria-labelledby="{{ view }}-sort-l"><span id="{{ view }}-sort-l">{{ LABELS.sorting }}</span> {% for key in keys %}{% if not loop.first %} {% endif %}<button type="button" class="sort" data-key="{{ key }}">{{ SORT_NAMES[key] }}<span class="dir" aria-hidden="true"></span></button>{% endfor +%}
+<div class="sort-line" role="group" aria-labelledby="{{ view }}-sort-l"><span id="{{ view }}-sort-l">{{ LABELS.sorting }}</span> {% for key in keys %}{% if not loop.first %} {% endif %}<button type="button" class="sort" data-key="{{ key }}"><span class="lb" data-label="{{ SORT_NAMES[key] }}">{{ SORT_NAMES[key] }}</span><span class="dir" aria-hidden="true"></span></button>{% endfor +%}
 <input type="hidden" class="sort-by" value="level:asc" data-default="level:asc"></div>
 {%- endmacro %}
 
