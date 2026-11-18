@@ -1307,15 +1307,22 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         if ((x === "") !== (y === "")) return x === "" ? 1 : -1;
         return x === "" ? 0 : dir * (Number(x) - Number(y));
       };
+      // Ties on any key, the same in both directions: the better pick first (recommendation, then the higher score on the
+      // soccer-rating tab or value on the cups tab, then the lower odds), then the earlier kickoff (unknown last), then
+      // the match name
+      const TIES = [["level", 1], ["ocena", -1], ["value", -1], ["odds", 1]];
       const compare = (a, b) => {
         const x = field(a, sortKey), y = field(b, sortKey);
         // A row without the value (no data attribute) sorts last in both directions
         const mx = x === "", my = y === "";
         if (mx !== my) return mx ? 1 : -1;
         const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
-        // Within one recommendation the better pick first: higher score (soccer-rating) or value (cups), then lower odds;
-        // other ties keep the default order: kickoff (unknown last), then (full mode) the higher value, then the match name
-        return (sortDir === "desc" ? -c : c) || (sortKey === "level" && (byNumber(a, b, "ocena", -1) || byNumber(a, b, "value", -1) || byNumber(a, b, "odds", 1))) || ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
+        if (c) return sortDir === "desc" ? -c : c;
+        for (const [key, dir] of TIES) {
+          const t = key === sortKey ? 0 : byNumber(a, b, key, dir);
+          if (t) return t;
+        }
+        return ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || field(a, "match").localeCompare(field(b, "match"), "pl");
       };
       saveState();
       for (const tbody of view.querySelectorAll("tbody")) {
