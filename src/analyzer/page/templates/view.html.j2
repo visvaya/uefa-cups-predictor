@@ -1,0 +1,43 @@
+{# One tab. A tab extends this with its filters, table columns and match row; the cups tab shows first. #}
+{% from "macros.html.j2" import sort_line %}
+<section class="view" id="view-{{ key }}" data-view="{{ key }}"{% if key != "full" %} hidden{% endif %}>
+<h1>{% if title_date %}{{ title }} <span class="nw">{{ title_date }}</span>{% else %}{{ title|keep_last_words }}{% endif %}</h1>
+{% if has_matches %}
+<details class="fold about" open>
+<summary>{{ LABELS.about }}</summary>
+<div class="keys"><ul>{% for line in key_points %}<li>{{ line }}</li>{% endfor %}</ul></div>{% for paragraph in intro %}<p>{{ paragraph }}</p>{% endfor +%}
+</details>
+<hr>
+{{ HINT }}
+<hr>
+<details class="fold filter-box">
+<summary>{{ LABELS.filters }} <span class="filter-state">{{ LABELS.all_matches }}</span></summary>
+<form class="filters" onsubmit="return false">
+{% block filters %}{% endblock %}
+
+<p><button type="reset" class="act">{{ LABELS.clear_filters }}</button></p>
+</form>
+</details>
+<p class="shown" aria-live="polite"></p>
+{{ sort_line(key, sort_keys) }}
+<hr>
+{% endif %}
+{% for group in groups %}
+{% if group.notice %}
+<section class="day-sec"><h2 class="nodata">{{ group.title|keep_last_words }}</h2><p>{{ group.notice }}</p></section>
+{% else %}
+{% set target = key ~ "-g-" ~ group.index %}
+<section class="day-sec"><h2><button type="button" class="day" aria-expanded="true" aria-controls="{{ target }}">{{ group.title|keep_last_words }} {% if group.note %}<small>{{ group.note }}</small>{% else %}<small class="day-count"></small>{% endif %}</button></h2>
+<div class="wrap" id="{{ target }}"><table class="t-{{ key }}">
+<colgroup>{% block cols %}{% endblock %}</colgroup>
+<thead>{% block head %}{% endblock %}</thead>
+<tbody>
+{% for r in group.rows %}
+{% block row scoped %}{% endblock %}
+{% endfor %}
+</tbody></table></div></section>
+{% endif %}
+{% else %}
+{% block empty %}{% endblock %}
+{% endfor %}
+</section>

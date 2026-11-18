@@ -26,8 +26,7 @@ htmlcov/
 !tests/fixtures/scraper/*.html
 !tests/golden/*.csv
 !tests/golden/scraper/**/*.csv
-# The results page's template and its expected page
-!src/analyzer/page/template.html
+# The results page's expected page
 !tests/golden/page/*.html
 
 # Ignore all data by default

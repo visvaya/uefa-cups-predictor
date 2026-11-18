@@ -1,15 +1,16 @@
 """The results page's Polish texts and the helpers that write numbers, dates and links the way Polish text does.
 
-Texts that hold HTML (the hint, the key points, the footer) are trusted page markup; every value from the inputs goes
-through `html.escape` before it joins them.
+Texts that hold HTML (the hint, the key points, the footer, the links) are `Markup`: trusted page markup that
+autoescape leaves alone. Every value from the inputs joins them through `Markup.format`, which escapes it.
 """
 
 import re
 import unicodedata
 from collections.abc import Sequence
 from datetime import date, datetime
-from html import escape
 from zoneinfo import ZoneInfo
+
+from markupsafe import Markup, escape
 
 from analyzer.config import PAGE_TIMEZONE, SITE_TIMEZONE, SOCCER_RATING_SITE
 from analyzer.page.model import Level
@@ -335,31 +336,31 @@ TERMS: dict[str, tuple[str, str]] = {
     ),
 }
 
-HINT = (
+HINT = Markup(
     "<p><small>Słowa podkreślone kropkami mają objaśnienie. Dotknij ich albo najedź na nie myszą. "
     'Znak <span class="mk mk-more" role="img" aria-label="strzałka w prawo"></span> przy meczu otwiera'
     " jego szczegóły. Pogrubiona drużyna to typ.</small></p>"
 )
 # Key points under each tab's heading, one list item each
-_START_WITH_LEVELS = (
+_START_WITH_LEVELS = Markup(
     '<b>Rekomendacja</b>: zacznij od <span class="nw"><span class="mk mk-strong" aria-hidden="true"></span>'
     '„mocny”</span>, potem <span class="nw"><span class="mk mk-consider" aria-hidden="true"></span>'
     "„do rozważenia”</span>."
 )
 KEY_POINTS_FULL = (
     _START_WITH_LEVELS,
-    "<b>Wartość</b>: im wyższa, tym lepiej. Od 70 jest wysoka, od 50 dobra.",
-    "<b>Kurs</b>: niski oznacza faworyta i małą wygraną.",
+    Markup("<b>Wartość</b>: im wyższa, tym lepiej. Od 70 jest wysoka, od 50 dobra."),
+    Markup("<b>Kurs</b>: niski oznacza faworyta i małą wygraną."),
 )
 KEY_POINTS_SR = (
     _START_WITH_LEVELS,
-    "<b>Ocena</b>: powyżej 0,50 to wyraźny sygnał. Zależy jednak głównie od kursu.",
-    "<b>Przewaga modelu</b> w szczegółach meczu: dodatnia oznacza okazję.",
+    Markup("<b>Ocena</b>: powyżej 0,50 to wyraźny sygnał. Zależy jednak głównie od kursu."),
+    Markup("<b>Przewaga modelu</b> w szczegółach meczu: dodatnia oznacza okazję."),
 )
 
 # Footer paragraphs' contents: the top link stands alone, the others are small print; footer_sources() comes second
-FOOTER_TOP = '<a href="#top" class="top">Do góry</a>'
-FOOTER_GAMBLING = (
+FOOTER_TOP = Markup('<a href="#top" class="top">Do góry</a>')
+FOOTER_GAMBLING = Markup(
     "To wynik modelu, a nie pewny typ: każdy zakład może przegrać. Graj tylko u legalnych bukmacherów, tylko jeśli "
     "masz ukończone 18 lat, i tylko za kwoty, których stratę możesz przyjąć. Jeśli granie przestaje być rozrywką "
     "albo martwi cię, ile na nie wydajesz, możesz porozmawiać z kimś anonimowo i bezpłatnie: Ogólnopolski Telefon "
@@ -371,7 +372,7 @@ FOOTER_INDEPENDENCE = (
     "Projekt niezależny, bez związku z UEFA, soccer-rating.com i The Analyst. Strona zapamiętuje filtry tylko "
     "w twojej przeglądarce; nie używa ciasteczek ani statystyk odwiedzin."
 )
-FOOTER_LICENCE = (
+FOOTER_LICENCE = Markup(
     "© 2026 visvaya · kod na licencji "
     '<a href="https://github.com/visvaya/uefa-cups-predictor/blob/main/LICENSE" target="_blank" rel="noopener" '
     'title="Licencja MIT na GitHubie, otwiera się w nowej karcie">MIT</a> · '
@@ -483,7 +484,7 @@ WITHOUT_DAY = "{matches} bez daty"
 CUPS_SOURCES = (
     "Szanse, tabela i statusy pochodzą z prognozy The Analyst sprzed kolejki. Rekomendacje policzył analizator."
 )
-CUP_NO_DATA = (
+CUP_NO_DATA = Markup(
     "Brak danych: prognozy The Analyst dla tych rozgrywek nie zostały jeszcze pobrane. Prognozy są na "
     '<a href="https://theanalyst.com/competition/{slug}/predictions" target="_blank" rel="noopener" '
     'title="theanalyst.com, otwiera się w nowej karcie">theanalyst.com</a>.'
@@ -589,27 +590,26 @@ def kickoff_at(day: date, time_local: str | float) -> datetime | None:
     return datetime.combine(day, clock, tzinfo=_SITE_ZONE).astimezone(_PAGE_ZONE)
 
 
-def club_link(name: str, href: str | None) -> str:
+def club_link(name: str, href: str | None) -> Markup:
     """A link to the club's soccer-rating.com page, or only the escaped name when the href is not a site path."""
     if href is None or not _CLUB_PATH.fullmatch(href):
         return escape(name)
     hint = f"Strona klubu {name} na soccer-rating.com, otwiera się w nowej karcie"
-    return (
-        f'<a href="{escape(SOCCER_RATING_SITE + href)}" target="_blank" rel="noopener" title="{escape(hint)}" '
-        f'translate="no">{escape(name)}</a>'
+    return Markup('<a href="{url}" target="_blank" rel="noopener" title="{hint}" translate="no">{name}</a>').format(
+        url=SOCCER_RATING_SITE + href, hint=hint, name=name
     )
 
 
-def footer_sources(scraped_at: datetime | None) -> str:
+def footer_sources(scraped_at: datetime | None) -> Markup:
     """The footer's sources paragraph; it names the scrape time only when it is known."""
     scraped = f", pobrane {stamp(scraped_at)}" if scraped_at is not None else ""
-    return (
-        f'Zakładka „Soccer-rating”: mecze i kursy z <a href="{SOCCER_RATING_SITE}/" target="_blank" '
-        f'rel="noopener" title="soccer-rating.com, otwiera się w nowej karcie">soccer-rating.com</a>{scraped}. '
+    return Markup(
+        'Zakładka „Soccer-rating”: mecze i kursy z <a href="{site}/" target="_blank" '
+        'rel="noopener" title="soccer-rating.com, otwiera się w nowej karcie">soccer-rating.com</a>{scraped}. '
         'Zakładka „Europejskie puchary”: szanse i tabela z <a href="https://theanalyst.com/" target="_blank" '
         'rel="noopener" title="The Analyst, otwiera się w nowej karcie">The Analyst</a>. '
         "Oceny i rekomendacje liczy model uefa-cups-predictor."
-    )
+    ).format(site=SOCCER_RATING_SITE, scraped=scraped)
 
 
 def fold(name: str) -> str:

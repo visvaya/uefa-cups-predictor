@@ -144,7 +144,7 @@ def test_club_link_points_to_the_club_page() -> None:
 
 @pytest.mark.parametrize("href", ["javascript:alert(1)", "//evil.example/", "", None])
 def test_club_link_refuses_other_hrefs(href: str | None) -> None:
-    assert club_link('<b>"A&B"', href) == "&lt;b&gt;&quot;A&amp;B&quot;"
+    assert club_link('<b>"A&B"', href) == "&lt;b&gt;&#34;A&amp;B&#34;"
 
 
 def test_fold_drops_diacritics_and_folds_special_letters() -> None:

@@ -353,16 +353,16 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
 <a href="#puchary" data-mode="full">Europejskie puchary</a>
 <a href="#sr" data-mode="sr">Soccer-&#8288;rating</a>
 </nav>
-{{VIEWS}}
+{{ views -}}
 <div id="tip" popover="manual" role="tooltip"></div>
 </main>
 <footer>
-{{FOOTER}}
+{{ footer -}}
 </footer>
 
 <script>
 (() => {
-  const TERMS = {{TERMS_JSON}};
+  const TERMS = {{ terms_json }};
 
   // Explanations: a tap (or click) pins one, hover shows it where there is a mouse
   const tip = document.getElementById("tip");
@@ -773,7 +773,7 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
   // Mode: the address keeps it (#puchary or #sr; the old #pelna still works), so a link opens the same view
   const MODES = { sr: "sr", puchary: "full", pelna: "full" };
   let currentMode = "full";
-  const TAB_TITLES = {{TAB_TITLES_JSON}};
+  const TAB_TITLES = {{ tab_titles_json }};
   function showMode() {
     hide();
     // An unknown hash (the "Do góry" anchor) keeps the current mode
