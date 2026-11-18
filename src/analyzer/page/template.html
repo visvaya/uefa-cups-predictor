@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Europejskie puchary – uefa-cups-predictor</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='black'/><path d='M5.2 13V3.6M3 5.8L5.2 3.6L7.4 5.8M10.8 13V3.6M8.6 5.8L10.8 3.6L13 5.8' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='square'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<style>
+/* Layout: one narrow column of plain documents, like a 1995 home page; tables on wide screens, stacked rows on phones */
+:root {
+  --bg: #fff;
+  --fg: #000;
+  --rule: #000;
+  color-scheme: light;
+  /* One family for everything, a finer Times; figures line up through tabular-nums */
+  --serif: "STIX Two Text", "Times New Roman", Times, "Liberation Serif", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #000; --fg: #fff; --rule: #fff; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #000; --fg: #fff; --rule: #fff; color-scheme: dark; }
+
+html { background: var(--bg); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* The phone layout sets display on rows; filtered rows must stay hidden */
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 1.125rem/1.4 var(--serif);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 8px 32px;
+  max-width: 60em;
+  margin: 0 auto;
+}
+h1 { font-size: 1.6em; margin: 0.4em 0 0.2em; text-wrap: balance; }
+/* The day stays in view while its matches scroll by */
+/* A day or competition starts with a reversed bar (owner, 2026-11-17), so a new section cannot be read as another match */
+h2 { font-size: 1.2em; margin: 1.4em 0 0; text-wrap: pretty; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--fg); color: var(--bg); padding: 0.36em 0.25em 0.24em 0.5em; } /* more above than below: the capitals sit in the middle, not the line box */
+h2 :focus-visible { outline-color: var(--bg); outline-offset: -3px; }
+/* The space under the bar sits on the list, not on the bar: a sticky bar never enters its own margin, so it would stop short of the section's last rule */
+h2 + .wrap, h2 + p { margin-top: 0.4em; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+p { margin: 0.4em 0; max-width: 40em; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 1em 0; }
+small { font-size: 0.85em; }
+a { color: var(--fg); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+@media (hover: hover) { a:hover { text-decoration-thickness: 2px; } }
+.num { font-variant-numeric: lining-nums tabular-nums; text-align: right; }
+fieldset { border: 1px solid var(--rule); margin: 0; padding: 0.3em 0.7em 0.5em; }
+legend { padding: 0 0.3em; }
+/* Wide screens: the filter groups side by side */
+.filters fieldset { display: inline-block; vertical-align: top; margin-right: 0.6em; }
+label { display: inline-block; margin: 0.25em 1.2em 0.25em 0; }
+label, input, button { touch-action: manipulation; }
+/* Controls are drawn by the page, not the platform: iOS otherwise rounds and greys them (checkboxes, fields, buttons) */
+input, button, select { -webkit-appearance: none; appearance: none; border-radius: 0; }
+input[type="checkbox"] { font-size: inherit; display: inline-grid; place-content: center; width: 1em; height: 1em; margin: 0 0.45em 0 0; border: 1px solid var(--rule); background: var(--bg); vertical-align: -0.15em; cursor: pointer; }
+input[type="checkbox"]::before { content: ""; width: 0.28em; height: 0.56em; border: solid var(--bg); border-width: 0 2px 2px 0; transform: translateY(-0.06em) rotate(45deg); visibility: hidden; }
+input[type="checkbox"]:checked { background: var(--fg); }
+label:has(> input[type="checkbox"]) { display: inline-flex; align-items: flex-start; }
+label:has(> input[type="checkbox"]) > input { margin-top: 0.2em; }
+label > input[type="checkbox"] { vertical-align: baseline; flex: none; }
+input[type="checkbox"]:checked::before { visibility: visible; }
+@media (forced-colors: active) { input[type="checkbox"] { -webkit-appearance: auto; appearance: auto; } input[type="checkbox"]::before { content: none; } }
+/* Odds bounds: 16 px or more so iOS does not zoom on focus */
+input.search, input.lg-search { width: min(16em, 100%); height: auto; font: inherit; font-size: max(16px, 1em); padding: 0.15em 0.35em; border: 1px solid var(--rule); background: var(--bg); color: var(--fg); }
+input.search::placeholder, input.lg-search::placeholder { color: var(--fg); opacity: 1; font-style: italic; }
+.spin { display: inline-flex; align-items: stretch; }
+.stp { min-width: 32px; min-height: 32px; border: 1px solid var(--rule); background: var(--bg); color: var(--fg); text-align: center; cursor: pointer; font-variant-numeric: lining-nums; }
+.spin .rng { border-left: 0; border-right: 0; text-align: center; }
+.range .pair { display: inline-flex; align-items: center; gap: 0.35em; margin: 0.25em 1em 0.25em 0; white-space: nowrap; }
+.rng[aria-invalid="true"] { outline: 2px dashed var(--fg); outline-offset: 1px; }
+.rng-msg, .edge-msg { display: block; }
+.rng-msg:empty, .edge-msg:empty { display: none; }
+.stp[aria-disabled="true"] { color: color-mix(in srgb, var(--fg) 35%, var(--bg)); cursor: not-allowed; }
+input.rng, input.odds { width: 4.5em; height: auto; font: inherit; font-size: max(16px, 1em); padding: 0.1em 0.3em; border: 1px solid var(--rule); background: var(--bg); color: var(--fg); font-variant-numeric: lining-nums tabular-nums; }
+.lg-filter { margin: 0; }
+/* One gap between every filter group; inside, a list's summary sits like a checkbox row */
+.filters > * { margin: 0 0 0.9em; }
+.filters > :last-child { margin-bottom: 0.3em; }
+.filters .lg-filter > summary { padding-block: 0.25em; }
+.filters .rng-msg, .filters .edge-msg { margin-top: 0.2em; }
+/* Disclosures use the page's own chevron (same SVG set and stroke as the level icons), not the browser triangle */
+.fold > summary, .lg-filter summary { cursor: pointer; list-style: none; }
+.fold > summary::-webkit-details-marker, .lg-filter summary::-webkit-details-marker { display: none; }
+.fold > summary::before, .lg-filter summary::before { --icon: var(--i-more); }
+.fold[open] > summary::before, .lg-filter[open] summary::before { --icon: var(--i-less); }
+.fold > summary { font-weight: bold; margin-bottom: 0.4em; }
+.fold > summary span { font-weight: normal; }
+input.rng::placeholder, input.odds::placeholder { color: var(--fg); opacity: 1; font-style: italic; }
+.lg-filter label, .lg-pop label:has(> input) { display: flex; margin: 0.3em 0; }
+.acts { margin: 0.3em 0 0.5em; }
+/* The summary for first-time readers: a framed block right under the heading */
+.keys { border: 1px solid var(--rule); padding: 0.4em 0.8em 0.5em; margin: 0.6em 0 0.8em; max-width: 40em; }
+/* The summary and the notes on the data fold away together; both modes share one open state */
+.about > summary { margin: 0.6em 0 0; }
+.about .keys { margin-top: 0.4em; }
+.keys ul { margin: 0; padding-left: 1.1em; }
+.keys li { margin: 0.15em 0; }
+.acts .act { margin-right: 0; }
+.act { text-decoration: underline; text-underline-offset: 0.2em; cursor: pointer; margin-right: 1em; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+/* Words that explain themselves: dotted underline, like an abbr on an old page */
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; text-align: left; }
+.term { text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }
+/* The match name opens its details: a disclosure marker, as on a native details element, not a link look */
+/* Bold means only the strong level; the match name stands out by its marker and size */
+.mt { cursor: pointer; font-size: 1.05em; }
+/* The picked team is the only bold name in a match */
+.teams { font-weight: normal; }
+.teams b { font-weight: bold; }
+.mt::before { --icon: var(--i-more); }
+.mt[aria-expanded="true"]::before { --icon: var(--i-less); }
+/* A day folds away under its heading, with the same marker */
+.day { cursor: pointer; font-weight: inherit; }
+.day::before { --icon: var(--i-less); }
+.day[aria-expanded="false"]::before { --icon: var(--i-more); }
+.day small { font-weight: normal; white-space: nowrap; }
+@media (max-width: 24em) { .cnt-w { display: none; } }
+@media (max-width: 52em) { .mode-lab { flex-basis: 100%; margin-right: 0; padding-bottom: 0; } }
+@media (hover: hover) {
+  .term:hover { text-decoration-style: solid; text-decoration-thickness: 2px; }
+  .mt:hover .teams { text-decoration: underline; text-underline-offset: 0.2em; }
+}
+#tip {
+  position: fixed; inset: auto; margin: 0; box-sizing: border-box;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--rule); box-shadow: 3px 3px 0 var(--fg);
+  padding: 0.45em 0.65em; font-size: 0.9em; line-height: 1.35;
+  /* A long explanation scrolls inside the room it gets instead of covering the word it explains */
+  overflow-y: auto; overscroll-behavior: contain;
+}
+#tip p { margin: 0.35em 0 0; max-width: none; }
+#tip p b { display: inline; }
+#tip b { display: block; }
+
+/* Cards never scroll sideways: clip, unlike auto, makes no scroll container (Safari let a sub-pixel overflow pan the day) */
+.wrap { overflow-x: clip; }
+table { border-collapse: collapse; width: 100%; }
+/* Every day's table shares one set of column widths, so the columns line up from day to day */
+table { table-layout: fixed; }
+col.c-t { width: 9%; }
+col.c-g { width: 28%; }
+col.c-p { width: 16%; }
+col.c-k { width: 9%; }
+col.c-s { width: 10%; }
+col.c-r { width: 28%; }
+/* Rows grouped by space and one rule between matches, no cell grid (Rutter, Butterick) */
+th, td { border: 0; border-bottom: 1px solid var(--rule); padding: 0.35em 0.9em 0.35em 0; vertical-align: top; text-align: left; }
+th { font-weight: bold; border-bottom: 0; padding-top: 0.2em; }
+/* The column heads stay under the sticky day heading; a scroll container would stop that, so wide screens drop it */
+/* Table layout from 52em: below it six columns cannot hold their heads on one line, so cards are used */
+@media (min-width: 52.01em) {
+  .wrap { overflow: visible; }
+  .t-sr tr.d > td { padding-left: 9%; }
+  /* Sticky on the whole head row: per-cell backgrounds leave sub-pixel seams the rows show through */
+  thead { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--day-h, 2.4em)); z-index: 1; background: var(--bg); }
+  /* The head row, not each cell, carries the background: cell backgrounds leave sub-pixel seams */
+  thead tr { background: var(--bg); box-shadow: inset 0 -2px 0 var(--rule); }
+}
+th:last-child, td:last-child { padding-right: 0; }
+/* Space between the right-aligned score and the recommendation, which no rule separates */
+th:has(> button[data-key="level"]), td.r { padding-left: 1.2em; }
+tr.m.open td { border-bottom: 0; }
+td.t, td.s { font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+td.c, td.n1 { display: none; }
+.sig { white-space: nowrap; }
+td.r small { display: block; line-height: 1.4; margin-top: 0.2em; }
+/* Cups tab, open match: the details list the signals of both teams, so the row drops its own and keeps one line */
+.t-full tr.m.open td.r small { display: none; }
+th.num { text-align: right; }
+/* Column heads sort: bold labels that underline on hover, the active one with an arrow */
+button.sort { font-weight: bold; cursor: pointer; text-align: inherit; white-space: nowrap; }
+th.num button.sort { text-align: right; }
+@media (hover: hover) { button.sort:hover { text-decoration: underline; text-underline-offset: 0.2em; } }
+/* Sort row for the card layout: the column heads' buttons in a line; the active one carries the arrow */
+/* Between the filters and the hint: summary, count of shown matches, sort row, one even gap apart */
+.filter-box > summary { margin-bottom: 0; }
+.shown { margin: 0.8em 0 0; }
+.shown:empty { display: none; }
+.sort-line { margin: 0.5em 0 -0.35em; line-height: 2; }
+/* With the panel open, the count stays with the filters (it is their result) and a rule sets the sort apart */
+.filter-box[open] > .filters { margin-top: 0.6em; }
+.filter-box[open] ~ .sort-line { border-top: 1px solid var(--rule); margin-top: 1em; padding-top: 0.65em; }
+.sort-line > span { margin-right: 0.3em; }
+.sort-line button.sort { font-weight: normal; margin-right: 0.7em; text-decoration: underline; text-underline-offset: 0.2em; }
+.sort-line button.sort[aria-pressed="true"] { font-weight: bold; }
+@media (min-width: 52.01em) { .sort-line { display: none; } }
+/* Wide screens: filter boxes in rows, each box as tall as the tallest in its row, one gap both ways */
+@media (min-width: 52.01em) {
+  .filters { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.6em; }
+  .filters > * { margin: 0; }
+  .filters fieldset { margin: 0; }
+  .filters > :last-child { flex-basis: 100%; margin: 0.2em 0 0; }
+  /* A long list opens as a panel over the page, so nothing around it moves (same frame and shadow as the explanations) */
+  .lg-filter { position: relative; }
+  .lg-pop { box-sizing: border-box; position: absolute; top: calc(100% + 6px); left: -0.7em; z-index: 5; width: max-content; max-width: min(36em, 80vw); overflow: auto; overscroll-behavior: contain;
+    background: var(--bg); border: 1px solid var(--rule); box-shadow: 3px 3px 0 var(--fg); padding: 0.4em 0.8em 0.6em; }
+  .lg-search { width: 100%; }
+}
+td.k { white-space: nowrap; }
+.nw { white-space: nowrap; }
+/* Level shown by weight and a marker, never by colour */
+/* The strong level in reverse: the one dark mark a scrolling eye catches, still only black and white */
+tr.strong .lv { font-weight: bold; background: var(--fg); color: var(--bg); padding: 0 0.3em; text-decoration-color: var(--bg); }
+/* Level markers: one SVG set in the text colour (masks), so they match each other and follow the inverted badge and dark theme */
+:root {
+  --i-more: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='-1 0 9 12'><path d='M1.8 2.2L5.6 6L1.8 9.8' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='square' stroke-linejoin='miter'/></svg>");
+  --i-less: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 9 12'><path d='M0.9 4.1L4.5 7.7L8.1 4.1' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='square' stroke-linejoin='miter'/></svg>");
+  --i-up: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 6.4 12'><path d='M3.2 11.2V1.9M0.8 4.3L3.2 1.9L5.6 4.3' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square' stroke-linejoin='miter'/></svg>");
+  --i-down: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 6.4 12'><path d='M3.2 0.8V10.1M0.8 7.7L3.2 10.1L5.6 7.7' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square' stroke-linejoin='miter'/></svg>");
+  --i-strong: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 11.6 12'><path d='M3.2 11.2V1.9M0.8 4.3L3.2 1.9L5.6 4.3M8.4 11.2V1.9M6 4.3L8.4 1.9L10.8 4.3' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square' stroke-linejoin='miter'/></svg>");
+  --i-consider: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 6.4 12'><path d='M3.2 11.2V1.9M0.8 4.3L3.2 1.9L5.6 4.3' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square' stroke-linejoin='miter'/></svg>");
+  --i-caution: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 13 12'><path d='M6.5 1.2L12.2 11.2H0.8Z' fill='none' stroke='black' stroke-width='1.3' stroke-linejoin='miter'/><path d='M6.5 4.5V6.8M6.5 9.1V9.2' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='square'/></svg>");
+  --i-avoid: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 12 12'><path d='M1.6 1.6L10.4 10.4M10.4 1.6L1.6 10.4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='square' stroke-linejoin='miter'/></svg>");
+}
+.fold > summary::before, .lg-filter summary::before, .mt::before, .day::before, .dir[data-dir]::before {
+  content: ""; display: inline-block; width: calc(0.66em * 9 / 12); height: 0.66em; margin-right: 0.3em; vertical-align: 0;
+  background-color: currentColor; -webkit-mask: var(--icon) 0 0 / 100% 100% no-repeat; mask: var(--icon) 0 0 / 100% 100% no-repeat;
+}
+.dir[data-dir]::before { margin: 0 0 0 0.25em; width: calc(0.66em * 6.4 / 12); }
+.dir[data-dir="asc"]::before { --icon: var(--i-up); }
+.dir[data-dir="desc"]::before { --icon: var(--i-down); }
+.mk.mk-more { --icon: var(--i-more); width: calc(0.66em * 9 / 12); margin-right: 0; }
+.mk, tr.strong .lv::before, tr.consider .lv::before, tr.caution .lv::before, tr.avoid .lv::before {
+  content: ""; display: inline-block; width: 0.66em; height: 0.66em; margin-right: 0.3em; vertical-align: 0;
+  background-color: currentColor; -webkit-mask: var(--icon) 0 0 / 100% 100% no-repeat; mask: var(--icon) 0 0 / 100% 100% no-repeat;
+}
+.mk-strong, tr.strong .lv::before { --icon: var(--i-strong); width: calc(0.66em * 11.6 / 12); }
+.mk-consider, tr.consider .lv::before { --icon: var(--i-consider); width: calc(0.66em * 6.4 / 12); }
+.mk-caution, tr.caution .lv::before { --icon: var(--i-caution); width: calc(0.66em * 13 / 12); }
+.mk-avoid, tr.avoid .lv::before { --icon: var(--i-avoid); }
+@media (forced-colors: active) { .mk, .lv::before, summary::before, .mt::before, .day::before, .dir::before { forced-color-adjust: none; background-color: CanvasText; } tr.strong .lv::before { background-color: Canvas; } }
+/* Full mode: caution keeps a hollow triangle, avoid is struck through so it never reads as a pick */
+tr.avoid .lv { text-decoration: line-through; text-decoration-thickness: 1px; }
+/* The two modes: plain text links, the current one bold and not a link look */
+.mode-lab { padding-block: 0.25em; margin-right: -0.3em; }
+.modes { display: flex; flex-wrap: wrap; gap: 0.3em 0.9em; margin: 0.6em 0 0.2em; }
+.modes a { padding-block: 0.25em; }
+/* The active mode: bold with a heavy underline, no ▸ (that sign opens details on this page) */
+.modes a[aria-current="page"] { font-weight: bold; text-decoration-thickness: 3px; }
+h2.nodata { position: static; }
+col.f-g { width: 22%; }
+col.f-p { width: 15%; }
+col.f-k { width: 8%; }
+col.f-w { width: 10%; }
+col.f-m { width: 10%; }
+col.f-s { width: 12%; }
+col.f-r { width: 23%; }
+td.w, td.mo { white-space: nowrap; }
+.empty { font-style: italic; }
+/* The same space under the rule as a match card (phone cells drop their own padding) */
+td.empty { padding-top: 0.55em; padding-bottom: 0.4em; }
+/* Site bar: the project's name and its code, above everything, one thin rule below */
+header.site { display: flex; justify-content: space-between; align-items: center; gap: 1em; padding-block: 0.2em 0.4em; border-bottom: 1px solid var(--rule); }
+header.site .name { font-weight: bold; letter-spacing: 0.02em; }
+header.site .repo { display: inline-flex; align-items: center; gap: 0.35em; min-height: 32px; text-decoration: none; }
+header.site .repo span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+header.site .gh { display: block; }
+@media (hover: hover) { header.site .repo:hover span { text-decoration-thickness: 2px; } }
+footer { margin-top: 2em; }
+footer .top { display: inline-block; padding-block: 0.3em; }
+footer p { max-width: 40em; }
+tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
+/* Both teams of a match: label, the pick's team, the opponent */
+.both { display: grid; grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr); gap: 0.15em 0.9em; margin-top: 0.5em; }
+.both > div { display: contents; }
+.both .wide { grid-column: span 2; }
+.both .teams-row > * { margin-top: 0.5em; }
+.both [role="columnheader"] { font-weight: normal; border-bottom: 1px solid var(--rule); padding-bottom: 0.15em; }
+.both b[role="columnheader"] { font-weight: bold; }
+/* Names and signals wrap between words here; a word breaks only when it is wider than its column (break-anywhere would split every club name) */
+.both, .both * { overflow-wrap: break-word; }
+/* Text for screen readers only */
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.both .sig { white-space: normal; }
+/* Narrow screens: each label on its own line above the two values, so each team gets half the width */
+@media (max-width: 52em) {
+  .both { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 0.9em; }
+  .both [role="rowheader"] { grid-column: 1 / -1; margin-top: 0.4em; font-size: 0.85em; }
+  .both .teams-row > :first-child { display: none; }
+}
+.det { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.15em 0.8em; }
+.det div { display: contents; }
+.det dt, .det dd { margin: 0; }
+.det dd { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 52em) {
+  table, thead, tbody, tr, td { display: block; }
+  colgroup { display: none; }
+  thead { display: none; }
+  /* The reversed heading bar starts the section, so the first card needs no rule above it */
+  table { border-top: 0; }
+  tr.m { border-bottom: 1px solid var(--rule); padding: 0.55em 0 0.4em; display: grid; grid-template-columns: auto 1fr; column-gap: 0.7em; }
+  tr.m:has(.sigs) { padding-bottom: 0.52em; }
+  tr.m.open { border-bottom: 0; padding-bottom: 0.2em; }
+  td { border: 0; padding: 0; overflow-wrap: anywhere; }
+  /* Card: the level first, then the match, then the table's columns as a small labelled strip */
+  td.t { grid-column: 1; grid-row: 1; }
+  td.n1 { grid-column: 2; grid-row: 1; display: block; }
+  td.g { grid-column: 2; grid-row: 2; min-width: 0; margin-top: 0.15em; }
+  td.c { grid-column: 2; grid-row: 3; display: block; margin-top: 0.35em; }
+  td.p, td.k, td.s, td.r, td.w, td.mo { display: none; }
+  .lab { font-size: 0.8em; margin-right: 0.3em; }
+  /* One line of labelled values: the pick takes the free width, each number its own narrow column */
+  /* Cards: the pick on its own line, then the numbers in equal columns, labels above values */
+  .strip { margin: 0; display: grid; grid-template-columns: repeat(var(--nums, 2), minmax(0, 1fr)); column-gap: 1.1em; }
+  .t-full .strip { --nums: 4; }
+  .strip > div:first-child { grid-column: 1 / -1; margin-bottom: 0.3em; }
+  .strip dt, .strip dd { margin: 0; }
+  .strip dt { font-size: 0.8em; line-height: 1.4; }
+  .strip dd { line-height: 1.5; font-variant-numeric: lining-nums tabular-nums; }
+  .strip .num { text-align: left; }
+  .strip a { display: inline-block; max-width: 100%; }
+  /* Signals read as plain text in a hanging list after their label */
+  .sigs { margin: 0.15em 0 0; font-size: 0.9em; line-height: 1.4; display: flex; align-items: baseline; gap: 0.3em; }
+  .sigs > .lab { flex: none; margin-right: 0; }
+  .sigs > span:last-child { flex: 1; min-width: 0; }
+  .sigs .lab { font-size: 0.9em; }
+  /* A finger-sized hit area drawn outside the layout: padding on the label pushed the line down in Safari */
+  .sigs .lab .term { position: relative; }
+  .sigs .lab .term::after { content: ""; position: absolute; inset: -0.5em -0.3em; }
+  /* Details take the full card width: an indent under the time column left too little room on phones */
+  tr.d { border-bottom: 1px solid var(--rule); padding: 0 0 0.6em; }
+  tr.d > td { padding: 0 0 0 0.7em; border-left: 1px solid var(--rule); margin-top: 0.3em; }
+  /* Cups: no time column, so the card and its details start at the page edge */
+  .t-full tr.m { grid-template-columns: minmax(0, 1fr); }
+  .t-full td.n1, .t-full td.g, .t-full td.c { grid-column: 1; }
+  fieldset, .filters fieldset { display: block; border: 0; padding: 0; }
+  legend { padding: 0; margin: 0.2em 0 0; }
+  legend::after { content: ":"; }
+  label { margin: 0.25em 0.8em 0.25em 0; }
+}
+</style>
+</head>
+<body>
+<header class="site">
+<span class="name" translate="no">uefa-&#8288;cups-&#8288;predictor</span>
+<a class="repo" href="https://github.com/visvaya/uefa-cups-predictor" target="_blank" rel="noopener" title="Kod projektu na GitHubie, otwiera się w nowej karcie"><svg class="gh" viewBox="0 0 16 16" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg><span>GitHub</span></a>
+</header>
+<main id="top">
+<nav class="modes" aria-label="Tryb analizy">
+<span class="mode-lab">Tryb:</span>
+<a href="#puchary" data-mode="full">Europejskie puchary</a>
+<a href="#sr" data-mode="sr">Soccer-&#8288;rating</a>
+</nav>
+{{VIEWS}}
+<div id="tip" popover="manual" role="tooltip"></div>
+</main>
+<footer>
+{{FOOTER}}
+</footer>
+
+<script>
+(() => {
+  const TERMS = {{TERMS_JSON}};
+
+  // Explanations: a tap (or click) pins one, hover shows it where there is a mouse
+  const tip = document.getElementById("tip");
+  const canPopover = typeof tip.showPopover === "function";
+  let current = null;
+  let pinned = false;
+  function place(btn) {
+    const r = btn.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    // 100vw counts the scrollbar, so the width limit comes from the visible width
+    tip.style.maxWidth = `${Math.min(vw - 32, 400)}px`;
+    tip.style.maxHeight = "";
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    const left = Math.min(Math.max(16, r.left), vw - w - 16);
+    // Below the word when it fits there or there is more room below, else above; never over the word itself, or the
+    // pointer would leave the word for the explanation and hover would close and reopen it without end
+    const roomBelow = vh - 8 - (r.bottom + 6), roomAbove = r.top - 6 - 8;
+    const below = h <= roomBelow || roomBelow >= roomAbove;
+    const height = Math.min(h, Math.max(0, below ? roomBelow : roomAbove));
+    if (height < h) tip.style.maxHeight = `${height}px`;
+    tip.style.left = `${left}px`;
+    tip.style.top = `${below ? r.bottom + 6 : r.top - 6 - height}px`;
+  }
+  function show(btn, pin) {
+    const entry = TERMS[btn.dataset.term];
+    if (!entry) return;
+    if (current && current !== btn) current.setAttribute("aria-expanded", "false");
+    tip.innerHTML = "";
+    const title = document.createElement("b");
+    title.textContent = entry[0];
+    tip.append(title);
+    if (btn.dataset.terms) {
+      // A match's signal label explains every signal of that match at once
+      for (const key of btn.dataset.terms.split(" ").filter((k) => TERMS[k])) {
+        const line = document.createElement("p");
+        const name = document.createElement("b");
+        name.textContent = `${TERMS[key][0]}: `;
+        line.append(name, TERMS[key][1]);
+        tip.append(line);
+      }
+    } else {
+      // [strong] and the like in an explanation stand for the level's icon
+      const parts = entry[1].split(/\[(strong|consider|caution|avoid)\]/);
+      tip.append(...parts.map((part, i) => {
+        if (i % 2 === 0) return document.createTextNode(part);
+        const mark = document.createElement("span");
+        mark.className = `mk mk-${part}`;
+        mark.setAttribute("aria-hidden", "true");
+        return mark;
+      }));
+    }
+    if (canPopover) { if (!tip.matches(":popover-open")) tip.showPopover(); } else tip.hidden = false;
+    place(btn);
+    btn.setAttribute("aria-expanded", "true");
+    current = btn;
+    pinned = pin;
+  }
+  // A list panel stays on screen and never covers its own heading: it opens below the heading when it fits there
+  // (or when there is more room below), otherwise above it; its height is capped to that room and the list scrolls.
+  // Wide screens only; on phones lists open in place.
+  const EDGE_PX = 8, GAP_PX = 6;
+  function placePop(d) {
+    const pop = d.querySelector(".lg-pop");
+    Object.assign(pop.style, { marginLeft: "", top: "", bottom: "", maxHeight: "none" });
+    if (getComputedStyle(pop).position !== "absolute") { pop.style.maxHeight = ""; return; }
+    const head = d.querySelector("summary").getBoundingClientRect();
+    const vh = document.documentElement.clientHeight;
+    const below = vh - head.bottom - GAP_PX - EDGE_PX, above = head.top - GAP_PX - EDGE_PX;
+    const fitsBelow = pop.offsetHeight <= below;
+    if (fitsBelow || below >= above) {
+      Object.assign(pop.style, { top: `calc(100% + ${GAP_PX}px)`, bottom: "auto", maxHeight: `${Math.max(0, below)}px` });
+    } else {
+      Object.assign(pop.style, { top: "auto", bottom: `calc(100% + ${GAP_PX}px)`, maxHeight: `${Math.max(0, above)}px` });
+    }
+    const over = pop.getBoundingClientRect().right - (document.documentElement.clientWidth - EDGE_PX);
+    if (over > 0) pop.style.marginLeft = `${-over}px`;
+  }
+  // Layers: an open panel sits above everything, so it closes once its heading goes under a stuck day heading
+  // or off the top; a panel never meets a stuck heading, and never floats detached over the matches
+  const coveredTop = () => Math.max(0, ...[...document.querySelectorAll(".view:not([hidden]) h2")].map((h) => h.getBoundingClientRect()).filter((r) => r.top <= 1 && r.bottom > 0).map((r) => r.bottom));
+  const placeOpen = () => document.querySelectorAll(".lg-filter[open]").forEach((d) => {
+    if (getComputedStyle(d.querySelector(".lg-pop")).position !== "absolute") return;
+    if (d.querySelector("summary").getBoundingClientRect().bottom <= coveredTop()) d.open = false; else placePop(d);
+  });
+  document.addEventListener("toggle", (ev) => { if (ev.target.matches?.(".lg-filter") && ev.target.open) placePop(ev.target); }, true);
+  window.addEventListener("scroll", placeOpen, { passive: true });
+  window.addEventListener("resize", placeOpen);
+  // An open list panel closes on a click outside it or on Escape, like a menu
+  document.addEventListener("click", (ev) => {
+    for (const d of document.querySelectorAll(".lg-filter[open]")) if (!d.contains(ev.target)) d.open = false;
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape") return;
+    const d = ev.target.closest?.(".lg-filter[open]");
+    if (d) { d.open = false; d.querySelector("summary").focus(); }
+  });
+  function hide() {
+    if (canPopover) { if (tip.matches(":popover-open")) tip.hidePopover(); } else tip.hidden = true;
+    if (current) current.setAttribute("aria-expanded", "false");
+    current = null;
+    pinned = false;
+  }
+  if (!canPopover) tip.hidden = true;
+  document.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".term");
+    if (btn) {
+      if (current === btn && pinned) hide(); else show(btn, true);
+      return;
+    }
+    if (!tip.contains(ev.target)) hide();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && current) { const btn = current; hide(); btn.focus(); }
+  });
+  window.addEventListener("scroll", () => { if (current) place(current); }, { passive: true });
+  window.addEventListener("resize", () => { if (current) place(current); });
+  if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    document.addEventListener("mouseover", (ev) => {
+      const btn = ev.target.closest(".term, .sort[data-term]");
+      if (btn && !pinned) show(btn, false);
+    });
+    // Moving onto the explanation keeps it open (it may scroll); leaving both the word and the explanation closes it
+    let closeTimer = 0;
+    document.addEventListener("mouseout", (ev) => {
+      if (!current || pinned) return;
+      const from = ev.target, to = ev.relatedTarget;
+      const leftWord = current.contains(from) && !current.contains(to);
+      const leftTip = tip.contains(from) && !tip.contains(to);
+      if (!(leftWord || leftTip) || tip.contains(to) || current.contains(to)) return;
+      // A short grace lets the pointer cross the gap between the word and the explanation
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(() => { if (current && !pinned && !current.matches(":hover") && !tip.matches(":hover")) hide(); }, 150);
+    });
+  }
+
+  // Groups (days or competitions) fold away under their heading
+  document.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".day");
+    if (!btn) return;
+    const open = btn.getAttribute("aria-expanded") !== "true";
+    btn.setAttribute("aria-expanded", String(open));
+    document.getElementById(btn.getAttribute("aria-controls")).hidden = !open;
+  });
+
+  // Match details: the match name opens and closes the row below it
+  document.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".mt");
+    if (!btn) return;
+    const open = btn.getAttribute("aria-expanded") !== "true";
+    btn.setAttribute("aria-expanded", String(open));
+    btn.title = open ? "Ukryj szczegóły meczu" : "Pokaż szczegóły meczu";
+    document.getElementById(btn.getAttribute("aria-controls")).hidden = !open;
+    btn.closest("tr").classList.toggle("open", open);
+  });
+
+  const plural = (n) => {
+    const r = new Intl.PluralRules("pl").select(n);
+    return r === "one" ? "mecz" : r === "few" ? "mecze" : "meczów";
+  };
+  // The sticky column heads sit right under the sticky group heading of the visible view
+  const dayHeight = () => {
+    const h2 = document.querySelector(".view:not([hidden]) h2");
+    if (h2) document.documentElement.style.setProperty("--day-h", `${h2.offsetHeight}px`);
+  };
+  window.addEventListener("resize", dayHeight);
+  document.fonts.ready.then(dayHeight);
+
+  // Filters and order, each view with its own form and rows
+  function setUpView(view) {
+    const form = view.querySelector(".filters");
+    // A tab without matches shows only its notice and has nothing to filter
+    if (!form) return;
+    const rows = [...view.querySelectorAll("tr.m")];
+    // Facets where every option starts ticked; signals are the opposite: an any-of filter that starts empty
+    const names = [...new Set([...form.querySelectorAll('input[type="checkbox"][name]')].map((b) => b.name))].filter((n) => n !== "signal");
+    const total = (name) => form.querySelectorAll(`input[name="${name}"]`).length;
+    const checked = (name) => new Set([...form.querySelectorAll(`input[name="${name}"]:checked`)].map((b) => b.value));
+    const value = (box) => { const raw = box.value.trim().replace(",", ".").replace(String.fromCharCode(0x2212), "-"); if (!raw) return null; const v = Number(raw); return Number.isFinite(v) ? v : null; };
+    // Combining marks, and the word joiners the page puts after hyphens in names
+    const MARKS = new RegExp(`[${String.fromCharCode(0x300)}-${String.fromCharCode(0x36f)}${String.fromCharCode(0x2060)}]`, "g");
+    // Letters with no Unicode decomposition (Bodø, Łódź, København) fold by hand, like plain() in the build
+    const LETTERS = { "ø": "o", "ł": "l", "æ": "ae", "ß": "ss", "đ": "d", "ı": "i", "œ": "oe" };
+    const fold = (s) => s.normalize("NFD").replace(MARKS, "").toLowerCase().replace(/[øłæßđıœ]/g, (c) => LETTERS[c]).trim();
+    const RANGE_NAMES = { odds: "kurs", ocena: "ocena", win: "szansa", mot: "motywacja", value: "wartość" };
+    const shown = view.querySelector(".shown");
+    const labels = { level: "rekomendacja", pick: "typ", league: "rozgrywki", status: "status" };
+    const detailOf = (tr) => document.getElementById(tr.querySelector(".mt").getAttribute("aria-controls"));
+    const sortBox = view.querySelector(".sort-by");
+    const NUMERIC = new Set(["odds", "ocena", "win", "mot", "value", "level"]);
+    const FIRST_DIR = { time: "asc", match: "asc", pick: "asc", odds: "asc", ocena: "desc", win: "desc", mot: "desc", value: "desc", level: "asc" };
+
+    // Settings survive a reload in this browser only; storage may be missing (private mode), so every access is guarded
+    // v3: only what the viewer changed is stored (unticked options, the ticked signals, moved range bounds), so
+    // new data under the same address shows its new options ticked and its full ranges; v2 stored everything
+    const STORE = `typy-v3-${view.dataset.view}`;
+    const unchecked = (name) => [...form.querySelectorAll(`input[name="${name}"]:not(:checked)`)].map((b) => b.value);
+    function saveState() {
+      const state = {
+        unchecked: Object.fromEntries(names.map((n) => [n, unchecked(n)])),
+        signals: [...checked("signal")],
+        ranges: Object.fromEntries([...form.querySelectorAll(".rng")].filter((box) => box.value !== box.defaultValue).map((box) => [`${box.dataset.range}:${box.dataset.bound}`, box.value])),
+        search: form.querySelector(".search").value,
+        upcoming: Boolean(form.querySelector(".upcoming")?.checked),
+        sort: sortBox.value,
+      };
+      try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* storage unavailable: settings last until reload */ }
+    }
+    function loadState() {
+      let state = null;
+      try { state = JSON.parse(localStorage.getItem(STORE) || "null"); } catch { state = null; }
+      if (!state || typeof state !== "object") return;
+      for (const [name, values] of Object.entries(state.unchecked || {})) {
+        if (!Array.isArray(values) || !names.includes(name)) continue;
+        for (const box of form.querySelectorAll(`input[type="checkbox"][name="${CSS.escape(name)}"]`)) box.checked = !values.includes(box.value);
+      }
+      if (Array.isArray(state.signals)) for (const box of form.querySelectorAll('input[name="signal"]')) box.checked = state.signals.includes(box.value);
+      for (const box of form.querySelectorAll(".rng")) {
+        const saved = (state.ranges || {})[`${box.dataset.range}:${box.dataset.bound}`];
+        if (typeof saved === "string" && (saved.trim() === "" || value({ value: saved }) !== null)) box.value = saved;
+      }
+      if (typeof state.search === "string") form.querySelector(".search").value = state.search;
+      const up = form.querySelector(".upcoming");
+      if (up) up.checked = Boolean(state.upcoming);
+      const [savedKey, savedDir] = typeof state.sort === "string" ? state.sort.split(":") : [];
+      if (view.querySelector(`button.sort[data-key="${CSS.escape(savedKey ?? "")}"]`) && (savedDir === "asc" || savedDir === "desc")) sortBox.value = state.sort;
+    }
+
+    // Column heads sort: the first click picks the column's usual direction, the next one reverses it
+    view.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button.sort");
+      if (!btn) return;
+      const [key, dir] = sortBox.value.split(":");
+      const next = btn.dataset.key === key ? (dir === "asc" ? "desc" : "asc") : FIRST_DIR[btn.dataset.key];
+      sortBox.value = `${btn.dataset.key}:${next}`;
+      apply();
+    });
+    function apply() {
+      hide();
+      const sets = Object.fromEntries(names.map((n) => [n, checked(n)]));
+      // A range narrows only inside the data's bounds, and only when "od" is not above "do"
+      const ranges = [];
+      for (const fs of form.querySelectorAll("fieldset.range")) {
+        const [minBox, maxBox] = fs.querySelectorAll(".rng");
+        const lo = value(minBox), hi = value(maxBox);
+        const unreadable = [minBox, maxBox].filter((box) => box.value.trim() !== "" && value(box) === null);
+        const bad = lo !== null && hi !== null && lo > hi;
+        for (const box of [minBox, maxBox]) box.setAttribute("aria-invalid", String(bad || unreadable.includes(box)));
+        fs.querySelector(".rng-msg").textContent = unreadable.length ? "Wpisz liczbę, np. 1,5; ten filtr nie działa." : bad ? "„od” jest większe niż „do”; ten filtr nie działa." : "";
+        if (bad || unreadable.length) continue;
+        if (lo !== null && lo > Number(minBox.dataset.min) + 1e-9) ranges.push([minBox.dataset.range, "min", lo]);
+        if (hi !== null && hi < Number(maxBox.dataset.max) - 1e-9) ranges.push([maxBox.dataset.range, "max", hi]);
+      }
+      const signals = checked("signal");
+      const query = fold(form.querySelector(".search").value);
+      const upcomingBox = form.querySelector(".upcoming");
+      const upcoming = upcomingBox && upcomingBox.checked;
+      const now = Date.now();
+      const keep = (tr) => names.every((n) => sets[n].has(tr.dataset[n]))
+        && ranges.every(([k, side, v]) => (side === "min" ? Number(tr.dataset[k]) >= v : Number(tr.dataset[k]) <= v))
+        && (!signals.size || tr.dataset.signals.split(" ").some((s) => signals.has(s)))
+        && (!query || tr.dataset.teams.includes(query))
+        && (!upcoming || !tr.dataset.start || Date.parse(tr.dataset.start) > now);
+      const active = names.filter((n) => sets[n].size < total(n)).map((n) => labels[n]);
+      for (const k of new Set(ranges.map((x) => x[0]))) active.push(RANGE_NAMES[k]);
+      if (signals.size) active.push("sygnały");
+      if (query) active.push("szukaj");
+      if (upcoming) active.push("czas");
+      const anyBox = view.querySelector('[data-any="signal"] .group-state');
+      if (anyBox) anyBox.textContent = signals.size ? `${signals.size} z ${total("signal")}` : `dowolne (${total("signal")})`;
+      for (const box of view.querySelectorAll("[data-group]")) {
+        const n = box.dataset.group, k = sets[n].size, all = total(n);
+        box.querySelector(".group-state").textContent = k === all ? `wszystkie (${all})` : `${k} z ${all}`;
+      }
+      const [sortKey, sortDir] = sortBox.value.split(":");
+      // Sorting changes the order, not the set, so it is reported apart from the narrowing filters
+      view.querySelector(".filter-state").textContent = active.length ? `zawężone (${active.join(", ")})` : "wszystkie mecze";
+      for (const btn of view.querySelectorAll("button.sort")) {
+        const on = btn.dataset.key === sortKey;
+        const th = btn.closest("th");
+        // Heads report the sort with aria-sort; the phone row's buttons are toggles with the direction in their name
+        if (th) th.setAttribute("aria-sort", on ? (sortDir === "asc" ? "ascending" : "descending") : "none");
+        else {
+          btn.setAttribute("aria-pressed", String(on));
+          btn.setAttribute("aria-label", btn.firstChild.textContent + (on ? (sortDir === "asc" ? ", rosnąco" : ", malejąco") : ""));
+        }
+        const dir = btn.querySelector(".dir");
+        if (on) dir.dataset.dir = sortDir; else delete dir.dataset.dir;
+      }
+      const field = (tr, key) => tr.dataset["s" + key[0].toUpperCase() + key.slice(1)] ?? "";
+      const compare = (a, b) => {
+        const x = field(a, sortKey), y = field(b, sortKey);
+        // A row without the value (no data attribute) sorts last in both directions
+        const mx = x === "", my = y === "";
+        if (mx !== my) return mx ? 1 : -1;
+        const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
+        // Ties keep the default order: kickoff (unknown last), then (full mode) the higher value, then the match name
+        return (sortDir === "desc" ? -c : c) || ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
+      };
+      saveState();
+      for (const tbody of view.querySelectorAll("tbody")) {
+        const own = [...tbody.querySelectorAll("tr.m")];
+        own.sort(compare);
+        let visible = 0;
+        for (const tr of own) {
+          const detail = detailOf(tr);
+          tbody.append(tr, detail);
+          tr.hidden = !keep(tr);
+          detail.hidden = tr.hidden || !tr.classList.contains("open");
+          if (!tr.hidden) visible += 1;
+        }
+        let empty = tbody.querySelector("tr.none");
+        if (!empty) {
+          empty = document.createElement("tr");
+          empty.className = "none";
+          empty.innerHTML = `<td colspan="${tbody.closest("table").querySelectorAll("col").length}" class="empty">Brak meczów dla wybranych filtrów.</td>`;
+        }
+        tbody.append(empty);
+        empty.hidden = visible > 0;
+        const head = view.querySelector(`[aria-controls="${tbody.closest(".wrap").id}"] .day-count`);
+        // A bar with kickoff times instead of a count (the cups tab) keeps its text.
+        // The word drops on narrow phones so the sticky heading stays one line
+        if (head) head.replaceChildren(`(${visible}`, Object.assign(document.createElement("span"), { className: "cnt-w", textContent: ` ${plural(visible)}` }), ")");
+      }
+      const n = rows.filter((tr) => !tr.hidden).length;
+      shown.textContent = n < rows.length ? `Widocznych meczów: ${n} z ${rows.length}.` : "";
+    }
+    form.addEventListener("change", apply);
+    form.addEventListener("input", (ev) => { if (ev.target.matches(".rng, .search")) { if (ev.target.matches(".rng")) { edgeNote(ev.target, ""); sync(ev.target); } apply(); } });
+    // Spinbuttons: arrows step, PageUp/PageDown step ten times, Home/End jump to the data's bounds
+    const fmt = (box, v) => v.toFixed(Number(box.dataset.digits)).replace(".", ",").replace("-", String.fromCharCode(0x2212));
+    // A stepper at the data's bound looks inactive (dashed); it stays tappable so a tap can say why nothing moved
+    function sync(box) {
+      const v = value(box);
+      const [less, more] = box.parentElement.querySelectorAll(".stp");
+      less.setAttribute("aria-disabled", String(v !== null && v <= Number(box.dataset.min) + 1e-9));
+      more.setAttribute("aria-disabled", String(v !== null && v >= Number(box.dataset.max) - 1e-9));
+      if (v === null) { box.removeAttribute("aria-valuenow"); box.removeAttribute("aria-valuetext"); return; }
+      box.setAttribute("aria-valuenow", String(v));
+      box.setAttribute("aria-valuetext", fmt(box, v));
+    }
+    function edgeNote(box, text) {
+      box.closest("fieldset").querySelector(".edge-msg").textContent = text;
+    }
+    function stepBy(box, times) {
+      const step = Number(box.dataset.step), min = Number(box.dataset.min), max = Number(box.dataset.max);
+      const start = value(box) ?? Number(box.dataset.start);
+      // From a value off the grid the first step lands on the next grid value in its direction (1,57 down: 1,55)
+      const base = times < 0 ? Math.ceil(start / step - 1e-9) : Math.floor(start / step + 1e-9);
+      const wanted = (base + times) * step;
+      const next = Math.min(max, Math.max(min, wanted));
+      // Pushing past the bound changes nothing, so say so instead of leaving a dead control
+      if (Math.abs(next - start) < 1e-9 && Math.abs(wanted - start) > 1e-9) {
+        edgeNote(box, times > 0 ? `To już najwyższa wartość w danych: ${fmt(box, max)}.` : `To już najniższa wartość w danych: ${fmt(box, min)}.`);
+        return;
+      }
+      edgeNote(box, "");
+      box.value = fmt(box, next);
+      sync(box);
+      apply();
+    }
+    form.addEventListener("keydown", (ev) => {
+      const box = ev.target.closest(".rng");
+      if (!box) return;
+      const moves = { ArrowUp: 1, ArrowDown: -1, PageUp: 10, PageDown: -10 };
+      if (ev.key in moves) { ev.preventDefault(); stepBy(box, moves[ev.key]); }
+      else if (ev.key === "Home" || ev.key === "End") {
+        ev.preventDefault();
+        box.value = fmt(box, Number(ev.key === "Home" ? box.dataset.min : box.dataset.max));
+        edgeNote(box, "");
+        sync(box);
+        apply();
+      }
+    });
+    form.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".stp");
+      if (btn) stepBy(btn.parentElement.querySelector(".rng"), Number(btn.dataset.dir));
+    });
+    // "Wyczyść filtry" restores every control's starting value; apply after the browser has reset them
+    form.addEventListener("reset", () => setTimeout(() => { form.querySelectorAll(".rng").forEach((box) => { edgeNote(box, ""); sync(box); }); form.querySelectorAll(".lg-search").forEach((q) => q.dispatchEvent(new Event("input", { bubbles: true }))); apply(); }, 0));
+    form.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-all], [data-none]");
+      if (!btn) return;
+      const name = btn.dataset.all || btn.dataset.none;
+      // With a search in the list, only the shown entries are ticked or cleared
+      for (const box of form.querySelectorAll(`input[name="${name}"]`)) if (!box.closest("label").hidden) box.checked = Boolean(btn.dataset.all);
+      apply();
+    });
+    // Typing in a long list narrows it, by code or name, ignoring case and Polish letters
+    form.addEventListener("input", (ev) => {
+      const q = ev.target.closest(".lg-search");
+      if (!q) return;
+      const pop = q.closest(".lg-pop"), needle = fold(q.value);
+      let shown = 0;
+      for (const label of pop.querySelectorAll("label")) {
+        label.hidden = needle !== "" && !fold(label.querySelector("[translate]")?.textContent ?? label.textContent).includes(needle);
+        if (!label.hidden) shown += 1;
+      }
+      pop.querySelector(".lg-none").hidden = shown > 0;
+    });
+    loadState();
+    form.querySelectorAll(".rng").forEach(sync);
+    apply();
+    // "Hide started matches" also hides a match that starts while the page stays open
+    setInterval(() => { if (!view.hidden && form.querySelector(".upcoming")?.checked) apply(); }, 60000);
+  }
+  document.querySelectorAll(".view").forEach(setUpView);
+
+  // Mode: the address keeps it (#puchary or #sr; the old #pelna still works), so a link opens the same view
+  const MODES = { sr: "sr", puchary: "full", pelna: "full" };
+  let currentMode = "full";
+  const TAB_TITLES = {{TAB_TITLES_JSON}};
+  function showMode() {
+    hide();
+    // An unknown hash (the "Do góry" anchor) keeps the current mode
+    const hash = location.hash.slice(1);
+    let remembered = null;
+    // v2: the cups became the first, default tab, so a mode remembered under v1 is not carried over
+    try { remembered = localStorage.getItem("typy-v2-mode"); } catch { remembered = null; }
+    const mode = (Object.hasOwn(MODES, hash) && MODES[hash]) || (hash ? currentMode : (remembered === "sr" ? "sr" : "full"));
+    currentMode = mode;
+    try { localStorage.setItem("typy-v2-mode", mode); } catch { /* storage unavailable */ }
+    for (const view of document.querySelectorAll(".view")) view.hidden = view.dataset.view !== mode;
+    for (const link of document.querySelectorAll(".modes a")) {
+      if (link.dataset.mode === mode) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
+    }
+    // Tab titles: short, the project name last so the tab is recognisable among others
+    document.title = TAB_TITLES[mode];
+    dayHeight();
+  }
+  window.addEventListener("hashchange", showMode);
+  // The summary blocks of both modes open and close together, and the choice survives a reload
+  const abouts = [...document.querySelectorAll(".about")];
+  let aboutOpen = true;
+  try { aboutOpen = localStorage.getItem("typy-v2-about") !== "closed"; } catch { aboutOpen = true; }
+  for (const box of abouts) box.open = aboutOpen;
+  for (const box of abouts) box.addEventListener("toggle", () => {
+    if (box.open === aboutOpen) return;
+    aboutOpen = box.open;
+    for (const other of abouts) other.open = aboutOpen;
+    try { localStorage.setItem("typy-v2-about", aboutOpen ? "open" : "closed"); } catch { /* storage unavailable */ }
+  });
+  // "Do góry" scrolls without touching the address, which holds the mode
+  document.querySelector("footer .top").addEventListener("click", (ev) => {
+    ev.preventDefault();
+    window.scrollTo({ top: 0 });
+    document.querySelector(".modes a[aria-current]").focus();
+  });
+  showMode();
+  // The address names the shown mode from the start, so Back after a mode switch returns to it
+  if (!Object.hasOwn(MODES, location.hash.slice(1))) {
+    history.replaceState(null, "", document.querySelector(`.modes a[data-mode="${currentMode}"]`).getAttribute("href"));
+  }
+})();
+</script>
+</body>
+</html>

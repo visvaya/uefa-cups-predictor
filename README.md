@@ -220,8 +220,9 @@ python analyze.py --excel-pl
 ### Analyzer Arguments
 
 - `--sr-only`: Run analysis independent of 'The Analyst' data (Market Signals only).
-- `--input-file PATH`: Specify a snapshot file for SR-only mode (e.g., specific date). Team names and lineups are read from `club_meta.csv` and `today_matches.csv` in the same folder, so keep a scraper run's files together (`soccer-rating --output-dir`).
+- `--input-file PATH`: Specify a snapshot file for SR-only mode or the results page (e.g., specific date). Team names and lineups are read from `club_meta.csv` and `today_matches.csv` in the same folder, so keep a scraper run's files together (`soccer-rating --output-dir`).
 - `--output-dir PATH`: Custom directory for analysis reports, created if missing.
+- `--page PATH`: Write the results page instead of the CSV reports (see [Results Page](#results-page)).
 
 **Generated Reports:**
 
@@ -229,6 +230,19 @@ python analyze.py --excel-pl
 - `el_recommendations.csv` – Results for Europa League.
 - `ecl_recommendations.csv` – Results for Conference League.
 - `sr_analysis_report_YYYY-MM-DD.csv` – Results for SR-Only mode (the date comes from the input snapshot name; without a dated input the file is `sr_analysis_report.csv`).
+
+### Results Page
+
+```bash
+python analyze.py --page recommendations/index.html --input-file data/soccer-rating/match_odds_development_2026-11-16.csv
+```
+
+`--page PATH` writes one static HTML file (in Polish) with two tabs, and no CSV reports; the folder is created if missing. The page needs no server: open it in a browser. Like every `*.html` outside the package, it is gitignored.
+
+- **Soccer-rating tab**: the snapshot named with `--input-file`, or `data/soccer-rating/match_odds_development.csv` when none is named, with `club_meta.csv` and `today_matches.csv` from the same folder for team names and kickoff times.
+- **Cups tab**: the cups chosen with `--cl`, `--el` and `--ecl`, or all three cups (a cup without inputs shows its no-data notice); each cup reads its The Analyst fixtures and predicted table, and soccer-rating odds from `data/soccer-rating/match_odds_development.csv` when that file is present, with kickoff times from `today_matches.csv` beside it.
+
+Kickoff, scrape and generation times are shown in Polish time (`Europe/Warsaw`). Missing data shows on the page instead of failing the run: without the cumulative soccer-rating file the soccer-rating tab says there are no matches, a cup without its fixtures or table file shows a no-data notice with a link to The Analyst, and a cup without soccer-rating data has no odds or kickoff times. A named `--input-file` that does not exist is an error, as in the SR-only report: the run stops with `ERROR: ...` (exit code 1). So does an input file that cannot be read, as in the reports, and a page that cannot be saved. The run prints the input warnings (cup warnings name their cup) and one line, `SUCCESS: Saved results page to: <path> (<n> + <m> matches)`, with the match counts of the two tabs. `--page` cannot be combined with `--sr-only`, `--excel-pl` or `--output-dir`, which apply to the CSV reports.
 
 ## Data Integrity Requirements
 

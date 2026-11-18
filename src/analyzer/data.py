@@ -91,11 +91,17 @@ def soccer_rating_dir(base_dir: Path) -> Path:
     return base_dir / "data" / "soccer-rating"
 
 
+def analyst_paths(base_dir: Path, prefix: str) -> tuple[Path, Path]:
+    """The cup's Analyst fixtures and predicted table files (prefix cl/el/ecl)."""
+    data_dir = base_dir / "data" / "theanalyst" / LEAGUE_DIRS[prefix]
+    return data_dir / f"{prefix}_fixtures.csv", data_dir / f"{prefix}_table_predicted.csv"
+
+
 def load_league_data(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Loads fixtures and predicted table for a given league prefix (cl/el)."""
-    data_dir = base_dir / "data" / "theanalyst" / LEAGUE_DIRS[prefix]
-    fixtures_name, table_name = f"{prefix}_fixtures.csv", f"{prefix}_table_predicted.csv"
-    fixtures, table = read_smart_csv(data_dir / fixtures_name), read_smart_csv(data_dir / table_name)
+    fixtures_path, table_path = analyst_paths(base_dir, prefix)
+    fixtures_name, table_name = fixtures_path.name, table_path.name
+    fixtures, table = read_smart_csv(fixtures_path), read_smart_csv(table_path)
     require_columns(fixtures, ["HomeTeam", "AwayTeam"], fixtures_name)
     require_columns(table, ["TEAM"], table_name)
     return (

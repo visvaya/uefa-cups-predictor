@@ -95,6 +95,14 @@ source_modules = [
     "analyzer.soccer_rating",
     "analyzer.league",
     "analyzer.sr_only",
+    "analyzer.page.model",
+    "analyzer.page.texts",
+    "analyzer.page.sr_rows",
+    "analyzer.page.cup_rows",
+    "analyzer.page.render",
+    "analyzer.page.render_parts",
+    "analyzer.page.render_sr",
+    "analyzer.page.render_cups",
 ]
 forbidden_modules = ["analyzer.data", "analyzer.cli", "scraping", "requests"]
 

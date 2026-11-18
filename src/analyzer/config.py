@@ -93,3 +93,8 @@ DOMINANT_STEAM_DIFF = 0.30  # |steam_1 - steam_2| above: the market favours one 
 DRAW_MIN_STEAM = 0.01  # steam on X at or above confirms a strong draw
 DRAW_MIN_FAIR_PROB = 0.2  # or a fair draw probability above this
 DRAW_MIN_SR_EDGE = -0.03  # draws need an SR edge above this
+
+# Results page
+SITE_TIMEZONE = "Europe/Paris"  # IANA zone of the kickoff times soccer-rating.com shows (the scraper's default)
+PAGE_TIMEZONE = "Europe/Warsaw"  # IANA zone the results page shows times in
+SOCCER_RATING_SITE = "https://www.soccer-rating.com"  # club links are this origin plus the scraped path
