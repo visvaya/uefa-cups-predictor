@@ -255,3 +255,23 @@ def test_validation_report_flags_duplicates_missing_leagues_and_low_confidence(
         ("WARNING", "Quality Alert: Found 1 LOW confidence matches!"),
         ("INFO", "--------------------------"),
     ]
+
+
+def test_a_second_run_keeps_the_matches_of_the_first(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    workdir, output_dir = local_workdir(tmp_path), tmp_path / "out"
+
+    run_cli(monkeypatch, workdir, output_dir, "--local", "--leagues", "CLCUP", "--separate-snapshots")
+    run_cli(monkeypatch, workdir, output_dir, "--local", "--leagues", "ELCUP", "--separate-snapshots")
+
+    today = pd.read_csv(output_dir / "today_matches.csv")
+    assert sorted({m.split("_")[1] for m in today["match_id"]}) == ["CLCUP", "ELCUP"]
+    assert today["match_id"].is_unique
+
+
+def test_odds_rows_carry_the_scrape_time(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output_dir = tmp_path / "out"
+
+    run_cli(monkeypatch, local_workdir(tmp_path), output_dir, "--local", "--separate-snapshots")
+
+    snapshot = pd.read_csv(output_dir / "match_odds_development_2026-02-05.csv")
+    assert set(snapshot["scraped_at"]) == {"2026-02-05T17:00:00+00:00"}

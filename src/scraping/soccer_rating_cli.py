@@ -144,7 +144,7 @@ def validate_results(matches: list[TodayMatch], all_odds_dev: list[OddsDevelopme
 
 TODAY_PAGE = "today-prediction.html"
 # Columns written first, in this order; the rest follow in model order
-ODDS_ID_COLUMNS = ("match_id", "snapshot_date", "home_id", "away_id", "league_code", "source_url")
+ODDS_ID_COLUMNS = ("match_id", "snapshot_date", "scraped_at", "home_id", "away_id", "league_code", "source_url")
 CLUB_COLUMNS = ("team_id", "team_name", "rating_total", "rating_home", "rating_away")
 
 # One side of a match: team id, team name and the link to its club page
@@ -540,9 +540,14 @@ def keep_columns(path: Path, columns: list[str]) -> None:
     neutralize_formulas(pd.read_csv(path)[columns]).to_csv(path, index=False)
 
 
-def save_odds_development(output_dir: Path, odds_development: list[OddsDevelopment], snapshot_file: str | None) -> None:
-    """Writes the daily `snapshot_file` when given, otherwise the cumulative `match_odds_development.csv`."""
-    df_dev = pd.DataFrame([d.__dict__ for d in odds_development])
+def save_odds_development(
+    output_dir: Path, odds_development: list[OddsDevelopment], snapshot_file: str | None, scraped_at: str
+) -> None:
+    """Writes the daily `snapshot_file` when given, otherwise the cumulative `match_odds_development.csv`.
+
+    Every row carries `scraped_at`, so the newest reading of a match is known without relying on file order.
+    """
+    df_dev = pd.DataFrame([d.__dict__ for d in odds_development]).assign(scraped_at=scraped_at)
     columns = [*ODDS_ID_COLUMNS, *(c for c in df_dev.columns if c not in ODDS_ID_COLUMNS)]
     df_dev = df_dev[columns]
     if snapshot_file:
@@ -556,12 +561,9 @@ def save_odds_development(output_dir: Path, odds_development: list[OddsDevelopme
         logger.info(f"Updated match_odds_development.csv (Total records: {total})")
 
 
-def save_results(output_dir: Path, matches: list[TodayMatch], result: ScrapeResult, snapshot_file: str | None) -> None:
-    neutralize_formulas(pd.DataFrame([m.__dict__ for m in matches])).to_csv(
-        output_dir / "today_matches.csv", index=False
-    )
+def save_results(output_dir: Path, result: ScrapeResult, snapshot_file: str | None, scraped_at: str) -> None:
     if result.odds_development:
-        save_odds_development(output_dir, result.odds_development, snapshot_file)
+        save_odds_development(output_dir, result.odds_development, snapshot_file, scraped_at)
     if result.clubs:
         clubs_path = output_dir / "club_meta.csv"
         df_clubs = pd.DataFrame([c.__dict__ for c in result.clubs.values()])[list(CLUB_COLUMNS)]
@@ -573,14 +575,29 @@ def save_results(output_dir: Path, matches: list[TodayMatch], result: ScrapeResu
         logger.info(f"Updated club_cups.csv (Total records: {total})")
 
 
+def scrape_and_save(
+    args: argparse.Namespace, fetch: Callable[[str], str | None], matches: list[TodayMatch], started: datetime
+) -> None:
+    """Reads the club pages of `matches`, writes the output files and checks them against the matches."""
+    output_dir = Path(args.output_dir)
+    read_page = read_local_club_page if args.local else remote_club_page_reader(fetch, args.delay)
+    source_url = local_source_url if args.local else remote_source_url
+    result = scrape_matches(matches, args.limit, read_page, source_url)
+    # Merged like the snapshot, so a second run on the same day keeps the lineups of matches only the first run saw
+    save_cumulative(output_dir / "today_matches.csv", pd.DataFrame([m.__dict__ for m in matches]), ["match_id"])
+    snapshot_file = f"match_odds_development_{started:%Y-%m-%d}.csv" if args.separate_snapshots else None
+    save_results(output_dir, result, snapshot_file, started.astimezone(UTC).isoformat(timespec="seconds"))
+    logger.info(f"ETL Complete. Outputs in {output_dir}")
+    validate_results(matches[: args.limit], result.odds_development)
+
+
 def main() -> None:
     args = parse_args()
-    snapshot_date = local_now().strftime("%Y-%m-%d")
+    started = local_now()
     fetcher = SoccerRatingFetcher(args.user_agent, args.delay)
     if args.check_markup:
-        raise SystemExit(check_markup(fetcher.fetch, args.delay, snapshot_date))
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+        raise SystemExit(check_markup(fetcher.fetch, args.delay, started.strftime("%Y-%m-%d")))
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # The clock is read before the today page, so a fetch that ends after midnight still dates the page's day
     now = site_clock(local_now(), args.site_timezone)
@@ -598,14 +615,7 @@ def main() -> None:
     if not matches:
         logger.warning("No matches match the criteria. Exiting.")
         return
-
-    read_page = read_local_club_page if args.local else remote_club_page_reader(fetcher.fetch, args.delay)
-    source_url = local_source_url if args.local else remote_source_url
-    result = scrape_matches(matches, args.limit, read_page, source_url)
-    snapshot_file = f"match_odds_development_{snapshot_date}.csv" if args.separate_snapshots else None
-    save_results(output_dir, matches, result, snapshot_file)
-    logger.info(f"ETL Complete. Outputs in {output_dir}")
-    validate_results(matches[: args.limit], result.odds_development)
+    scrape_and_save(args, fetcher.fetch, matches, started)
 
 
 if __name__ == "__main__":

@@ -109,11 +109,15 @@ def cup_rows(sr: pd.DataFrame, prefix: str) -> pd.DataFrame:
 
 
 def by_snapshot_date(sr: pd.DataFrame) -> pd.DataFrame:
-    """Rows from the oldest snapshot date to the newest; a row without a date counts as the oldest.
+    """Rows from the oldest snapshot to the newest; a row without a date or scrape time counts as the oldest.
 
-    The sort is stable, so rows of one date keep their file order and the later row stays last.
+    Within one date the scrape time (`scraped_at`, when the file has it) decides. The sort is stable, so rows
+    without a scrape time keep their file order and the later row stays last.
     """
     sr = sr.assign(snapshot_date=pd.to_datetime(sr["snapshot_date"], errors="coerce"))
+    if "scraped_at" in sr.columns:
+        sr = sr.assign(scraped_at=pd.to_datetime(sr["scraped_at"], errors="coerce", utc=True))
+        sr = sr.sort_values("scraped_at", kind="stable", na_position="first")
     return sr.sort_values("snapshot_date", kind="stable", na_position="first")
 
 

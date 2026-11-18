@@ -160,7 +160,7 @@ python -m scraping.soccer_rating_cli
 - `--local`: Use local HTML files (for debugging without network).
 - `--output-dir PATH`: Custom output directory (default `data/soccer-rating`).
 - `--all-leagues`: Fetch matches from ALL leagues (default: only CL & EL).
-- `--separate-snapshots`: Save the snapshot to a file of its day (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of the cumulative `match_odds_development.csv`; a second run on the same day merges into that file, and the newer row of a match wins.
+- `--separate-snapshots`: Save the snapshot to a file of its day (e.g., `match_odds_development_YYYY-MM-DD.csv`) instead of the cumulative `match_odds_development.csv`; a second run on the same day merges into that file, and the newer row of a match wins. Every odds row carries `scraped_at` (UTC time of the run), which the analyzer uses to pick the newest reading of a match; `today_matches.csv` is merged by match the same way, so a later run keeps the lineups of matches only an earlier run saw.
 - `--min-start N`: Process matches starting at least N minutes from now.
 - `--max-start N`: Process matches starting at most N minutes from now. Each kickoff is on the date of the page that lists it: an `00:00` kickoff on the today page has already started. When the window ends after midnight, the next day's page is read too (as with `--days`), so matches after midnight are not lost; the local mode stays on the today page.
 - `--days N`: Also read the site's day pages for the next N days (0-6, e.g. `/today-prediction/tuesday`); match ids start with the kickoff date and the snapshot file keeps the scrape date. Needs the live site, so it cannot be combined with `--local`.

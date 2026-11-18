@@ -351,3 +351,16 @@ def test_integrity_report_names_the_reading_of_last16() -> None:
     lines = integrity_report(_mixed_layout_table(MIXED_ROWS), "CL")
 
     assert any("LAST 16%" in line and line.startswith("OK") for line in lines)
+
+
+def test_latest_snapshots_prefers_the_later_scrape_over_file_order() -> None:
+    rows = pd.DataFrame(
+        {
+            "match_id": ["m1", "m1"],
+            "snapshot_date": ["2026-11-17", "2026-11-17"],
+            "scraped_at": ["2026-11-17T15:00:00+00:00", "2026-11-17T09:00:00+00:00"],
+            "close_1": [1.5, 2.0],
+        }
+    )
+
+    assert latest_snapshots(rows)["close_1"].tolist() == [1.5]
