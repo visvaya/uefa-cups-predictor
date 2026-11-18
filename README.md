@@ -110,6 +110,9 @@ The table and fixtures must give every number in percent (0 to 100, dot or comma
 | Column | Description |
 | :--- | :--- |
 | **homeTeam / awayTeam** | Match participants. |
+| **date** | Snapshot date of the match (`snapshot_date`). |
+| **time** | Kickoff time from `today_matches.csv` as the site shows it (site time, Europe/Paris by default); empty when the match is not in that file. |
+| **league** | Soccer-rating league code (`league_code`). |
 | **pick** | **Recommended Outcome**: `1` (Home), `X` (Draw), `2` (Away). |
 | **expertScore** | Match signal strength from the picked side's view: > 0 favours it (for `X`, the home view). In SR-only mode it is mostly the closing price, so a high score marks a clear favourite rather than value over the market. |
 | **recommendation** | Advice based purely on market gaps and steam. Without motivation data a `1` or `2` pick reaches `🟢 STRONG BUY` only through the `Sure Bet Pattern`. |

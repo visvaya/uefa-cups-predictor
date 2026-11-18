@@ -8,20 +8,24 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analyzer.cli import main
+from analyzer.cli import league_frames, main
 from analyzer.config import ROTATION_RISK_MAX, STRANGE_ODDS_ROTATION_FACTOR
 from analyzer.data import (
+    ODDS_NUMERIC_COLUMNS,
     TABLE_NUMERIC_COLUMNS,
     cast_numeric,
     cup_rows,
     latest_snapshots,
+    load_club_names,
     load_league_data,
+    load_today_names,
     read_smart_csv,
 )
 from analyzer.errors import AnalyzerInputError
-from analyzer.league import validated_inputs
+from analyzer.league import league_ranking, validated_inputs
 from analyzer.model import enrich_table, integrity_report, pressure_vector, with_strange_odds_rotation
 from analyzer.names import norm_key
+from analyzer.sr_only import sr_only_ranking, sr_only_report
 
 REPO_DIR = Path(__file__).resolve().parents[1]
 EXAMPLE_TABLE = REPO_DIR / "data" / "theanalyst" / "champions-league" / "cl_table_predicted_example.csv"
@@ -364,3 +368,78 @@ def test_latest_snapshots_prefers_the_later_scrape_over_file_order() -> None:
     )
 
     assert latest_snapshots(rows)["close_1"].tolist() == [1.5]
+
+
+def _fixture_sr_only(
+    function: Callable[[pd.DataFrame, dict[int, str], dict[str, dict[str, str]], str], pd.DataFrame],
+) -> pd.DataFrame:
+    sr = cast_numeric(read_smart_csv(SR_FIXTURES_DIR / "match_odds_development_2026-01-28.csv"), ODDS_NUMERIC_COLUMNS)
+    today = load_today_names(SR_FIXTURES_DIR / "today_matches.csv") or {}
+    return function(sr, load_club_names(SR_FIXTURES_DIR / "club_meta.csv"), today, ".")
+
+
+def test_sr_only_report_has_kickoff_columns() -> None:
+    report = _fixture_sr_only(sr_only_report).set_index(["homeTeam", "awayTeam"])
+
+    assert list(report.reset_index().columns[:5]) == ["homeTeam", "awayTeam", "date", "time", "league"]
+    # Alpha FC - Beta United is in today's rows, Gamma SC - Delta Town is not
+    assert report.loc[("Alpha FC", "Beta United"), ["date", "time", "league"]].tolist() == [
+        "2026-01-28",
+        "20:00",
+        "XX1",
+    ]
+    assert report.loc[("Gamma SC", "Delta Town"), "time"] == ""
+
+
+def test_sr_only_ranking_keeps_the_match_columns() -> None:
+    ranking = _fixture_sr_only(sr_only_ranking).set_index("match_id")
+
+    alpha = ranking.loc["2026-01-28_XX1_201_202"]
+    assert alpha["close_1"] == pytest.approx(1.6)
+    assert alpha[["home_href", "league_name"]].tolist() == ["/Alpha-FC/201/", "Synthetic League"]
+    assert ranking.loc["2026-01-28_XX1_203_204", "home_href"] == ""
+
+
+def _el_base_dir(tmp_path: Path) -> Path:
+    """A base dir holding the EL example inputs under their real names and the fixture soccer-rating files."""
+    league = tmp_path / "data" / "theanalyst" / "europa-league"
+    league.mkdir(parents=True)
+    for kind in ("fixtures", "table_predicted"):
+        shutil.copy(
+            REPO_DIR / "data" / "theanalyst" / "europa-league" / f"el_{kind}_example.csv", league / f"el_{kind}.csv"
+        )
+    shutil.copytree(SR_FIXTURES_DIR, tmp_path / "data" / "soccer-rating")
+    return tmp_path
+
+
+def test_league_ranking_links_team_rows_to_their_match(tmp_path: Path) -> None:
+    f, _ = league_frames(_el_base_dir(tmp_path), "el")
+    ranking = league_ranking(f, ".")
+
+    assert len(ranking) == 2 * len(f)
+    for row in ranking.itertuples():
+        match = f.loc[row.match_index]
+        assert row.Team == (match["HomeTeamName"] if row.is_home else match["AwayTeamName"])
+
+
+def test_league_frames_keep_kickoff_and_odds(tmp_path: Path) -> None:
+    f, lines = league_frames(_el_base_dir(tmp_path), "el")
+
+    assert {"snapshot_date", "open_1", "close_x", "fair_2", "HomeTeam", "AwayTeam", "Draw%"} <= set(f.columns)
+    by_home = f.set_index("HomeTeam")
+    assert by_home.loc["Team O", "time_local"] == "18:45"
+    assert by_home.loc["Team O", "close_x"] == pytest.approx(3.9)
+    # Team A - Team B has soccer-rating odds but no row in today's file
+    assert by_home.loc["Team A", "time_local"] == ""
+    assert any(line.startswith("INFO: Soccer-rating coverage") for line in lines)
+
+
+def test_sr_only_report_falls_back_to_the_club_name_for_an_empty_today_name(tmp_path: Path) -> None:
+    today = tmp_path / "today_matches.csv"
+    today.write_text("match_id,home_team,away_team\n2026-01-28_XX1_201_202,,Beta United\n", encoding="utf-8")
+    sr = cast_numeric(read_smart_csv(SR_FIXTURES_DIR / "match_odds_development_2026-01-28.csv"), ODDS_NUMERIC_COLUMNS)
+
+    report = sr_only_report(sr, {201: "Alpha Club"}, load_today_names(today) or {}, ".")
+
+    assert "Alpha Club" in report["homeTeam"].tolist()
+    assert "" not in report["homeTeam"].tolist()

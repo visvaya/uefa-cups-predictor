@@ -6,6 +6,7 @@ import pandas as pd
 
 from analyzer.errors import AnalyzerInputError
 from analyzer.names import norm_key
+from analyzer.sr_only import TODAY_MATCH_COLUMNS
 
 LEAGUE_DIRS = {"cl": "champions-league", "el": "europa-league", "ecl": "conference-league"}
 # soccer-rating league code of each cup
@@ -132,13 +133,27 @@ def latest_snapshots(sr: pd.DataFrame) -> pd.DataFrame:
     return cast_numeric(sr, ODDS_NUMERIC_COLUMNS)
 
 
-def with_lineups(sr: pd.DataFrame, today: pd.DataFrame) -> pd.DataFrame:
-    """Adds today's lineup ratings and type (today_matches.csv) by match_id; empty lineups without a match_id."""
+def with_today_columns(sr: pd.DataFrame, today: pd.DataFrame) -> pd.DataFrame:
+    """Adds today's kickoff, lineup ratings and type (today_matches.csv) by match_id; empty ones without a match_id."""
     today = cast_numeric(today, ["lineup_rating_home_today", "lineup_rating_away_today"])
     if "match_id" in sr.columns and "match_id" in today.columns:
-        lineup_cols = ["match_id", "lineup_rating_home_today", "lineup_rating_away_today", "lineup_type_today"]
-        return sr.merge(today[lineup_cols], on="match_id", how="left")
-    return sr.assign(lineup_rating_home_today=float("nan"), lineup_rating_away_today=float("nan"), lineup_type_today="")
+        today_cols = [
+            "match_id",
+            "time_local",
+            "lineup_rating_home_today",
+            "lineup_rating_away_today",
+            "lineup_type_today",
+        ]
+        # reindex: a today file without time_local or without the lineup columns merges with empty values instead
+        # of raising; "" is the one value of a missing kickoff
+        merged = sr.merge(today.reindex(columns=today_cols), on="match_id", how="left")
+        return merged.assign(time_local=merged["time_local"].fillna(""))
+    return sr.assign(
+        time_local="",
+        lineup_rating_home_today=float("nan"),
+        lineup_rating_away_today=float("nan"),
+        lineup_type_today="",
+    )
 
 
 def with_team_keys(sr: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
@@ -178,7 +193,7 @@ def load_soccer_rating(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, list[
     else:
         today = pd.DataFrame()
         notes.append(f"WARNING: {today_path.name} not found: running without lineups")
-    sr = with_lineups(latest_snapshots(sr), today)
+    sr = with_today_columns(latest_snapshots(sr), today)
     return with_team_keys(sr, read_smart_csv(meta_path)), notes
 
 
@@ -191,10 +206,17 @@ def load_club_names(path: Path) -> dict[int, str]:
     return names
 
 
+TODAY_COLUMNS = ["home_team", "away_team", *TODAY_MATCH_COLUMNS]
+
+
 def load_today_names(path: Path) -> dict[str, dict[str, str]] | None:
-    """Match id -> {home_team, away_team} from today_matches.csv; None when the file lacks these columns."""
+    """Match id -> today's TODAY_COLUMNS (missing ones as "") from today_matches.csv.
+
+    None when the file lacks match_id, home_team or away_team.
+    """
     today = read_smart_csv(path)
     if "match_id" in today.columns and "home_team" in today.columns and "away_team" in today.columns:
-        names: dict[str, dict[str, str]] = today.set_index("match_id")[["home_team", "away_team"]].to_dict("index")
+        rows = today.set_index("match_id").reindex(columns=TODAY_COLUMNS).astype(object).fillna("").astype(str)
+        names: dict[str, dict[str, str]] = rows.to_dict("index")
         return names
     return None

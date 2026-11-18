@@ -105,10 +105,13 @@ def with_match_pick(f: pd.DataFrame) -> pd.DataFrame:
 
 
 def team_ranking(f: pd.DataFrame) -> pd.DataFrame:
-    """One row per team and match, seen from that team (away rows flip expertScore and do_drop)."""
+    """One row per team and match, seen from that team (away rows flip expertScore and do_drop).
+
+    `match_index` holds the label of the row of `f` the team row came from.
+    """
     names = list(PERSPECTIVE_COLUMNS)
-    h = f[[home for home, _ in PERSPECTIVE_COLUMNS.values()]].set_axis(names, axis=1)
-    a = f[[away for _, away in PERSPECTIVE_COLUMNS.values()]].set_axis(names, axis=1)
+    h = f[[home for home, _ in PERSPECTIVE_COLUMNS.values()]].set_axis(names, axis=1).assign(match_index=f.index)
+    a = f[[away for _, away in PERSPECTIVE_COLUMNS.values()]].set_axis(names, axis=1).assign(match_index=f.index)
     h = h.assign(is_home=True, expertScore=h["matchExpertScore"])
     a = a.assign(is_home=False, expertScore=-a["matchExpertScore"], do_drop=-a["do_drop"])
 
@@ -119,9 +122,14 @@ def team_ranking(f: pd.DataFrame) -> pd.DataFrame:
     return ranking
 
 
+def league_ranking(f: pd.DataFrame, decimal: str) -> pd.DataFrame:
+    """The formatted team rows with every column, `match_index` included (`decimal` separates numbers in reasons)."""
+    return format_recommendations(team_ranking(with_match_pick(f)), allow_draws=False, decimal=decimal)
+
+
 def league_report(f: pd.DataFrame, decimal: str) -> pd.DataFrame:
     """The report rows, best recommendation and highest value first (`decimal` separates numbers in reasons)."""
-    ranking = format_recommendations(team_ranking(with_match_pick(f)), allow_draws=False, decimal=decimal)
+    ranking = league_ranking(f, decimal)
     ranking = ranking.assign(_sort_rank=recommendation_rank(ranking["recommendation"]))
     ranking = ranking.sort_values(["_sort_rank", "ValFinal"], ascending=[True, False])
     return round_numeric(ranking.rename(columns=REPORT_COLUMNS)[list(REPORT_COLUMNS.values())])

@@ -15,22 +15,27 @@ from analyzer.soccer_rating import expert_score, sr_quality, with_market_signals
 REPORT_COLUMNS = {
     "HomeTeamName": "homeTeam",
     "AwayTeamName": "awayTeam",
+    "snapshot_date": "date",
+    "time_local": "time",
+    "league_code": "league",
     "expertScore": "expertScore",
     "pick12": "pick",
     "srCompleteness": "srCompleteness",
     **SIGNAL_REPORT_COLUMNS,
 }
+# Columns of today's rows that sr_only_ranking carries for each match (load_today_names reads them too)
+TODAY_MATCH_COLUMNS = ["time_local", "league_name", "home_href", "away_href"]
 
 
 def with_team_names(
     sr: pd.DataFrame, id_to_name: dict[int, str], today_names: dict[str, dict[str, str]]
 ) -> pd.DataFrame:
-    """Adds HomeTeamName and AwayTeamName: today's names by match id first, then club_meta names by team id."""
+    """Adds HomeTeamName and AwayTeamName: today's non-empty names by match id, else club_meta's by team id."""
 
     def get_name(row: pd.Series, side: str) -> str:
-        mid = row.get("match_id")
-        if mid and mid in today_names:
-            return today_names[mid][f"{side}_team"]
+        today_name = today_names.get(row.get("match_id"), {}).get(f"{side}_team")
+        if today_name:
+            return today_name
         tid = row.get(f"{side}_id")
         if pd.notna(tid):
             return id_to_name.get(int(tid), f"ID_{tid}")
@@ -111,17 +116,26 @@ def favoured_sides(ranking: pd.DataFrame) -> pd.DataFrame:
     return ranking[match_mask].sort_values(["_sort_rank", "_abs_score"], ascending=[True, False])
 
 
-def sr_only_report(
-    sr: pd.DataFrame, id_to_name: dict[int, str], today_names: dict[str, dict[str, str]], decimal: str
+def sr_only_ranking(
+    sr: pd.DataFrame, id_to_name: dict[int, str], today: dict[str, dict[str, str]], decimal: str
 ) -> pd.DataFrame:
-    """The SR-only report rows for a soccer-rating snapshot with numeric odds columns.
+    """The favoured-side rows of a soccer-rating snapshot with numeric odds columns, with every match column.
 
-    `decimal` is the decimal separator of the numbers in the reasons.
+    Adds TODAY_MATCH_COLUMNS from today's rows ("" for a match not there); `decimal` is the decimal separator of
+    the numbers in the reasons.
     """
-    matches = match_features(with_team_names(sr, id_to_name, today_names))
-    ranking = favoured_sides(format_recommendations(team_ranking(matches), allow_draws=True, decimal=decimal))
+    sr = with_team_names(sr, id_to_name, today)
+    for c in TODAY_MATCH_COLUMNS:
+        sr[c] = [today.get(mid, {}).get(c, "") for mid in sr["match_id"]]
+    matches = match_features(sr)
+    return favoured_sides(format_recommendations(team_ranking(matches), allow_draws=True, decimal=decimal))
 
-    report = ranking.rename(columns=REPORT_COLUMNS)
+
+def sr_only_report(
+    sr: pd.DataFrame, id_to_name: dict[int, str], today: dict[str, dict[str, str]], decimal: str
+) -> pd.DataFrame:
+    """The SR-only report rows: `sr_only_ranking` reduced to REPORT_COLUMNS."""
+    report = sr_only_ranking(sr, id_to_name, today, decimal).rename(columns=REPORT_COLUMNS)
     for c in REPORT_COLUMNS.values():
         if c not in report.columns:
             report[c] = 0
