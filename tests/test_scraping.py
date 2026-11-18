@@ -479,7 +479,7 @@ def test_save_cumulative_keeps_the_new_rows_of_a_large_merge(tmp_path: Path) -> 
     pd.DataFrame({"match_id": ids, "snapshot_date": "2026-11-17", "close_1": 2.0}).to_csv(path, index=False)
     new = pd.DataFrame({"match_id": ids, "snapshot_date": "2026-11-17", "close_1": 1.5})
 
-    save_cumulative(path, new, ["match_id"], "snapshot_date")
+    save_cumulative(path, new, ["match_id"], ("snapshot_date",))
 
     assert set(pd.read_csv(path)["close_1"]) == {1.5}
 
@@ -580,3 +580,14 @@ def test_days_to_read_covers_a_window_past_midnight(
     now: datetime, max_start: int | None, days: int, expected: int
 ) -> None:
     assert days_to_read(now, max_start, days) == expected
+
+
+def test_save_cumulative_keeps_the_later_scrape_when_a_slower_run_saves_last(tmp_path: Path) -> None:
+    path = tmp_path / "snapshot.csv"
+    later = {"match_id": "m1", "snapshot_date": "2026-11-18", "scraped_at": "2026-11-18T09:05:00+00:00"}
+    pd.DataFrame([later | {"close_1": 1.5}]).to_csv(path, index=False)
+    earlier = pd.DataFrame([later | {"scraped_at": "2026-11-18T09:00:00+00:00", "close_1": 2.0}])
+
+    save_cumulative(path, earlier, ["match_id"], ("snapshot_date", "scraped_at"))
+
+    assert pd.read_csv(path)["close_1"].tolist() == [1.5]
