@@ -31,9 +31,10 @@ from analyzer.page.texts import (
 
 # The order both tabs start in: best recommendation first
 DEFAULT_SORT = "level:asc"
-# The longest last pair of heading words (both words and the space) that is joined; a 21-character pair overflowed
-# the column of a 320 px phone
-_JOINED_PAIR_MAX_CHARS = 16
+# The longest last pair of heading words (both words and the space) that is joined. h1: "europejskich pucharów"
+# fits a 320 px phone at the template's fluid h1 size; h2 bars keep the shorter limit (they hold one line)
+_H1_PAIR_MAX_CHARS = 21
+_H2_PAIR_MAX_CHARS = 16
 # One letter words that must not end a line, after a space or an opening parenthesis (Polish typesetting)
 _SHORT_WORD = re.compile(r"(?<=[\s(])([aiouwzAIOUWZ]) ")
 # Text between tags: attributes, data values and URLs are inside tags and stay as they are
@@ -351,7 +352,7 @@ def key_points(lines: tuple[str, ...]) -> str:
 def view_section(key: str, title: str, body: str) -> str:
     """A tab's block; the cups tab is shown first, the page script switches between them."""
     hidden = " hidden" if key != "full" else ""
-    heading = f"<h1>{keep_last_words(title)}</h1>"
+    heading = f"<h1>{keep_last_words(title, _H1_PAIR_MAX_CHARS)}</h1>"
     return f'<section class="view" id="view-{key}" data-view="{key}"{hidden}>\n{heading}\n{body}\n</section>'
 
 
@@ -381,15 +382,15 @@ def view_block(view: ViewParts) -> str:
     )
 
 
-def keep_last_words(title: str) -> str:
+def keep_last_words(title: str, max_chars: int = _H2_PAIR_MAX_CHARS) -> str:
     """A heading's last two words joined by a no-break space, so its last line never holds one word.
 
-    Only a short pair is joined: a longer one could be wider than a narrow phone's column (`text-wrap: pretty`
-    handles it where the browser supports it). A heading with markup keeps its own no-break span.
+    Only a pair of at most `max_chars` characters is joined: a longer one could be wider than a narrow phone's
+    column. A heading with markup keeps its own no-break span.
     """
     head, space, tail = title.rpartition(" ")
     pair = f"{head.rpartition(' ')[2]} {tail}"
-    if not space or "<" in title or len(pair) > _JOINED_PAIR_MAX_CHARS:
+    if not space or "<" in title or len(pair) > max_chars:
         return title
     return f"{head}&nbsp;{tail}"
 

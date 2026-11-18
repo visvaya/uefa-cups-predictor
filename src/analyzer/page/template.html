@@ -40,7 +40,8 @@ body {
   max-width: 60em;
   margin: 0 auto;
 }
-h1 { font-size: 1.6em; margin: 0.4em 0 0.2em; text-wrap: pretty; }
+/* The joined pair "europejskich pucharów" is 11.6 h1 sizes wide: at 320 px, 4.6vw + 0.5em = 23.7 px makes it 274 px in the 288 px column, and the 8.4vw - 2.7px cap keeps it inside with larger text settings */
+h1 { font-size: min(clamp(1.3em, 4.6vw + 0.5em, 1.6em), 8.4vw - 2.7px); margin: 0.4em 0 0.2em; text-wrap: balance; }
 /* The day stays in view while its matches scroll by */
 /* A day or competition starts with a reversed bar (owner, 2026-11-17), so a new section cannot be read as another match */
 h2 { font-size: 1.2em; margin: 1.4em 0 0; text-wrap: pretty; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--fg); color: var(--bg); padding: 0.36em 0.25em 0.24em 0.5em; } /* more above than below: the capitals sit in the middle, not the line box */
