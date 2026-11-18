@@ -245,7 +245,9 @@ tr.avoid .lv { text-decoration: line-through; text-decoration-thickness: 1px; }
 /* The two modes: plain text links, the current one bold and not a link look */
 .mode-lab { padding-block: 0.25em; margin-right: -0.3em; }
 .modes { display: flex; flex-wrap: wrap; gap: 0.3em 0.9em; margin: 0.6em 0 0.2em; }
-.modes a { padding-block: 0.25em; }
+/* Each link is as wide as its bold text (a hidden bold copy of its label), so switching modes moves nothing */
+.modes a { padding-block: 0.25em; display: flex; flex-direction: column; }
+.modes a::after { content: attr(data-label); font-weight: bold; height: 0; overflow: hidden; visibility: hidden; }
 /* The active mode: bold with a heavy underline, no ▸ (that sign opens details on this page) */
 .modes a[aria-current="page"] { font-weight: bold; text-decoration-thickness: 3px; }
 h2.nodata { position: static; }
@@ -350,8 +352,8 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
 <main id="top">
 <nav class="modes" aria-label="Tryb analizy">
 <span class="mode-lab">Tryb:</span>
-<a href="#puchary" data-mode="full">Europejskie puchary</a>
-<a href="#sr" data-mode="sr">Soccer-&#8288;rating</a>
+<a href="#puchary" data-mode="full" data-label="Europejskie puchary">Europejskie puchary</a>
+<a href="#sr" data-mode="sr" data-label="Soccer-&#8288;rating">Soccer-&#8288;rating</a>
 </nav>
 <section class="view" id="view-sr" data-view="sr" hidden>
 <h1>Soccer-⁠rating: typy na <span class="nw">28 stycznia 2026</span></h1>
@@ -1299,14 +1301,28 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         if (on) dir.dataset.dir = sortDir; else delete dir.dataset.dir;
       }
       const field = (tr, key) => tr.dataset["s" + key[0].toUpperCase() + key.slice(1)] ?? "";
+      // A number in the given direction (1 low first, -1 high first); a row without it sorts last
+      const byNumber = (a, b, key, dir) => {
+        const x = field(a, key), y = field(b, key);
+        if ((x === "") !== (y === "")) return x === "" ? 1 : -1;
+        return x === "" ? 0 : dir * (Number(x) - Number(y));
+      };
+      // Ties on any key, the same in both directions: the better pick first (recommendation, then the higher score on the
+      // soccer-rating tab or value on the cups tab, then the lower odds), then the earlier kickoff (unknown last), then
+      // the match name
+      const TIES = [["level", 1], ["ocena", -1], ["value", -1], ["odds", 1]];
       const compare = (a, b) => {
         const x = field(a, sortKey), y = field(b, sortKey);
         // A row without the value (no data attribute) sorts last in both directions
         const mx = x === "", my = y === "";
         if (mx !== my) return mx ? 1 : -1;
         const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
-        // Ties keep the default order: kickoff (unknown last), then (full mode) the higher value, then the match name
-        return (sortDir === "desc" ? -c : c) || ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
+        if (c) return sortDir === "desc" ? -c : c;
+        for (const [key, dir] of TIES) {
+          const t = key === sortKey ? 0 : byNumber(a, b, key, dir);
+          if (t) return t;
+        }
+        return ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || field(a, "match").localeCompare(field(b, "match"), "pl");
       };
       saveState();
       for (const tbody of view.querySelectorAll("tbody")) {
