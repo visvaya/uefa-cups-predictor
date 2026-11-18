@@ -97,6 +97,7 @@ source_modules = [
     "analyzer.sr_only",
     "analyzer.page.model",
     "analyzer.page.texts",
+    "analyzer.page.sr_rows",
 ]
 forbidden_modules = ["analyzer.data", "analyzer.cli", "scraping", "requests"]
 
