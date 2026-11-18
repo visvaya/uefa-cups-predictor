@@ -64,7 +64,11 @@ def test_date_span_joins_days_and_months() -> None:
 
 
 def test_stamp_writes_date_and_time() -> None:
-    assert stamp(datetime(2026, 11, 16, 17, 57, tzinfo=UTC)) == "16.11.2026 o 17:57"
+    assert stamp(datetime(2026, 11, 16, 17, 57)) == "16.11.2026 o 17:57"
+
+
+def test_stamp_shows_an_aware_moment_in_page_time() -> None:
+    assert stamp(datetime(2026, 11, 16, 16, 57, tzinfo=UTC)) == "16.11.2026 o 17:57"
 
 
 def test_kickoff_converts_site_time_to_page_time() -> None:
@@ -72,6 +76,7 @@ def test_kickoff_converts_site_time_to_page_time() -> None:
 
     assert kickoff is not None
     assert kickoff.isoformat() == "2026-11-18T09:05:00+01:00"
+    assert str(kickoff.tzinfo) == "Europe/Warsaw"
 
 
 def test_kickoff_follows_daylight_saving() -> None:
@@ -113,7 +118,7 @@ def test_terms_leave_out_the_sample_odds_sentence() -> None:
 
 
 def test_footer_sources_names_the_scrape_time_only_when_known() -> None:
-    known = footer_sources(datetime(2026, 11, 16, 17, 57, tzinfo=UTC))
+    known = footer_sources(datetime(2026, 11, 16, 16, 57, tzinfo=UTC))
 
     assert ", pobrane 16.11.2026 o 17:57." in known
     assert "pobrane" not in footer_sources(None)

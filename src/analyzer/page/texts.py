@@ -16,7 +16,7 @@ from analyzer.page.model import Level
 # Characters ruff takes for look-alikes of ASCII ones (RUF001), so they are built from their code points
 MINUS = chr(0x2212)  # U+2212 MINUS SIGN
 EN_DASH = chr(0x2013)  # U+2013 EN DASH, for ranges of days
-DOTLESS_I = chr(0x131)  # U+0131 LATIN SMALL LETTER DOTLESS I (Turkish names)
+_DOTLESS_I = chr(0x131)  # U+0131 LATIN SMALL LETTER DOTLESS I (Turkish names)
 # Weekdays from Monday, as `date.weekday()` counts them
 WEEKDAYS = ("poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela")
 # Month names in the genitive, as a date writes them ("18 listopada")
@@ -382,7 +382,7 @@ FOOTER_LICENCE = (
 )
 
 # Letters with no Unicode decomposition fold by hand (the page script's fold() uses the same table)
-_LETTERS = str.maketrans({"ø": "o", "ł": "l", "æ": "ae", "ß": "ss", "đ": "d", DOTLESS_I: "i", "œ": "oe"})
+_LETTERS = str.maketrans({"ø": "o", "ł": "l", "æ": "ae", "ß": "ss", "đ": "d", _DOTLESS_I: "i", "œ": "oe"})
 # A club page path on soccer-rating.com: one leading slash (two would name another host), then safe URL characters
 _CLUB_PATH = re.compile(r"/(?!/)[A-Za-z0-9._~%/-]*")
 _SITE_ZONE = ZoneInfo(SITE_TIMEZONE)
@@ -435,7 +435,9 @@ def date_span(first: date, last: date) -> str:
 
 
 def stamp(moment: datetime) -> str:
-    """A moment as "16.11.2026 o 17:57", in the timezone it carries."""
+    """A moment as "16.11.2026 o 17:57": an aware one in page time, a naive one as it is."""
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(_PAGE_ZONE)
     return f"{moment:%d.%m.%Y} o {moment:%H:%M}"
 
 
@@ -466,7 +468,7 @@ def club_link(name: str, href: str | None) -> str:
 
 def footer_sources(scraped_at: datetime | None) -> str:
     """The footer's sources paragraph; it names the scrape time only when it is known."""
-    scraped = f", pobrane {stamp(scraped_at)}" if scraped_at else ""
+    scraped = f", pobrane {stamp(scraped_at)}" if scraped_at is not None else ""
     return (
         f'Zakładka „Soccer-rating”: mecze i kursy z <a href="{SOCCER_RATING_SITE}/" target="_blank" '
         f'rel="noopener" title="soccer-rating.com, otwiera się w nowej karcie">soccer-rating.com</a>{scraped}. '
