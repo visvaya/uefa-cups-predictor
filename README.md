@@ -116,6 +116,8 @@ The table and fixtures must give every number in percent (0 to 100, dot or comma
 
 ### Understanding the 'Reason' Column
 
+Every limit below is compared with the value as the report shows it (rounded), so a shown `teamRotRisk` of 1.39 is always `🟠 CAUTION` and a shown `srDropping` of 0.05 is not above 0.05.
+
 - **Status/Risk (Absolute Priority)**:
   - `Out of contention`: Team cannot reach Top 24. Always `🔴 AVOID`.
   - `Status LOCKED...`: Team has secured its spot. Always `🟠 CAUTION` due to high rotation risk.
@@ -125,9 +127,10 @@ The table and fixtures must give every number in percent (0 to 100, dot or comma
   - `Strong Expert Signal`: `expertScore > 1.50`, a strong model signal for this row's team; `Positive Signal` is the same for `expertScore > 0.50`. The team the score is against gets neither. Apart from the SR-only `Sure Bet Pattern` and `X` picks, a row reaches `🟡 CONSIDER` or `🟢 STRONG BUY` only with a positive score (this row's team favoured).
   - `Close(x) > Fair(y)`: with `High Value`, this team's closing odds next to its fair odds, with `>`, `<` or `=` as they compare; left out without soccer-rating odds.
 - **Market Signals**:
-  - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`). It makes the row `🟢 STRONG BUY` ahead of the other signals only when the score favours this team and its pick is `1` or `2` (never an `X` pick); in standard mode the motivation rule of `🟢 STRONG BUY` must hold too (`teamMot` >= 50 and above `oppMot`). Otherwise the other rules decide.
+  - `Sure Bet Pattern`: Unique combination of low odds (`<2.00`), Value (`Fair<2.20`) and strong Steam (`>0.03`). It counts, and is named in the reason, only when the score favours this team and its pick is `1` or `2` (never an `X` pick); in standard mode the motivation rule of `🟢 STRONG BUY` must hold too (`teamMot` >= 50 and above `oppMot`). When it counts, the row is `🟢 STRONG BUY` ahead of the other signals; otherwise the other rules decide.
   - `Steam (+)`: This team's own odds dropped by more than 0.05 in log terms (`Steam (-)`: rose by more than that). The `Sure Bet Pattern` and `(Risk: Rising Odds)` read the same own steam.
-  - `(Risk: Rising Odds)`: Mathematical value is high, but the market is betting against the team. Recommendation downgraded.
+  - `(Risk: Rising Odds)`: `High Value` or a `Strong Expert Signal` (either is enough), while this team's odds are rising (own steam plus the soccer-rating drop below -0.01) and no counted `Sure Bet Pattern` overrides it. In standard mode it keeps the row from `🟢 STRONG BUY`; in SR-only mode it is a warning only, because there `🟢 STRONG BUY` comes from the `Sure Bet Pattern` or a draw rule.
+  - `Lean: 1X` / `Lean: X2` (SR-only, `X` picks): the side the score leans to; a score of exactly 0 reads `Lean: X2`. `SteamX` is the steam on the draw.
   - `No valid odds` (SR-only): the snapshot has no usable odds for the match, so it stays `⚪ NEUTRAL`.
   - `(No Steam Confirmation)` (SR-only): a `Strong Expert Signal` whose odds did not fall enough for the `Sure Bet Pattern`; the row stays `🟡 CONSIDER` because the market has not confirmed the signal.
 
