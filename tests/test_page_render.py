@@ -348,11 +348,10 @@ def test_render_joins_the_last_two_words_of_headings_only_when_short() -> None:
     monday = replace(SR_ROW, day=date(2026, 3, 2), kickoff=None)
     page = render_page(page_data((SR_ROW, monday), (el_section(CUP_ROW), cup_section_without_data("ecl"))), TEMPLATE)
 
-    # The h1 pair fits a 320 px phone at the template's fluid h1 size
-    assert "europejskich&nbsp;pucharów</h1>" in page
+    assert "<h1>Europejskie puchary: faza&nbsp;ligowa</h1>" in page
     # A heading with markup keeps its own no-break span
     assert 'typy na <span class="nw">' in page
-    # A long last pair in a bar stays breakable, so it never overflows a narrow phone
+    # A long last pair stays breakable, so it never overflows a narrow phone
     assert "Poniedziałek, 2.03 <small" in page
     assert "Środa,&nbsp;4.03 <small" in page
     assert "Liga Europy,&nbsp;4.03 <small" in page
