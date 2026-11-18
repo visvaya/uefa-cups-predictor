@@ -152,15 +152,19 @@ def page_sr_rows(base_dir: Path, input_file: Path | None) -> tuple[tuple[MatchRo
 
 
 def page_cup(base_dir: Path, prefix: str) -> CupSection:
-    """One cup's section; its no-data notice, with a warning, when its Analyst fixtures or table are missing."""
+    """One cup's section; its no-data notice, with a warning, when its Analyst fixtures or table are missing.
+
+    Every warning names its cup, since the page prints no per-cup headings.
+    """
+    league_name = LEAGUE_NAMES[prefix]
     missing = [path.name for path in analyst_paths(base_dir, prefix) if not path.exists()]
     if missing:
-        print(f"WARNING: {' and '.join(missing)} not found: {LEAGUE_NAMES[prefix]} shows no matches")
+        print(f"WARNING: {league_name}: {' and '.join(missing)} not found: no matches shown")
         return cup_section_without_data(prefix)
     f, lines = league_frames(base_dir, prefix)
     for line in lines:
         if line.startswith("WARNING: "):
-            print(line)
+            print(f"WARNING: {league_name}: {line.removeprefix('WARNING: ')}")
     return cup_section(prefix, f, league_ranking(f, PAGE_DECIMAL))
 
 
@@ -168,7 +172,8 @@ def run_page(base_dir: Path, input_file: Path | None, prefixes: list[str], out: 
     """Writes the results page to `out` (its folder created if missing) from the snapshot and the chosen cups.
 
     The soccer-rating tab reads `input_file`, or the cumulative file when none is named; prints the warnings on the
-    inputs and one SUCCESS line.
+    inputs and one SUCCESS line. A page that cannot be saved prints `ERROR: ...` and exits with code 1, so a
+    scheduled run fails visibly.
     """
     sr_rows, scraped_at = page_sr_rows(base_dir, input_file)
     cups = tuple(page_cup(base_dir, prefix) for prefix in prefixes)
@@ -180,14 +185,9 @@ def run_page(base_dir: Path, input_file: Path | None, prefixes: list[str], out: 
         out.write_text(page, encoding="utf-8", newline="")
         cup_matches = sum(len(cup.rows) for cup in cups)
         print(f"SUCCESS: Saved results page to: {out} ({len(sr_rows)} + {cup_matches} matches)")
-    except PermissionError:
-        print(f"FAILED to save {out}")
-
-
-def default_cups(base_dir: Path) -> list[str]:
-    """The Champions and Europa League, and the Conference League when its fixtures are there."""
-    ecl_fixtures, _ = analyst_paths(base_dir, "ecl")
-    return ["cl", "el", *(["ecl"] if ecl_fixtures.exists() else [])]
+    except OSError as err:
+        print(f"ERROR: Could not save the results page to {out}: {err}")
+        sys.exit(1)
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -219,11 +219,14 @@ def main(base_dir: Path, argv: list[str] | None = None) -> None:
         if args.sr_only:
             run_sr_only(base_dir, args.input_file, args.output_dir, excel_pl=args.excel_pl)
             return
-        prefixes = [prefix for prefix in LEAGUE_DIRS if getattr(args, prefix)] or default_cups(base_dir)
+        chosen = [prefix for prefix in LEAGUE_DIRS if getattr(args, prefix)]
         if args.page:
-            run_page(base_dir, args.input_file, prefixes, args.page)
+            # The page shows every cup; one without inputs shows its no-data notice
+            run_page(base_dir, args.input_file, chosen or list(LEAGUE_DIRS), args.page)
             return
-        for prefix in prefixes:
+        # Without a flag: the Champions and Europa League, and the Conference League when its fixtures are there
+        ecl_fixtures, _ = analyst_paths(base_dir, "ecl")
+        for prefix in chosen or ["cl", "el", *(["ecl"] if ecl_fixtures.exists() else [])]:
             run_league(base_dir, prefix, excel_pl=args.excel_pl)
     except AnalyzerInputError as err:
         print(f"ERROR: {err}")

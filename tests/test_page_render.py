@@ -24,7 +24,7 @@ from analyzer.page.render import render_page
 from analyzer.page.sr_rows import sr_match_rows
 from analyzer.page.texts import ANALYST_SLUGS, CUP_NAMES, EN_DASH, SR_NO_DATA, TAB_SR_EMPTY
 from analyzer.sr_only import sr_only_ranking
-from tests.inputs import REPO_DIR, el_base_dir, fixture_sr_only
+from tests.inputs import REPO_DIR, el_base_dir, fixture_sr_only, view_of
 
 GOLDEN_PAGE = REPO_DIR / "tests" / "golden" / "page" / "results.html"
 TEMPLATE = files("analyzer.page").joinpath("template.html").read_text(encoding="utf-8")
@@ -319,12 +319,6 @@ WORST_CUPS = (
         cup=replace(CUP_FACTS, home=replace(TEAM, team="Lokomotiv Płowdiw", level="avoid", close=None), away=None),
     ),
 )
-
-
-def view_of(page: str, key: str) -> str:
-    """One tab of the page: the soccer-rating tab ends where the cups tab starts, which runs to the page's end."""
-    sr, full = page.index('id="view-sr"'), page.index('id="view-full"')
-    return page[sr:full] if key == "sr" else page[full:]
 
 
 def filter_counts(section: str, name: str) -> list[int]:

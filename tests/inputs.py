@@ -1,4 +1,5 @@
-"""Test inputs shared by several test modules: the synthetic soccer-rating set and an EL base dir built from it."""
+"""Test inputs and helpers shared by several test modules: the synthetic soccer-rating set, an EL base dir built
+from it, and the tabs of a results page."""
 
 import shutil
 from collections.abc import Callable
@@ -32,3 +33,9 @@ def el_base_dir(tmp_path: Path) -> Path:
         )
     shutil.copytree(SR_FIXTURES_DIR, tmp_path / "data" / "soccer-rating")
     return tmp_path
+
+
+def view_of(page: str, key: str) -> str:
+    """One tab of a results page: the soccer-rating tab ends where the cups tab starts, which runs to the page's end."""
+    sr, full = page.index('id="view-sr"'), page.index('id="view-full"')
+    return page[sr:full] if key == "sr" else page[full:]

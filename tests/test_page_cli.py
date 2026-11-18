@@ -10,8 +10,7 @@ from analyzer.cli import main, run_page
 from analyzer.errors import AnalyzerInputError
 from analyzer.page.sr_rows import latest_scrape
 from analyzer.page.texts import ANALYST_SLUGS, SR_NO_DATA
-from tests.inputs import el_base_dir
-from tests.test_page_render import view_of
+from tests.inputs import el_base_dir, view_of
 
 SNAPSHOT = Path("data") / "soccer-rating" / "match_odds_development_2026-01-28.csv"
 
@@ -29,7 +28,7 @@ def test_page_writes_both_tabs(tmp_path: Path, capsys: pytest.CaptureFixture[str
     assert cup_rows > 0
     # The example EL table has one monotonicity violation, so its warning comes first
     assert capsys.readouterr().out.splitlines() == [
-        "WARNING: MONOTONICITY VIOLATIONS (1 teams)",
+        "WARNING: EUROPA LEAGUE: MONOTONICITY VIOLATIONS (1 teams)",
         f"SUCCESS: Saved results page to: {out} ({sr_rows} + {cup_rows} matches)",
     ]
 
@@ -51,6 +50,7 @@ def test_page_without_snapshot_shows_no_data(tmp_path: Path, capsys: pytest.Capt
     assert lines[-1].startswith(f"SUCCESS: Saved results page to: {out} (0 + ")
     assert all(line.startswith("WARNING: ") for line in lines[:-1])
     assert any("match_odds_development.csv" in line for line in lines[:-1])
+    assert any(line.startswith("WARNING: CHAMPIONS LEAGUE: cl_fixtures.csv") for line in lines)
 
 
 def test_page_rejects_a_named_snapshot_that_is_missing(tmp_path: Path) -> None:
@@ -62,17 +62,32 @@ def test_page_rejects_a_named_snapshot_that_is_missing(tmp_path: Path) -> None:
     assert not (tmp_path / "index.html").exists()
 
 
-def test_main_writes_the_page_with_the_default_cups(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_writes_the_page_with_all_cups(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     base_dir = el_base_dir(tmp_path)
     out = tmp_path / "index.html"
 
     main(base_dir, ["--page", str(out)])
 
+    # Only the EL inputs are there: the CL and ECL show their no-data notices
     page = out.read_text(encoding="utf-8")
-    assert f"competition/{ANALYST_SLUGS['cl']}/predictions" in page
-    assert f"competition/{ANALYST_SLUGS['ecl']}/predictions" not in page
-    assert capsys.readouterr().out.splitlines()[-1].startswith("SUCCESS: Saved results page to: ")
+    for prefix in ("cl", "ecl"):
+        assert f"competition/{ANALYST_SLUGS[prefix]}/predictions" in view_of(page, "full")
+    lines = capsys.readouterr().out.splitlines()
+    assert any(line.startswith("WARNING: CONFERENCE LEAGUE: ecl_fixtures.csv") for line in lines)
+    assert lines[-1].startswith("SUCCESS: Saved results page to: ")
     assert not list(base_dir.glob("*_recommendations.csv"))
+
+
+def test_main_fails_when_the_page_cannot_be_saved(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    base_dir = el_base_dir(tmp_path)
+    (tmp_path / "taken").write_text("a file, not a folder", encoding="utf-8")
+    out = tmp_path / "taken" / "index.html"
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(base_dir, ["--page", str(out), "--el"])
+
+    assert exit_info.value.code == 1
+    assert capsys.readouterr().out.splitlines()[-1].startswith(f"ERROR: Could not save the results page to {out}")
 
 
 def test_main_rejects_page_with_sr_only(tmp_path: Path) -> None:
