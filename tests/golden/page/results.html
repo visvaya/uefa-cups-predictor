@@ -584,7 +584,7 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
 <h1>Pełna analiza: faza ligowa europejskich pucharów</h1>
 <details class="fold about" open>
 <summary>W skrócie</summary>
-<div class="keys"><ul><li><b>Rekomendacja</b>: zacznij od <span class="nw"><span class="mk mk-strong" aria-hidden="true"></span>„mocny”</span>, potem <span class="nw"><span class="mk mk-consider" aria-hidden="true"></span>„do rozważenia”</span>.</li><li><b>Wartość</b>: im wyższa, tym lepiej. Od 70 jest wysoka, od 50 dobra.</li><li><b>Kurs</b>: niski oznacza faworyta i&nbsp;małą wygraną.</li></ul></div><p>Kolejka fazy ligowej: 18 meczów. Liga Europy gra w&nbsp;środę 28.01.2026. Znane godziny: 18:45 (17 meczów bez godziny).</p><p>Szanse, tabela i&nbsp;statusy pochodzą z&nbsp;prognozy The Analyst sprzed kolejki. Rekomendacje policzył analizator.</p>
+<div class="keys"><ul><li><b>Rekomendacja</b>: zacznij od <span class="nw"><span class="mk mk-strong" aria-hidden="true"></span>„mocny”</span>, potem <span class="nw"><span class="mk mk-consider" aria-hidden="true"></span>„do rozważenia”</span>.</li><li><b>Wartość</b>: im wyższa, tym lepiej. Od 70 jest wysoka, od 50 dobra.</li><li><b>Kurs</b>: niski oznacza faworyta i&nbsp;małą wygraną.</li></ul></div><p>Kolejka fazy ligowej: 18 meczów. Liga Europy gra w&nbsp;środę 28.01.2026 (14 meczów bez daty). Znane godziny (czas polski): 18:45 (17 meczów bez godziny).</p><p>Szanse, tabela i&nbsp;statusy pochodzą z&nbsp;prognozy The Analyst sprzed kolejki. Rekomendacje policzył analizator.</p>
 </details>
 <hr>
 <p><small>Słowa podkreślone kropkami mają objaśnienie. Dotknij ich albo najedź na nie myszą. Znak <span class="mk mk-more" role="img" aria-label="strzałka w prawo"></span> przy meczu otwiera jego szczegóły. Pogrubiona drużyna to typ.</small></p>
@@ -1304,8 +1304,8 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         const mx = x === "", my = y === "";
         if (mx !== my) return mx ? 1 : -1;
         const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
-        // Ties keep the default order: kickoff, then (full mode) the higher value, then the match name
-        return (sortDir === "desc" ? -c : c) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
+        // Ties keep the default order: kickoff (unknown last), then (full mode) the higher value, then the match name
+        return (sortDir === "desc" ? -c : c) || ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
       };
       saveState();
       for (const tbody of view.querySelectorAll("tbody")) {

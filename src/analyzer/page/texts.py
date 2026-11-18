@@ -486,10 +486,12 @@ CUPS_COUNT = "Kolejka fazy ligowej: {matches}."
 CUP_DAY = "{cup} gra {days}."
 CUPS_ONE_TIME = "Wszystkie mecze zaczynają się o {time} czasu polskiego."
 CUPS_TIMES = "Mecze zaczynają się o {times} czasu polskiego."
-CUPS_KNOWN_TIMES = "Znane godziny: {times} ({without})."
+CUPS_KNOWN_TIMES = "Znane godziny (czas polski): {times} ({without})."
 CUPS_NO_TIMES = "Godziny i kursy: brak danych soccer-rating dla tych meczów."
 # The count of matches whose kickoff the inputs do not have
 WITHOUT_TIME = "{matches} bez godziny"
+# The count of matches whose day the inputs do not have
+WITHOUT_DAY = "{matches} bez daty"
 CUPS_SOURCES = (
     "Szanse, tabela i statusy pochodzą z prognozy The Analyst sprzed kolejki. Rekomendacje policzył analizator."
 )

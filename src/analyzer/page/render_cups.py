@@ -54,6 +54,7 @@ from analyzer.page.texts import (
     LEVEL_NAMES,
     ON_WEEKDAYS,
     STATUS_NAMES,
+    WITHOUT_DAY,
     WITHOUT_TIME,
     and_list,
     day_month_span,
@@ -111,6 +112,16 @@ def _days_phrase(days: list[date]) -> str:
     """Every day of a cup, such as "we wtorek 20.01 i w środę 21.01.2026" (the year once, at the end)."""
     parts = [f"{ON_WEEKDAYS[day.weekday()]} {day:%d.%m}" for day in days]
     return and_list([*parts[:-1], f"{parts[-1]}.{days[-1].year}"])
+
+
+def _cup_days(cup: CupSection) -> str | None:
+    """The intro's sentence on a cup's days, with the count of its matches without a day; None without any day."""
+    days = _days(cup.rows)
+    if not days:
+        return None
+    undated = sum(row.day is None for row in cup.rows)
+    without = f" ({WITHOUT_DAY.format(matches=matches_phrase(undated))})" if undated else ""
+    return CUP_DAY.format(cup=cup.name, days=_days_phrase(days) + without)
 
 
 def _times_sentence(rows: tuple[MatchRow, ...]) -> str:
@@ -243,10 +254,7 @@ def _sections(cups: tuple[CupSection, ...]) -> str:
 
 def _intro(cups: tuple[CupSection, ...], rows: tuple[MatchRow, ...]) -> str:
     sentences = [CUPS_COUNT.format(matches=matches_phrase(len(rows)))]
-    for cup in cups:
-        days = _days(cup.rows)
-        if days:
-            sentences.append(CUP_DAY.format(cup=cup.name, days=_days_phrase(days)))
+    sentences += [sentence for sentence in map(_cup_days, cups) if sentence is not None]
     sentences.append(_times_sentence(rows))
     return f"{key_points(KEY_POINTS_FULL)}<p>{' '.join(sentences)}</p><p>{CUPS_SOURCES}</p>"
 

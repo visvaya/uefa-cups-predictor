@@ -657,8 +657,8 @@ tr.d > td { font-size: 0.9em; padding-block: 0 0.7em; }
         const mx = x === "", my = y === "";
         if (mx !== my) return mx ? 1 : -1;
         const c = NUMERIC.has(sortKey) ? Number(x) - Number(y) : x.localeCompare(y, "pl");
-        // Ties keep the default order: kickoff, then (full mode) the higher value, then the match name
-        return (sortDir === "desc" ? -c : c) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
+        // Ties keep the default order: kickoff (unknown last), then (full mode) the higher value, then the match name
+        return (sortDir === "desc" ? -c : c) || ((field(a, "time") === "") - (field(b, "time") === "")) || field(a, "time").localeCompare(field(b, "time")) || (Number(field(b, "value")) - Number(field(a, "value"))) || field(a, "match").localeCompare(field(b, "match"), "pl");
       };
       saveState();
       for (const tbody of view.querySelectorAll("tbody")) {

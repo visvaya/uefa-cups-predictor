@@ -173,7 +173,7 @@ def test_render_cups_intro_says_which_kickoffs_are_known() -> None:
     assert "Kolejka fazy ligowej: 3 mecze." in text
     assert f"{CUP_NAMES['cl']} gra we wtorek 03.03.2026." in text
     assert f"{CUP_NAMES['el']} gra w czwartek 05.03.2026." in text
-    assert "Znane godziny: 18:45 i 21:00 (1 mecz bez godziny)." in text
+    assert "Znane godziny (czas polski): 18:45 i 21:00 (1 mecz bez godziny)." in text
     assert "zaczynają się" not in text
     # A cup with a match of unknown kickoff counts its shown matches instead of naming times
     assert f"{CUP_NAMES['cl']}, 3.03 <small>· 21:00</small>" in text
@@ -188,6 +188,14 @@ def test_render_cups_over_two_days() -> None:
     assert f"{CUP_NAMES['el']} gra we wtorek 20.01 i w środę 21.01.2026." in text
     assert "Mecze zaczynają się o 18:45 i 21:00 czasu polskiego." in text
     assert f"{CUP_NAMES['el']}, 20{EN_DASH}21.01 <small>· 18:45 i 21:00</small>" in text
+
+
+def test_render_cups_intro_counts_matches_without_a_day() -> None:
+    rows = (CUP_ROW, replace(CUP_ROW, home="Late FC"), replace(CUP_ROW, home="Open FC", day=None, kickoff=None))
+
+    text = text_of(render_page(page_data((), (el_section(*rows),)), TEMPLATE))
+
+    assert f"{CUP_NAMES['el']} gra w środę 04.03.2026 (1 mecz bez daty)." in text
 
 
 def test_render_cups_without_kickoffs() -> None:
