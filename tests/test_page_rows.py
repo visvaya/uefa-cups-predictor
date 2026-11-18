@@ -4,18 +4,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analyzer.page.model import PickOdds
+from analyzer.cli import league_frames
+from analyzer.league import league_ranking
+from analyzer.page.cup_rows import cup_section, cup_section_without_data
+from analyzer.page.model import CupSection, PickOdds, TeamFacts
 from analyzer.page.sr_rows import sr_match_rows
-from analyzer.page.texts import kickoff_at
+from analyzer.page.texts import CUP_NAMES, LEVEL_NAMES, kickoff_at
 from analyzer.sr_only import sr_only_ranking
-from tests.test_analyze import _fixture_sr_only
+from tests.inputs import el_base_dir, fixture_sr_only
 
 DAY = date(2026, 1, 28)
 
 
 @pytest.fixture(scope="module")
 def ranking() -> pd.DataFrame:
-    return _fixture_sr_only(sr_only_ranking)
+    return fixture_sr_only(sr_only_ranking)
 
 
 def test_sr_rows_take_the_today_row_and_order_by_day_kickoff_and_home(ranking: pd.DataFrame) -> None:
@@ -74,6 +77,13 @@ def test_sr_rows_map_missing_odds_to_none(ranking: pd.DataFrame) -> None:
     assert row.odds == PickOdds(open=None, close=None, fair=1.5)
 
 
+def test_sr_rows_map_an_empty_href_to_none(ranking: pd.DataFrame) -> None:
+    (row,) = sr_match_rows(ranking[ranking["HomeTeamName"] == "Alpha FC"].assign(home_href=""))
+
+    assert row.sr is not None
+    assert (row.sr.home_href, row.sr.away_href) == (None, "/Beta-United/202/")
+
+
 def test_sr_rows_map_missing_facts_to_zero(ranking: pd.DataFrame) -> None:
     row = next(row for row in sr_match_rows(ranking) if row.home == "ID_999")
 
@@ -85,3 +95,153 @@ def test_sr_rows_round_the_score_as_the_report_shows_it(ranking: pd.DataFrame) -
     (row,) = sr_match_rows(ranking[ranking["HomeTeamName"] == "Alpha FC"].assign(expertScore=0.4567))
 
     assert row.score == 0.46
+
+
+@pytest.fixture(scope="module")
+def el_frames(tmp_path_factory: pytest.TempPathFactory) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """The EL example's match frame and its team rows, as the page builds them."""
+    f, _ = league_frames(el_base_dir(tmp_path_factory.mktemp("el")), "el")
+    return f, league_ranking(f, ",")
+
+
+def _team_row(match_index: int, is_home: bool, **values: object) -> dict[str, object]:
+    """One hand-built team row of `league_ranking`, neutral and IN_PLAY unless `values` say otherwise."""
+    row: dict[str, object] = {
+        "match_index": match_index,
+        "is_home": is_home,
+        "TeamWinProb%": 40.0,
+        "TeamMot": 70.0,
+        "TeamStatus": "IN_PLAY",
+        "TeamRotRisk": 1.0,
+        "ValFinal": 30.0,
+        "expertScore": 0.0,
+        "SR_edge": 0.0,
+        "Close": np.nan,
+        "recommendation": "NEUTRAL",
+        "reason": "-",
+    }
+    return {**row, **values}
+
+
+# One match without soccer-rating data: the fixtures' names differ from the table's
+NO_SR_MATCH = pd.DataFrame(
+    {
+        "HomeTeam": ["Home FC"],
+        "AwayTeam": ["Away FC"],
+        "HomeTeamName": ["Home Table"],
+        "AwayTeamName": ["Away Table"],
+        "HomeWin%": [0.4],
+        "Draw%": [0.25],
+        "AwayWin%": [0.35],
+    }
+)
+
+
+def test_cup_pick_is_the_better_rated_side(el_frames: tuple[pd.DataFrame, pd.DataFrame]) -> None:
+    f, ranking = el_frames
+    section = cup_section("el", f, ranking)
+    rows = {row.home: row for row in section.rows}
+
+    assert (rows["Team O"].pick, rows["Team O"].level) == ("1", "strong")
+    # Both sides neutral: Team R (away) has the higher value
+    assert (rows["Team Q"].pick, rows["Team Q"].level) == ("2", "neutral")
+    assert rows["Team Q"].reason == ranking.loc[ranking["Team"] == "Team R", "reason"].item()
+    # A better level wins over a higher value
+    worse = ranking.assign(recommendation=ranking["recommendation"].where(ranking["Team"] != "Team R", "AVOID"))
+    team_q = next(row for row in cup_section("el", f, worse).rows if row.home == "Team Q")
+    assert team_q.pick == "1"
+
+
+def test_cup_rows_order_by_level_then_value(el_frames: tuple[pd.DataFrame, pd.DataFrame]) -> None:
+    rows = cup_section("el", *el_frames).rows
+
+    assert [row.home for row in rows[:4]] == ["Team O", "Team W", "Team K", "Team A"]
+    keys = []
+    for row in rows:
+        assert row.cup is not None
+        picked = row.cup.home if row.pick == "1" else row.cup.away
+        assert picked is not None
+        keys.append((list(LEVEL_NAMES).index(row.level), -picked.value))
+    assert keys == sorted(keys)
+
+
+def test_cup_rows_carry_both_teams(el_frames: tuple[pd.DataFrame, pd.DataFrame]) -> None:
+    f, ranking = el_frames
+    section = cup_section("el", f, ranking)
+    team_o = next(row for row in section.rows if row.home == "Team O")
+    day = date(2026, 1, 28)
+
+    assert (section.prefix, section.name, len(section.rows)) == ("el", CUP_NAMES["el"], len(f))
+    assert (team_o.away, team_o.group, team_o.group_name, team_o.sr) == ("Team P", "el", CUP_NAMES["el"], None)
+    assert (team_o.day, team_o.kickoff) == (day, kickoff_at(day, "18:45"))
+    assert team_o.odds == PickOdds(open=1.8, close=1.65, fair=1.55)
+    assert team_o.score == pytest.approx(0.9)
+    assert team_o.cup is not None
+    assert (team_o.cup.home_win_pct, team_o.cup.draw_pct, team_o.cup.away_win_pct) == (60.0, 20.0, 20.0)
+    reason_o = ranking.loc[ranking["Team"] == "Team O", "reason"].item()
+    assert team_o.reason == reason_o
+    assert team_o.cup.home == TeamFacts(
+        team="Team O",
+        win_pct=60.0,
+        motivation=100.0,
+        status="IN_PLAY",
+        rotation=1.0,
+        value=60.0,
+        score=0.9,
+        edge=0.04,
+        level="strong",
+        reason=reason_o,
+        close=1.65,
+    )
+    assert team_o.cup.away is not None
+    assert (team_o.cup.away.team, team_o.cup.away.level, team_o.cup.away.close) == ("Team P", "neutral", 5.2)
+
+
+def test_cup_rows_of_matches_without_odds_or_kickoff(el_frames: tuple[pd.DataFrame, pd.DataFrame]) -> None:
+    rows = {row.home: row for row in cup_section("el", *el_frames).rows}
+
+    # Team A - Team B has odds but no row in today's file; Team C - Team D has no soccer-rating match
+    assert (rows["Team A"].day, rows["Team A"].kickoff) == (date(2026, 1, 28), None)
+    team_c = rows["Team C"]
+    assert (team_c.day, team_c.kickoff) == (None, None)
+    assert team_c.odds == PickOdds(open=None, close=None, fair=None)
+    assert team_c.cup is not None
+    assert team_c.cup.home is not None
+    assert team_c.cup.home.close is None
+
+
+def test_cup_pick_tie_goes_home() -> None:
+    ranking = pd.DataFrame([_team_row(0, True), _team_row(0, False)])
+
+    (row,) = cup_section("cl", NO_SR_MATCH, ranking).rows
+
+    assert row.pick == "1"
+    # Equal levels: the higher value wins even away
+    (row,) = cup_section("cl", NO_SR_MATCH, ranking.assign(ValFinal=[30.0, 30.1])).rows
+    assert row.pick == "2"
+
+
+def test_cup_rows_without_soccer_rating_have_no_odds() -> None:
+    ranking = pd.DataFrame([_team_row(0, True, recommendation="CONSIDER", reason="Good Value"), _team_row(0, False)])
+
+    section = cup_section("ecl", NO_SR_MATCH, ranking)
+
+    (row,) = section.rows
+    assert section.name == CUP_NAMES["ecl"]
+    assert (row.home, row.away, row.pick, row.level, row.reason) == (
+        "Home FC",
+        "Away FC",
+        "1",
+        "consider",
+        "Good Value",
+    )
+    assert row.odds == PickOdds(open=None, close=None, fair=None)
+    assert (row.day, row.kickoff) == (None, None)
+    assert row.cup is not None
+    assert (row.cup.home_win_pct, row.cup.draw_pct, row.cup.away_win_pct) == (40.0, 25.0, 35.0)
+    assert row.cup.away is not None
+    assert (row.cup.away.team, row.cup.away.close) == ("Away FC", None)
+
+
+def test_cup_section_without_data_is_empty() -> None:
+    assert cup_section_without_data("cl") == CupSection(prefix="cl", name=CUP_NAMES["cl"], rows=())

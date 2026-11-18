@@ -51,6 +51,7 @@ LEVEL_NAMES: dict[Level, str] = {
     "caution": "ostrożnie",
     "avoid": "unikaj",
 }
+CUP_NAMES = {"cl": "Liga Mistrzów", "el": "Liga Europy", "ecl": "Liga Konferencji"}
 STATUS_NAMES = {
     "IN_PLAY": "gra o awans",
     "LOCKED_DIRECT_RO16": "pewny awans do 1/8",

@@ -16,7 +16,6 @@ from analyzer.data import (
     cast_numeric,
     cup_rows,
     latest_snapshots,
-    load_club_names,
     load_league_data,
     load_today_names,
     read_smart_csv,
@@ -26,10 +25,9 @@ from analyzer.league import league_ranking, validated_inputs
 from analyzer.model import enrich_table, integrity_report, pressure_vector, with_strange_odds_rotation
 from analyzer.names import norm_key
 from analyzer.sr_only import sr_only_ranking, sr_only_report
+from tests.inputs import REPO_DIR, SR_FIXTURES_DIR, el_base_dir, fixture_sr_only
 
-REPO_DIR = Path(__file__).resolve().parents[1]
 EXAMPLE_TABLE = REPO_DIR / "data" / "theanalyst" / "champions-league" / "cl_table_predicted_example.csv"
-SR_FIXTURES_DIR = REPO_DIR / "tests" / "fixtures" / "soccer-rating"
 
 
 def test_norm_key_strips_diacritics_and_applies_name_fix() -> None:
@@ -370,16 +368,8 @@ def test_latest_snapshots_prefers_the_later_scrape_over_file_order() -> None:
     assert latest_snapshots(rows)["close_1"].tolist() == [1.5]
 
 
-def _fixture_sr_only(
-    function: Callable[[pd.DataFrame, dict[int, str], dict[str, dict[str, str]], str], pd.DataFrame],
-) -> pd.DataFrame:
-    sr = cast_numeric(read_smart_csv(SR_FIXTURES_DIR / "match_odds_development_2026-01-28.csv"), ODDS_NUMERIC_COLUMNS)
-    today = load_today_names(SR_FIXTURES_DIR / "today_matches.csv") or {}
-    return function(sr, load_club_names(SR_FIXTURES_DIR / "club_meta.csv"), today, ".")
-
-
 def test_sr_only_report_has_kickoff_columns() -> None:
-    report = _fixture_sr_only(sr_only_report).set_index(["homeTeam", "awayTeam"])
+    report = fixture_sr_only(sr_only_report).set_index(["homeTeam", "awayTeam"])
 
     assert list(report.reset_index().columns[:5]) == ["homeTeam", "awayTeam", "date", "time", "league"]
     # Alpha FC - Beta United is in today's rows, Gamma SC - Delta Town is not
@@ -392,7 +382,7 @@ def test_sr_only_report_has_kickoff_columns() -> None:
 
 
 def test_sr_only_ranking_keeps_the_match_columns() -> None:
-    ranking = _fixture_sr_only(sr_only_ranking).set_index("match_id")
+    ranking = fixture_sr_only(sr_only_ranking).set_index("match_id")
 
     alpha = ranking.loc["2026-01-28_XX1_201_202"]
     assert alpha["close_1"] == pytest.approx(1.6)
@@ -400,20 +390,8 @@ def test_sr_only_ranking_keeps_the_match_columns() -> None:
     assert ranking.loc["2026-01-28_XX1_203_204", "home_href"] == ""
 
 
-def _el_base_dir(tmp_path: Path) -> Path:
-    """A base dir holding the EL example inputs under their real names and the fixture soccer-rating files."""
-    league = tmp_path / "data" / "theanalyst" / "europa-league"
-    league.mkdir(parents=True)
-    for kind in ("fixtures", "table_predicted"):
-        shutil.copy(
-            REPO_DIR / "data" / "theanalyst" / "europa-league" / f"el_{kind}_example.csv", league / f"el_{kind}.csv"
-        )
-    shutil.copytree(SR_FIXTURES_DIR, tmp_path / "data" / "soccer-rating")
-    return tmp_path
-
-
 def test_league_ranking_links_team_rows_to_their_match(tmp_path: Path) -> None:
-    f, _ = league_frames(_el_base_dir(tmp_path), "el")
+    f, _ = league_frames(el_base_dir(tmp_path), "el")
     ranking = league_ranking(f, ".")
 
     assert len(ranking) == 2 * len(f)
@@ -423,7 +401,7 @@ def test_league_ranking_links_team_rows_to_their_match(tmp_path: Path) -> None:
 
 
 def test_league_frames_keep_kickoff_and_odds(tmp_path: Path) -> None:
-    f, lines = league_frames(_el_base_dir(tmp_path), "el")
+    f, lines = league_frames(el_base_dir(tmp_path), "el")
 
     assert {"snapshot_date", "open_1", "close_x", "fair_2", "HomeTeam", "AwayTeam", "Draw%"} <= set(f.columns)
     by_home = f.set_index("HomeTeam")

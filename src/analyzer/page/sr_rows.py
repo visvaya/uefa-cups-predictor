@@ -12,8 +12,14 @@ from analyzer.recommendations import MISSING_ODDS
 _PICKS: dict[str, tuple[Pick, str]] = {"1": ("1", "1"), "X": ("X", "x"), "2": ("2", "2")}
 
 
-def _odds(value: float) -> float | None:
+def odds_or_none(value: float) -> float | None:
+    """Odds as a number, or None for the frames' missing odds (99 or NaN)."""
     return None if pd.isna(value) or value == MISSING_ODDS else float(value)
+
+
+def pick_odds(r: pd.Series, side: str) -> PickOdds:
+    """The open, close and fair odds of one outcome (`side` 1, x or 2); absent columns give None too."""
+    return PickOdds(*(odds_or_none(r.get(f"{kind}_{side}", MISSING_ODDS)) for kind in ("open", "close", "fair")))
 
 
 def _fact(value: float) -> float:
@@ -37,7 +43,7 @@ def _row(r: pd.Series) -> MatchRow:
         kickoff=kickoff_at(day, r["time_local"]),
         group=r["league_code"],
         group_name=_text(r["league_name"]) or r["league_code"],
-        odds=PickOdds(_odds(r[f"open_{side}"]), _odds(r[f"close_{side}"]), _odds(r[f"fair_{side}"])),
+        odds=pick_odds(r, side),
         score=float(r["expertScore"]),
         sr=SrFacts(
             edge=_fact(r["SR_edge"]),
