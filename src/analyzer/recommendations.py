@@ -234,19 +234,20 @@ def reasons(ranking: pd.DataFrame, s: Signals, allow_draws: bool, decimal: str) 
     reason_s += r(s.is_out, "Out of contention")
     reason_s += r(s.rot_high, "High rotation risk")
     reason_s += r(s.is_locked, "Status " + ranking["TeamStatus"].astype(str))
-    reason_s += r(s.is_sure_bet, "Sure Bet Pattern")
+    sure_bet = counted_sure_bet(ranking, s, allow_draws)
+    reason_s += r(sure_bet, "Sure Bet Pattern")
     reason_s += r(s.is_high_val, "High Value")
     reason_s += r(~s.is_high_val & s.is_good_val, "Good Value")
     reason_s += r(s.is_strong_sig, "Strong Expert Signal")
     reason_s += r(~s.is_strong_sig & s.is_pos_sig, "Positive Signal")
 
     had_stats = s.is_high_val | s.is_strong_sig
-    reason_s += r(had_stats & ~s.steam_aligned & ~counted_sure_bet(ranking, s, allow_draws), "(Risk: Rising Odds)")
+    reason_s += r(had_stats & ~s.steam_aligned & ~sure_bet, "(Risk: Rising Odds)")
     reason_s += r(s.sr_drop > REASON_MIN_STEAM, "Steam (+)")
     reason_s += r(s.sr_drop < -REASON_MIN_STEAM, "Steam (-)")
 
     so = column_or(ranking, "strangeOdds", 0).fillna(0)
-    reason_s += r(so.abs() > STRANGE_ODDS_MIN_ABS, "Strange Odds (" + so.astype(int).astype(str) + ")")
+    reason_s += r(so.abs() > STRANGE_ODDS_MIN_ABS, "Strange Odds (" + so.round().astype(int).astype(str) + ")")
 
     reason_s += r(s.sr_edge > GOOD_SR_EDGE, "SR Edge")  # the edge that supports CONSIDER
     reason_s += r(s.sr_edge < -REASON_MIN_SR_EDGE, "Market Confidence")
@@ -279,10 +280,12 @@ def format_recommendations(ranking: pd.DataFrame, allow_draws: bool, decimal: st
         allow_draws: If False (Analyst mode), skips Draw specific logic.
         decimal: Decimal separator of the numbers in the reasons.
     """
+    # Thresholds see the rounded values the report shows, so a shown value never contradicts its label
+    ranking = rounded(ranking)
     s = read_signals(ranking)
     ranking = ranking.assign(recommendation=labels(ranking, s, allow_draws))
     ranking["reason"] = reasons(ranking, s, allow_draws, decimal)
-    return rounded(ranking)
+    return ranking
 
 
 def recommendation_rank(recommendation: pd.Series) -> pd.Series:
