@@ -262,3 +262,89 @@ def test_render_sr_intro_with_some_kickoffs_unknown() -> None:
     # Missing values carry no sort attribute, so the page script sorts them last
     assert page.count(" data-s-time=") == 2
     assert page.count(" data-s-odds=") == 3
+
+
+# Synthetic worst case (not real data): long names with diacritics, every signal in one reason, the extreme odds,
+# a negative edge, a draw pick, all five levels and rows with every optional value missing.
+EVERY_SIGNAL = (
+    "Sure Bet Pattern; Strong Expert Signal; Positive Signal; Steam (+); Steam (-); Strange Odds (45); SR Edge; "
+    "Market Confidence; (Risk: Rising Odds); (No Steam Confirmation); Out of contention; High rotation risk; "
+    "Status LOCKED_DIRECT_RO16; High Value; Good Value; Close(34,50) > Fair(1,01)"
+)
+LONG_HOME = "Borussia Mönchengladbach II"
+LONG_AWAY = "Śląsk Wrocław"
+WORST_SR = (
+    replace(SR_ROW, home=LONG_HOME, away=LONG_AWAY, level="strong", reason=EVERY_SIGNAL),
+    replace(SR_ROW, home=LONG_AWAY, away=LONG_HOME, pick="X", level="consider", odds=PickOdds(1.01, 1.01, 1.01)),
+    replace(
+        SR_ROW, home="Real Sociedad B", away="Górnik Łęczna", pick="2", level="neutral", odds=PickOdds(34.5, 34.5, 30.0)
+    ),
+    replace(
+        SR_ROW, home="Zagłębie Sosnowiec", level="caution", sr=SrFacts(-0.12, -0.3, -45.0, 0.5, "/Zaglebie/3/", None)
+    ),
+    replace(
+        SR_ROW,
+        home="Nieznany Klub",
+        level="avoid",
+        reason="-",
+        kickoff=None,
+        odds=PickOdds(None, None, None),
+        sr=SrFacts(edge=0.0, steam=0.0, ao=0.0, quality=0.0, home_href=None, away_href=None),
+    ),
+)
+WORST_CUP_TEAM = replace(TEAM, team=LONG_HOME, edge=-0.12, reason=EVERY_SIGNAL, close=34.5)
+WORST_CUPS = (
+    replace(
+        CUP_ROW,
+        home=LONG_HOME,
+        away=LONG_AWAY,
+        level="strong",
+        reason=EVERY_SIGNAL,
+        cup=replace(CUP_FACTS, home=replace(WORST_CUP_TEAM, level="strong")),
+    ),
+    replace(
+        CUP_ROW,
+        home=LONG_AWAY,
+        level="caution",
+        odds=PickOdds(1.01, 1.01, 1.01),
+        cup=replace(CUP_FACTS, home=replace(TEAM, team=LONG_AWAY, level="caution", close=1.01)),
+    ),
+    replace(
+        CUP_ROW,
+        home="Lokomotiv Płowdiw",
+        level="avoid",
+        day=None,
+        kickoff=None,
+        odds=PickOdds(None, None, None),
+        cup=replace(CUP_FACTS, home=replace(TEAM, team="Lokomotiv Płowdiw", level="avoid", close=None), away=None),
+    ),
+)
+
+
+def view_of(page: str, key: str) -> str:
+    """One tab of the page: the soccer-rating tab ends where the cups tab starts, which runs to the page's end."""
+    sr, full = page.index('id="view-sr"'), page.index('id="view-full"')
+    return page[sr:full] if key == "sr" else page[full:]
+
+
+def filter_counts(section: str, name: str) -> list[int]:
+    return [int(n) for n in re.findall(rf'name="{name}" value="[^"]*" checked>.*?\((\d+)\)</span></label>', section)]
+
+
+def test_render_worst_case() -> None:
+    page = render_page(page_data(WORST_SR, (el_section(*WORST_CUPS),)), TEMPLATE)
+
+    for key, rows, names in (
+        ("sr", WORST_SR, ("level", "league", "pick")),
+        ("full", WORST_CUPS, ("level", "league", "status")),
+    ):
+        section = view_of(page, key)
+        assert section.count('<tr class="m ') == len(rows)
+        for name in names:
+            assert sum(filter_counts(section, name)) == len(rows), name
+        for level in {row.level for row in rows}:
+            assert section.count(f'<tr class="m {level}"') == sum(row.level == level for row in rows)
+    assert escape(LONG_HOME) in page
+    assert escape(LONG_AWAY) in page
+    if snapshot_dir := os.environ.get("PAGE_SNAPSHOT_DIR"):
+        Path(snapshot_dir).joinpath("page-worst.html").write_text(page, encoding="utf-8", newline="")

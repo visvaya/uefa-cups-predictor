@@ -1,15 +1,20 @@
-"""Command line: argument parsing and the two report flows (read inputs, decide, print and write)."""
+"""Command line: argument parsing, the two report flows and the results page (read inputs, decide, print and write)."""
 
 import argparse
 import re
 import sys
+from datetime import datetime
+from importlib.resources import files
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from analyzer.config import PAGE_TIMEZONE
 from analyzer.data import (
     LEAGUE_DIRS,
     ODDS_NUMERIC_COLUMNS,
+    analyst_paths,
     cast_numeric,
     load_club_names,
     load_league_data,
@@ -19,13 +24,19 @@ from analyzer.data import (
     soccer_rating_dir,
 )
 from analyzer.errors import AnalyzerInputError
-from analyzer.league import LEAGUE_NAMES, league_report, match_frame, validated_inputs
+from analyzer.league import LEAGUE_NAMES, league_ranking, league_report, match_frame, validated_inputs
 from analyzer.model import calculate_values, enrich_table, integrity_report, with_strange_odds_rotation
+from analyzer.page.cup_rows import cup_section, cup_section_without_data
+from analyzer.page.model import CupSection, MatchRow, PageData
+from analyzer.page.render import render_page
+from analyzer.page.sr_rows import latest_scrape, sr_match_rows
 from analyzer.soccer_rating import add_soccer_rating_features, coverage_report
-from analyzer.sr_only import sr_only_report, valid_odds
+from analyzer.sr_only import sr_only_ranking, sr_only_report, valid_odds
 from csv_safety import neutralize_formulas
 
 SNAPSHOT_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
+CUMULATIVE_SNAPSHOT = "match_odds_development.csv"  # the scraper's file of every snapshot, in the soccer-rating dir
+PAGE_DECIMAL = ","  # the results page shows numbers in its reasons with a decimal comma
 
 
 def decimal_separator(excel_pl: bool) -> str:
@@ -81,10 +92,17 @@ def today_names(path: Path) -> dict[str, dict[str, str]]:
     except (OSError, UnicodeDecodeError, ValueError, pd.errors.ParserError, pd.errors.EmptyDataError) as e:
         print(f"WARNING: Could not load today_matches.csv for name mapping: {e}")
         return {}
-    if names is None:
-        return {}
-    print(f"INFO: Loaded {len(names)} active match names from today_matches.csv")
-    return names
+    return names or {}
+
+
+def sr_snapshot(path: Path) -> pd.DataFrame:
+    """A soccer-rating snapshot with numeric odds; a missing file or one without a valid odds row is an input error."""
+    if not path.exists():
+        raise AnalyzerInputError(f"Input file not found: {path}")
+    sr = cast_numeric(read_smart_csv(path), ODDS_NUMERIC_COLUMNS)
+    if not valid_odds(sr).any():
+        raise AnalyzerInputError(f"No match with valid odds in {path.name}")
+    return sr
 
 
 def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None, excel_pl: bool = False) -> None:
@@ -93,19 +111,18 @@ def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None
     Team names and lineups come from the scraper's files beside the snapshot, which one scraper run wrote together.
     """
     # The named snapshot, or the cumulative file when none is named
-    path = input_file or soccer_rating_dir(base_dir) / "match_odds_development.csv"
+    path = input_file or soccer_rating_dir(base_dir) / CUMULATIVE_SNAPSHOT
     sr_dir = path.parent
-    if not path.exists():
-        raise AnalyzerInputError(f"Input file not found: {path}")
-    print(f"INFO: Loading SR data from: {path.name}")
+    sr = sr_snapshot(path)
+    print(f"INFO: Loaded SR data from: {path.name}")
 
     m = SNAPSHOT_DATE.search(path.name)
     date_str = f"_{m.group(1)}" if m else ""
-    sr = cast_numeric(read_smart_csv(path), ODDS_NUMERIC_COLUMNS)
-    if not valid_odds(sr).any():
-        raise AnalyzerInputError(f"No match with valid odds in {path.name}")
     names = load_club_names(sr_dir / "club_meta.csv")
-    report = sr_only_report(sr, names, today_names(sr_dir / "today_matches.csv"), decimal_separator(excel_pl))
+    today = today_names(sr_dir / "today_matches.csv")
+    if today:
+        print(f"INFO: Loaded {len(today)} active match names from today_matches.csv")
+    report = sr_only_report(sr, names, today, decimal_separator(excel_pl))
 
     print("\n--- SR-ONLY ANALYSIS TOP 10 RECOMMENDATIONS ---")
     print(report.head(10).to_string(index=False))
@@ -116,6 +133,61 @@ def run_sr_only(base_dir: Path, input_file: Path | None, output_dir: Path | None
         print(f"SUCCESS: Saved SR-Only report to: {out_path}")
     except PermissionError:
         print(f"FAILED to save {out_path}")
+
+
+def page_sr_rows(base_dir: Path, input_file: Path | None) -> tuple[tuple[MatchRow, ...], datetime | None]:
+    """The soccer-rating tab's rows and scrape time; no rows, with a warning, when the cumulative file is missing.
+
+    A named snapshot that is missing is an input error, as in the SR-only report.
+    """
+    path = input_file or soccer_rating_dir(base_dir) / CUMULATIVE_SNAPSHOT
+    if input_file is None and not path.exists():
+        print(f"WARNING: {path.name} not found: the soccer-rating tab shows no matches")
+        return (), None
+    sr = sr_snapshot(path)
+    scraped_at = latest_scrape(sr)
+    names = load_club_names(path.parent / "club_meta.csv")
+    ranking = sr_only_ranking(sr, names, today_names(path.parent / "today_matches.csv"), PAGE_DECIMAL)
+    return sr_match_rows(ranking), scraped_at
+
+
+def page_cup(base_dir: Path, prefix: str) -> CupSection:
+    """One cup's section; its no-data notice, with a warning, when its Analyst fixtures or table are missing."""
+    missing = [path.name for path in analyst_paths(base_dir, prefix) if not path.exists()]
+    if missing:
+        print(f"WARNING: {' and '.join(missing)} not found: {LEAGUE_NAMES[prefix]} shows no matches")
+        return cup_section_without_data(prefix)
+    f, lines = league_frames(base_dir, prefix)
+    for line in lines:
+        if line.startswith("WARNING: "):
+            print(line)
+    return cup_section(prefix, f, league_ranking(f, PAGE_DECIMAL))
+
+
+def run_page(base_dir: Path, input_file: Path | None, prefixes: list[str], out: Path) -> None:
+    """Writes the results page to `out` (its folder created if missing) from the snapshot and the chosen cups.
+
+    The soccer-rating tab reads `input_file`, or the cumulative file when none is named; prints the warnings on the
+    inputs and one SUCCESS line.
+    """
+    sr_rows, scraped_at = page_sr_rows(base_dir, input_file)
+    cups = tuple(page_cup(base_dir, prefix) for prefix in prefixes)
+    data = PageData(sr_rows, cups, scraped_at, datetime.now(ZoneInfo(PAGE_TIMEZONE)))
+    template = files("analyzer.page").joinpath("template.html").read_text(encoding="utf-8")
+    page = render_page(data, template)
+    try:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(page, encoding="utf-8", newline="")
+        cup_matches = sum(len(cup.rows) for cup in cups)
+        print(f"SUCCESS: Saved results page to: {out} ({len(sr_rows)} + {cup_matches} matches)")
+    except PermissionError:
+        print(f"FAILED to save {out}")
+
+
+def default_cups(base_dir: Path) -> list[str]:
+    """The Champions and Europa League, and the Conference League when its fixtures are there."""
+    ecl_fixtures, _ = analyst_paths(base_dir, "ecl")
+    return ["cl", "el", *(["ecl"] if ecl_fixtures.exists() else [])]
 
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -129,9 +201,15 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--sr-only", action="store_true", help="Run analysis based ONLY on Soccer-rating data (no Analyst dependency)"
     )
-    parser.add_argument("--input-file", type=Path, help="Path to specific SR snapshot file (for --sr-only)")
+    parser.add_argument("--input-file", type=Path, help="Path to specific SR snapshot file (for --sr-only and --page)")
     parser.add_argument("--output-dir", type=Path, help="Directory to save output files")
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--page", type=Path, metavar="PATH", help="Write the results page (one HTML file) instead of the CSV reports"
+    )
+    args = parser.parse_args(argv)
+    if args.page and args.sr_only:
+        parser.error("--page cannot be combined with --sr-only")
+    return args
 
 
 def main(base_dir: Path, argv: list[str] | None = None) -> None:
@@ -141,10 +219,11 @@ def main(base_dir: Path, argv: list[str] | None = None) -> None:
         if args.sr_only:
             run_sr_only(base_dir, args.input_file, args.output_dir, excel_pl=args.excel_pl)
             return
-        chosen = [prefix for prefix in LEAGUE_DIRS if getattr(args, prefix)]
-        # Without a flag: the Champions and Europa League, and the Conference League when its fixtures are there
-        ecl_fixtures = base_dir / "data" / "theanalyst" / LEAGUE_DIRS["ecl"] / "ecl_fixtures.csv"
-        for prefix in chosen or ["cl", "el", *(["ecl"] if ecl_fixtures.exists() else [])]:
+        prefixes = [prefix for prefix in LEAGUE_DIRS if getattr(args, prefix)] or default_cups(base_dir)
+        if args.page:
+            run_page(base_dir, args.input_file, prefixes, args.page)
+            return
+        for prefix in prefixes:
             run_league(base_dir, prefix, excel_pl=args.excel_pl)
     except AnalyzerInputError as err:
         print(f"ERROR: {err}")

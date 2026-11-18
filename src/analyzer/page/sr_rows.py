@@ -1,6 +1,6 @@
 """The soccer-rating tab's rows, built from `sr_only_ranking`'s frame (one row per match, the favoured side)."""
 
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 
@@ -70,3 +70,11 @@ def sr_match_rows(ranking: pd.DataFrame) -> tuple[MatchRow, ...]:
     ranking = ranking.assign(expertScore=ranking["expertScore"].round(2))
     rows = [_row(r) for _, r in ranking.iterrows()]
     return tuple(sorted(rows, key=_order))
+
+
+def latest_scrape(sr: pd.DataFrame) -> datetime | None:
+    """The newest `scraped_at` of a snapshot as an aware UTC time; None without the column or a readable value."""
+    if "scraped_at" not in sr.columns:
+        return None
+    latest = pd.to_datetime(sr["scraped_at"], errors="coerce", utc=True).max()
+    return None if pd.isna(latest) else latest.to_pydatetime()
