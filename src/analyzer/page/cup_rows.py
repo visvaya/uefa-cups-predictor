@@ -6,10 +6,7 @@ import pandas as pd
 
 from analyzer.page.model import CupFacts, CupSection, MatchRow, Pick, TeamFacts
 from analyzer.page.sr_rows import odds_or_none, pick_odds
-from analyzer.page.texts import CUP_NAMES, LEVEL_NAMES, kickoff_at, level_of
-
-# Level -> its place in the ranking order, best first
-_LEVEL_RANKS = {level: rank for rank, level in enumerate(LEVEL_NAMES)}
+from analyzer.page.texts import CUP_NAMES, LEVEL_RANKS, kickoff_at, level_of
 
 
 def _team(r: pd.Series, name: str) -> TeamFacts:
@@ -30,7 +27,7 @@ def _team(r: pd.Series, name: str) -> TeamFacts:
 
 def _rank(team: TeamFacts) -> tuple[int, float]:
     """Sort key of a team row: better level first, then higher value."""
-    return (_LEVEL_RANKS[team.level], -team.value)
+    return (LEVEL_RANKS[team.level], -team.value)
 
 
 def _row(prefix: str, m: pd.Series, home: TeamFacts, away: TeamFacts) -> MatchRow:

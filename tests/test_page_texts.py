@@ -5,6 +5,7 @@ import pytest
 
 from analyzer.page.texts import (
     TERMS,
+    and_list,
     club_link,
     date_span,
     day_heading,
@@ -14,6 +15,7 @@ from analyzer.page.texts import (
     level_of,
     matches_phrase,
     pl_number,
+    short_date_span,
     stamp,
 )
 from analyzer.recommendations import AVOID, CAUTION, CONSIDER, NEUTRAL, STRONG_BUY
@@ -61,6 +63,25 @@ def test_date_span_joins_days_and_months() -> None:
     assert date_span(date(2026, 11, 30), date(2026, 12, 2)) == f"30 listopada {EN_DASH} 2 grudnia 2026"
     assert date_span(date(2026, 12, 30), date(2027, 1, 2)) == f"30 grudnia 2026 {EN_DASH} 2 stycznia 2027"
     assert date_span(date(2026, 11, 18), date(2026, 11, 18)) == "18 listopada 2026"
+
+
+def test_short_date_span_writes_the_tab_title_days() -> None:
+    assert short_date_span(date(2026, 11, 16), date(2026, 11, 18)) == f"16{EN_DASH}18.11.2026"
+    assert short_date_span(date(2026, 11, 18), date(2026, 11, 18)) == "18.11.2026"
+    assert short_date_span(date(2026, 11, 30), date(2026, 12, 2)) == f"30.11{EN_DASH}2.12.2026"
+    assert short_date_span(date(2026, 12, 30), date(2027, 1, 2)) == f"30.12.2026{EN_DASH}2.01.2027"
+
+
+@pytest.mark.parametrize(
+    ("items", "text"),
+    [
+        (["21:00"], "21:00"),
+        (["18:45", "21:00"], "18:45 i 21:00"),
+        (["16:30", "18:45", "21:00"], "16:30, 18:45 i 21:00"),
+    ],
+)
+def test_and_list_joins_with_commas_and_a_final_i(items: list[str], text: str) -> None:
+    assert and_list(items) == text
 
 
 def test_stamp_writes_date_and_time() -> None:

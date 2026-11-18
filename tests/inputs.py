@@ -14,11 +14,12 @@ SR_FIXTURES_DIR = REPO_DIR / "tests" / "fixtures" / "soccer-rating"
 
 def fixture_sr_only(
     function: Callable[[pd.DataFrame, dict[int, str], dict[str, dict[str, str]], str], pd.DataFrame],
+    decimal: str = ".",
 ) -> pd.DataFrame:
     """`function` (`sr_only_report` or `sr_only_ranking`) applied to the fixture soccer-rating files."""
     sr = cast_numeric(read_smart_csv(SR_FIXTURES_DIR / "match_odds_development_2026-01-28.csv"), ODDS_NUMERIC_COLUMNS)
     today = load_today_names(SR_FIXTURES_DIR / "today_matches.csv") or {}
-    return function(sr, load_club_names(SR_FIXTURES_DIR / "club_meta.csv"), today, ".")
+    return function(sr, load_club_names(SR_FIXTURES_DIR / "club_meta.csv"), today, decimal)
 
 
 def el_base_dir(tmp_path: Path) -> Path:

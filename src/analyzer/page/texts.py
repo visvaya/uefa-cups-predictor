@@ -6,6 +6,7 @@ through `html.escape` before it joins them.
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from datetime import date, datetime
 from html import escape
 from zoneinfo import ZoneInfo
@@ -19,6 +20,8 @@ EN_DASH = chr(0x2013)  # U+2013 EN DASH, for ranges of days
 _DOTLESS_I = chr(0x131)  # U+0131 LATIN SMALL LETTER DOTLESS I (Turkish names)
 # Weekdays from Monday, as `date.weekday()` counts them
 WEEKDAYS = ("poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela")
+# "On <weekday>" in the same order, with the preposition the weekday takes
+ON_WEEKDAYS = ("w poniedziałek", "we wtorek", "w środę", "w czwartek", "w piątek", "w sobotę", "w niedzielę")
 # Month names in the genitive, as a date writes them ("18 listopada")
 MONTHS = (
     "stycznia",
@@ -51,7 +54,10 @@ LEVEL_NAMES: dict[Level, str] = {
     "caution": "ostrożnie",
     "avoid": "unikaj",
 }
+LEVEL_RANKS = {level: rank for rank, level in enumerate(LEVEL_NAMES)}
 CUP_NAMES = {"cl": "Liga Mistrzów", "el": "Liga Europy", "ecl": "Liga Konferencji"}
+# Report prefix -> the cup's path on theanalyst.com, for the link to its predictions
+ANALYST_SLUGS = {"cl": "uefa-champions-league", "el": "uefa-europa-league", "ecl": "uefa-conference-league"}
 STATUS_NAMES = {
     "IN_PLAY": "gra o awans",
     "LOCKED_DIRECT_RO16": "pewny awans do 1/8",
@@ -95,6 +101,11 @@ SIGNAL_NAMES = {
     "highval": "High Value",
     "goodval": "Good Value",
     "aofair": "Close / Fair",
+}
+# Raw status codes in signals are long and unbreakable; the page shows them short (the explanation names them)
+SIGNAL_SHORT = {
+    "Status LOCKED_DIRECT_RO16": "Status LOCKED: 1/8",
+    "Status LOCKED_PLAYOFFS": "Status LOCKED: baraże",
 }
 # Explanations shown on tap: key -> (title, text); the page script reads them as JSON. In "levels", a [level] before
 # a quoted name stands for that level's marker.
@@ -382,6 +393,114 @@ FOOTER_LICENCE = (
     'title="Zgłoszenia na GitHubie, otwiera się w nowej karcie">zgłoś błąd</a>'
 )
 
+# Column heads by sort key; the card strip shows the same words
+HEADS = {
+    "time": "Godz.",
+    "match": "Mecz",
+    "pick": "Typ",
+    "odds": "Kurs",
+    "ocena": "Ocena",
+    "win": "Szansa",
+    "mot": "Motyw.",
+    "value": "Wartość",
+    "level": "Rekomendacja",
+}
+# Sort buttons of the card layout by sort key
+SORT_NAMES = {
+    "time": "godzina",
+    "match": "mecz",
+    "pick": "typ",
+    "odds": "kurs",
+    "ocena": "ocena",
+    "win": "szansa",
+    "mot": "motywacja",
+    "value": "wartość",
+    "level": "rekomendacja",
+}
+PICK_NAMES = {"1": "(1) gospodarze", "X": "(X) remis", "2": "(2) goście"}
+# Words of the page's controls, details and notices
+LABELS = {
+    "show_details": "Pokaż szczegóły meczu",
+    "signals": "Sygnały",
+    "from": "od",
+    "to": "do",
+    "less": "mniej",
+    "more": "więcej",
+    "signal_note": (
+        "Zaznaczenie pokaże tylko mecze z którymkolwiek z wybranych sygnałów; bez zaznaczenia widać wszystkie."
+    ),
+    "clear_choice": "Wyczyść wybór",
+    "search_team": "Szukaj drużyny",
+    "search_team_example": "np. Guadeloupe",
+    "competitions": "Rozgrywki",
+    "search_competition": "Szukaj rozgrywek",
+    "search_competition_example": "np. Lega",
+    "no_competition": "Żadne rozgrywki nie pasują.",
+    "choose": "Wybierz:",
+    "all": "wszystkie",
+    "no_option": "żadne",
+    "time": "Czas",
+    "hide_started": "ukryj mecze, które już się zaczęły",
+    "status_filter": "Status typu",
+    "win_pct": "Szansa (%)",
+    "sorting": "Sortowanie:",
+    "about": "W skrócie",
+    "filters": "Filtry:",
+    "all_matches": "wszystkie mecze",
+    "clear_filters": "Wyczyść filtry",
+    "draw": "remis",
+    "no_data": "brak danych",
+    "none": "brak",
+    "no_row": "brak wiersza",
+    "start": "Początek",
+    "open": "otwarcie",
+    "close": "zamknięcie",
+    "fair": "Kurs uczciwy",
+    "edge": "Przewaga modelu",
+    "points": "pp",
+    "steam": "Ruch kursu",
+    "ao": "Wskaźnik AO",
+    "quality": "Jakość danych",
+    "clubs": "Strony klubów",
+    "chances": "Szanse meczu",
+    "pick_odds": "Kurs typu",
+    "win_prob": "Szansa wygranej",
+    "motivation": "Motywacja",
+    "status": "Status",
+    "rotation": "Ryzyko rotacji",
+    "value_short": "Wart.",
+    "indicator": "Wskaźnik",
+    "both_teams": "Mecz i obie drużyny",
+}
+
+# Tab headings, intros and notices; {placeholders} take generated values
+SR_TITLE = "Soccer-rating: typy"
+SR_TITLE_ON = "Soccer-rating: typy na"
+SR_NO_DATA = "Brak danych: nie ma pobranych meczów z soccer-rating.com."
+SR_COUNT = "{matches} z soccer-rating.com."
+SR_FIRST_LAST = "Pierwszy zaczyna się: {first}. Ostatni: {last}."
+SR_PAGE_TIME = "Godziny są w czasie polskim."
+SR_SCRAPED = "Dane pobrano {stamp}."
+CUPS_TITLE = "Pełna analiza: faza ligowa europejskich pucharów"
+CUPS_COUNT = "Kolejka fazy ligowej: {matches}."
+CUP_DAY = "{cup} gra {on_weekday} {day}."
+CUPS_ONE_TIME = "Wszystkie mecze zaczynają się o {time} czasu polskiego."
+CUPS_TIMES = "Mecze zaczynają się o {times} czasu polskiego."
+CUPS_NO_TIMES = "Godziny i kursy: brak danych soccer-rating dla tych meczów."
+CUPS_SOURCES = (
+    "Szanse, tabela i statusy pochodzą z prognozy The Analyst sprzed kolejki. Rekomendacje policzył analizator."
+)
+CUP_NO_DATA = (
+    "Brak danych: prognozy The Analyst dla tych rozgrywek nie zostały jeszcze pobrane. Prognozy są na "
+    '<a href="https://theanalyst.com/competition/{slug}/predictions" target="_blank" rel="noopener" '
+    'title="theanalyst.com, otwiera się w nowej karcie">theanalyst.com</a>.'
+)
+# Browser tab titles: short, the project name last so the tab is recognisable among others
+TAB_SR = f"Soccer-rating {{days}} {EN_DASH} uefa-cups-predictor"
+TAB_SR_EMPTY = f"Soccer-rating {EN_DASH} uefa-cups-predictor"
+TAB_CUPS = f"Europejskie puchary {EN_DASH} uefa-cups-predictor"
+GENERATED = "Strona wygenerowana {stamp}."
+
 # Letters with no Unicode decomposition fold by hand (the page script's fold() uses the same table)
 _LETTERS = str.maketrans({"ø": "o", "ł": "l", "æ": "ae", "ß": "ss", "đ": "d", _DOTLESS_I: "i", "œ": "oe"})
 # A club page path on soccer-rating.com: one leading slash (two would name another host), then safe URL characters
@@ -433,6 +552,23 @@ def date_span(first: date, last: date) -> str:
         return f"{first.day}{EN_DASH}{end}"
     start = _day_month(first) if first.year == last.year else f"{_day_month(first)} {first.year}"
     return f"{start} {EN_DASH} {end}"
+
+
+def short_date_span(first: date, last: date) -> str:
+    """The days of a set of matches in a tab title, such as "16-18.11.2026" with an en dash."""
+    end = f"{last.day}.{last.month:02d}.{last.year}"
+    if first == last:
+        return end
+    if first.year != last.year:
+        return f"{first.day}.{first.month:02d}.{first.year}{EN_DASH}{end}"
+    if first.month != last.month:
+        return f"{first.day}.{first.month:02d}{EN_DASH}{end}"
+    return f"{first.day}{EN_DASH}{end}"
+
+
+def and_list(items: Sequence[str]) -> str:
+    """Items joined as Polish lists them: "a", "a i b", "a, b i c"."""
+    return " i ".join([", ".join(items[:-1]), items[-1]]) if len(items) > 1 else "".join(items)
 
 
 def stamp(moment: datetime) -> str:

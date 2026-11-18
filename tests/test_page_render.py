@@ -1,0 +1,211 @@
+"""The results page renderer: a golden page from the test fixtures and the rules for escaping, missing values and order.
+
+Regenerate the golden page only when a change of the page is intended, never to make a refactor pass:
+`UPDATE_GOLDEN=1 uv run pytest tests/test_page_render.py`, then review the diff of `tests/golden/page/`.
+"""
+
+import os
+import re
+from dataclasses import replace
+from datetime import UTC, date, datetime
+from html import escape
+from importlib.resources import files
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import pytest
+
+from analyzer.cli import league_frames
+from analyzer.config import PAGE_TIMEZONE
+from analyzer.league import league_ranking
+from analyzer.page.cup_rows import cup_section, cup_section_without_data
+from analyzer.page.model import CupFacts, CupSection, MatchRow, PageData, Pick, PickOdds, SrFacts, TeamFacts
+from analyzer.page.render import render_page
+from analyzer.page.sr_rows import sr_match_rows
+from analyzer.page.texts import ANALYST_SLUGS, CUP_NAMES, EN_DASH, SR_NO_DATA, TAB_SR_EMPTY
+from analyzer.sr_only import sr_only_ranking
+from tests.inputs import REPO_DIR, el_base_dir, fixture_sr_only
+
+GOLDEN_PAGE = REPO_DIR / "tests" / "golden" / "page" / "results.html"
+TEMPLATE = files("analyzer.page").joinpath("template.html").read_text(encoding="utf-8")
+PAGE_ZONE = ZoneInfo(PAGE_TIMEZONE)
+DAY = date(2026, 3, 4)  # a Wednesday
+SR_ROW = MatchRow(
+    home="Home FC",
+    away="Away FC",
+    pick="1",
+    level="consider",
+    reason="Positive Signal",
+    day=DAY,
+    kickoff=datetime(2026, 3, 4, 21, 0, tzinfo=PAGE_ZONE),
+    group="XX1",
+    group_name="League",
+    odds=PickOdds(open=1.8, close=1.6, fair=1.5),
+    score=0.7,
+    sr=SrFacts(edge=0.05, steam=0.1, ao=0.0, quality=1.0, home_href="/Home-FC/1/", away_href="/Away-FC/2/"),
+    cup=None,
+)
+TEAM = TeamFacts(
+    team="Home FC",
+    win_pct=55.0,
+    motivation=80.0,
+    status="IN_PLAY",
+    rotation=1.0,
+    value=60.0,
+    score=0.7,
+    edge=0.05,
+    level="consider",
+    reason="Good Value",
+    close=1.6,
+)
+CUP_FACTS = CupFacts(55.0, 25.0, 20.0, TEAM, replace(TEAM, team="Away FC", level="neutral", close=5.0))
+CUP_ROW = replace(SR_ROW, reason="Good Value", group="el", group_name=CUP_NAMES["el"], sr=None, cup=CUP_FACTS)
+
+
+def page_data(sr_rows: tuple[MatchRow, ...], cups: tuple[CupSection, ...]) -> PageData:
+    return PageData(
+        sr_rows=sr_rows,
+        cups=cups,
+        scraped_at=datetime(2026, 3, 4, 9, 0, tzinfo=UTC),
+        generated_at=datetime(2026, 3, 4, 12, 0, tzinfo=PAGE_ZONE),
+    )
+
+
+def el_section(*rows: MatchRow) -> CupSection:
+    return CupSection("el", CUP_NAMES["el"], rows)
+
+
+def text_of(page: str) -> str:
+    """The page with the no-break spaces of short words turned back into spaces, for matching sentences."""
+    return page.replace("&nbsp;", " ")
+
+
+def test_render_matches_golden(tmp_path: Path) -> None:
+    f, _ = league_frames(el_base_dir(tmp_path), "el")
+    data = PageData(
+        sr_rows=sr_match_rows(fixture_sr_only(sr_only_ranking, ",")),
+        cups=(
+            cup_section_without_data("cl"),
+            cup_section("el", f, league_ranking(f, ",")),
+            cup_section_without_data("ecl"),
+        ),
+        scraped_at=datetime(2026, 1, 28, 9, 0, tzinfo=UTC),
+        generated_at=datetime(2026, 1, 28, 12, 0, tzinfo=PAGE_ZONE),
+    )
+
+    page = render_page(data, TEMPLATE)
+
+    if os.environ.get("UPDATE_GOLDEN") == "1":
+        GOLDEN_PAGE.parent.mkdir(exist_ok=True)
+        GOLDEN_PAGE.write_text(page, encoding="utf-8", newline="")
+    assert GOLDEN_PAGE.exists(), f"Missing {GOLDEN_PAGE}; create it with UPDATE_GOLDEN=1"
+    assert page == GOLDEN_PAGE.read_text(encoding="utf-8")
+    assert chr(0x2014) not in page
+    assert not [c for c in page if ord(c) >= 0x1F000 or 0x2600 <= ord(c) <= 0x27BF]
+    for root in (tmp_path, REPO_DIR):
+        assert str(root) not in page
+        assert root.as_posix() not in page
+
+
+def test_render_escapes_team_names() -> None:
+    hostile = '<b>"A&B"'
+    sr = replace(SR_ROW, home=hostile, group_name=hostile, reason=hostile)
+    cup_facts = replace(TEAM, team=hostile, status=hostile, reason=hostile)
+    cup = replace(CUP_ROW, away=hostile, pick="2", reason=hostile, cup=replace(CUP_FACTS, away=cup_facts))
+
+    page = render_page(page_data((sr,), (el_section(cup),)), TEMPLATE)
+
+    assert hostile not in page
+    assert '"A&B"' not in page
+    assert escape(hostile) in page
+
+
+def test_render_leaves_out_a_range_without_values() -> None:
+    no_close = replace(TEAM, close=None)
+    no_odds = replace(CUP_ROW, odds=PickOdds(None, None, None), cup=replace(CUP_FACTS, home=no_close, away=no_close))
+
+    page = render_page(page_data((), (el_section(no_odds),)), TEMPLATE)
+
+    assert 'data-range="odds"' not in page
+    assert 'data-range="win"' in page
+    assert " data-odds=" not in page
+    assert " data-s-odds=" not in page
+
+
+def test_render_sorts_picks_one_draw_two() -> None:
+    rows = (
+        replace(SR_ROW, home="Zulu", pick="1"),
+        replace(SR_ROW, home="Yankee", away="Alpha", pick="X"),
+        replace(SR_ROW, home="Bravo", away="Alpha", pick="2"),
+    )
+
+    page = render_page(page_data(rows, ()), TEMPLATE)
+
+    values = re.findall('data-s-pick="([^"]*)"', page)
+    assert values == ["0 zulu", "1 yankee", "2 alpha"]
+    assert sorted(values) == values
+
+
+def test_render_has_no_fixed_mockup_dates() -> None:
+    page = render_page(page_data((SR_ROW,), (el_section(CUP_ROW),)), TEMPLATE)
+
+    for fixed in ("16.11.2026", "28.01.2026", "17:57", "przykładowe"):
+        assert fixed not in page
+    assert 'Soccer-rating: typy na <span class="nw">4 marca 2026</span>' in page
+    assert "Dane pobrano 04.03.2026 o 10:00." in text_of(page)
+    assert "Strona wygenerowana 04.03.2026 o 12:00." in text_of(page)
+    assert '"sr": "Soccer-rating 4.03.2026' in page
+
+
+def test_render_cups_intro_names_days_and_times() -> None:
+    tuesday = replace(CUP_ROW, group="cl", day=date(2026, 3, 3), kickoff=datetime(2026, 3, 3, 21, 0, tzinfo=PAGE_ZONE))
+    thursday = replace(CUP_ROW, day=date(2026, 3, 5), kickoff=datetime(2026, 3, 5, 18, 45, tzinfo=PAGE_ZONE))
+    cups = (CupSection("cl", CUP_NAMES["cl"], (tuesday,)), el_section(thursday, replace(thursday, kickoff=None)))
+
+    text = text_of(render_page(page_data((), cups), TEMPLATE))
+
+    assert "Kolejka fazy ligowej: 3 mecze." in text
+    assert f"{CUP_NAMES['cl']} gra we wtorek 03.03.2026." in text
+    assert f"{CUP_NAMES['el']} gra w czwartek 05.03.2026." in text
+    assert "Mecze zaczynają się o 18:45 i 21:00 czasu polskiego." in text
+    assert f"{CUP_NAMES['el']}, 5.03 <small>· 18:45</small>" in text
+
+
+def test_render_without_rows_shows_the_no_data_notices() -> None:
+    page = render_page(page_data((), tuple(cup_section_without_data(prefix) for prefix in CUP_NAMES)), TEMPLATE)
+
+    assert SR_NO_DATA in text_of(page)
+    for slug in ANALYST_SLUGS.values():
+        assert f'href="https://theanalyst.com/competition/{slug}/predictions"' in page
+    assert 'class="filters"' not in page
+    assert 'class="m ' not in page
+    assert f'"sr": "{TAB_SR_EMPTY}"' in page
+
+
+@pytest.mark.parametrize("pick", ["1", "2"])
+def test_render_bolds_the_picked_cup_team(pick: Pick) -> None:
+    row = replace(CUP_ROW, pick=pick)
+
+    page = render_page(page_data((), (el_section(row),)), TEMPLATE)
+
+    picked, other = ("Home FC", "Away FC") if pick == "1" else ("Away FC", "Home FC")
+    assert f"<b>{picked}</b>" in page
+    assert f"<b>{other}</b>" not in page
+
+
+def test_render_sr_intro_without_kickoffs_or_scrape_time() -> None:
+    data = replace(page_data((replace(SR_ROW, kickoff=None),), ()), scraped_at=None)
+
+    text = text_of(render_page(data, TEMPLATE))
+
+    assert "<p>1 mecz z soccer-rating.com.</p>" in text
+    assert 'class="t">' + EN_DASH + "</td>" in text
+    assert 'data-start="2026' not in text
+
+
+@pytest.mark.parametrize(
+    ("sr_rows", "cups"), [((replace(SR_ROW, sr=None),), ()), ((), (el_section(replace(CUP_ROW, cup=None)),))]
+)
+def test_render_refuses_rows_without_their_facts(sr_rows: tuple[MatchRow, ...], cups: tuple[CupSection, ...]) -> None:
+    with pytest.raises(ValueError, match="Home FC - Away FC"):
+        render_page(page_data(sr_rows, cups), TEMPLATE)
