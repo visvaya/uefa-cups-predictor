@@ -39,7 +39,7 @@ Input data is not included in the repository (see [How to Get Data](#how-to-get-
   - `LOCKED_DIRECT_RO16`: Guaranteed spot in the top eight (direct qualification).
   - `LOCKED_PLAYOFFS`: Guaranteed progression, but no chance for Top 8 (play-offs).
   - `IN_PLAY`: Fight for key positions continues.
-- **Motivation Index (Mot)**: Custom *Pressure Vector* algorithm assessing "win pressure". Peak values occur at qualification thresholds (spots 8/9 and 24/25).
+- **Motivation Index (Mot)**: Custom *Pressure Vector* algorithm assessing "win pressure". Peak values occur at qualification thresholds (spots 8/9 and 24/25), plus a smaller seeding bonus at the 16/17 line (seeded 9-16 against unseeded 17-24), scaled by the KO play-off probability.
 - **Rotation Risk (Risk)**: Detects "safe" teams likely to rotate their squad before the knockout phase.
 - **Opponent Dead Bonus (`opp_dead`)**: Automatic attractiveness bonus for a team playing against a rival that is already `OUT` or has nothing left to play for.
 - **International & Excel Ready**: Output format is standardized for international use (comma `,` separator, dot `.` decimal). Polish local format is available via flag.
@@ -123,7 +123,7 @@ Every limit below is compared with the value as the report shows it (rounded), s
 
 - **Status/Risk (Absolute Priority)**:
   - `Out of contention`: Team cannot reach Top 24. Always `🔴 AVOID`.
-  - `Status LOCKED...`: Team has secured its spot. Always `🟠 CAUTION` due to high rotation risk.
+  - `Status LOCKED...`: Team has secured its spot. Always `🟠 CAUTION` by this status rule, whatever its `teamRotRisk`: a locked play-off team still fighting for seeding (16/17) can show a rotation risk below 1.39.
   - `High rotation risk`: `teamRotRisk` >= 1.39. Always `🟠 CAUTION`.
 - **Value/Signal**:
   - `High Value / Good Value`: High mathematical advantage based on motivation and win prob.

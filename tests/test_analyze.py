@@ -223,6 +223,25 @@ def test_enrich_table_treats_a_rounded_sum_just_over_100_as_consistent() -> None
     assert enriched["Motivation"].iloc[1] == pytest.approx(enriched["Motivation"].iloc[0], abs=0.5)
 
 
+def _seeding_rows(*rows: tuple[float, float]) -> pd.Series:
+    """Motivation of teams that differ only in (XPOS, KO P/0%), so the survival and top 8 pressure stay equal."""
+    zero = {c: 0.0 for c in TABLE_NUMERIC_COLUMNS}
+    table = pd.DataFrame([{**zero, "XPOS": xpos, "KO P/0%": ko} for xpos, ko in rows])
+    return enrich_table(table)["Motivation"]
+
+
+def test_enrich_table_seeding_bonus_has_no_jump_at_a_play_off_probability() -> None:
+    motivation = _seeding_rows((13.0, 40.0), (13.0, 40.01))
+
+    assert motivation.iloc[1] == pytest.approx(motivation.iloc[0], abs=0.1)
+
+
+def test_enrich_table_seeding_bonus_peaks_at_the_seeding_line() -> None:
+    motivation = _seeding_rows((12.0, 99.0), (16.0, 99.0))
+
+    assert motivation.iloc[1] > motivation.iloc[0]
+
+
 @pytest.mark.parametrize(
     ("analyst", "soccer_rating"),
     [
