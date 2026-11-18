@@ -26,6 +26,10 @@ def _fact(value: float) -> float:
     return 0.0 if pd.isna(value) else float(value)
 
 
+def _fact_or_none(value: float) -> float | None:
+    return None if pd.isna(value) else float(value)
+
+
 def _text(value: object) -> str:
     return value if isinstance(value, str) else ""
 
@@ -47,7 +51,7 @@ def _row(r: pd.Series) -> MatchRow:
         score=float(r["expertScore"]),
         sr=SrFacts(
             edge=_fact(r["SR_edge"]),
-            steam=_fact(r["srDropping"]),
+            steam=_fact_or_none(r["srDropping"]),
             ao=_fact(r["strangeOdds"]),
             quality=_fact(r["srCompleteness"]),
             home_href=_text(r["home_href"]) or None,

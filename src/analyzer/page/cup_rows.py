@@ -10,6 +10,8 @@ from analyzer.page.texts import CUP_NAMES, LEVEL_RANKS, kickoff_at, level_of
 
 
 def _team(r: pd.Series, name: str) -> TeamFacts:
+    # Without soccer-rating data for the match (quality 0) the score and edge are missing, not zero
+    has_sr = r["sr_quality"] != 0
     return TeamFacts(
         team=name,
         win_pct=float(r["TeamWinProb%"]),
@@ -17,8 +19,8 @@ def _team(r: pd.Series, name: str) -> TeamFacts:
         status=r["TeamStatus"],
         rotation=float(r["TeamRotRisk"]),
         value=float(r["ValFinal"]),
-        score=float(r["expertScore"]),
-        edge=float(r["SR_edge"]),
+        score=float(r["expertScore"]) if has_sr else None,
+        edge=float(r["SR_edge"]) if has_sr else None,
         level=level_of(r["recommendation"]),
         reason=r["reason"],
         close=odds_or_none(r["Close"]),

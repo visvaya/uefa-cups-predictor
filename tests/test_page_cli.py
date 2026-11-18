@@ -90,9 +90,10 @@ def test_main_fails_when_the_page_cannot_be_saved(tmp_path: Path, capsys: pytest
     assert capsys.readouterr().out.splitlines()[-1].startswith(f"ERROR: Could not save the results page to {out}")
 
 
-def test_main_rejects_page_with_sr_only(tmp_path: Path) -> None:
+@pytest.mark.parametrize("option", [["--sr-only"], ["--excel-pl"], ["--output-dir", "out"]])
+def test_main_rejects_page_with_report_options(tmp_path: Path, option: list[str]) -> None:
     with pytest.raises(SystemExit) as exit_info:
-        main(tmp_path, ["--page", str(tmp_path / "index.html"), "--sr-only"])
+        main(tmp_path, ["--page", str(tmp_path / "index.html"), *option])
 
     assert exit_info.value.code == 2
 

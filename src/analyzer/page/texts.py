@@ -85,25 +85,6 @@ SIGNAL_TERMS = (
     ("Good Value", "goodval"),
     ("Close(", "aofair"),
 )
-# Signal key -> its name in the signal filter
-SIGNAL_NAMES = {
-    "sure": "Sure Bet Pattern",
-    "strongsig": "Strong Expert Signal",
-    "possig": "Positive Signal",
-    "steamup": "Steam (+)",
-    "steamdown": "Steam (" + MINUS + ")",
-    "strange": "Strange Odds",
-    "edge": "SR Edge",
-    "market": "Market Confidence",
-    "rising": "Risk: Rising Odds",
-    "nosteam": "No Steam Confirmation",
-    "outsig": "Out of contention",
-    "rotsig": "High rotation risk",
-    "lockedsig": "Status LOCKED",
-    "highval": "High Value",
-    "goodval": "Good Value",
-    "aofair": "Close / Fair",
-}
 # Raw status codes in signals are long and unbreakable; the page shows them short (the explanation names them)
 SIGNAL_SHORT = {
     "Status LOCKED_DIRECT_RO16": "Status LOCKED: 1/8",
@@ -192,7 +173,7 @@ TERMS: dict[str, tuple[str, str]] = {
         ),
     ),
     "steamdown": (
-        SIGNAL_NAMES["steamdown"],
+        "Steam (" + MINUS + ")",
         "Kurs na tę drużynę wzrósł względem kursu na rywala. Rynek się od niej odwraca. To zły znak dla typu.",
     ),
     "strange": (
@@ -453,7 +434,6 @@ LABELS = {
     "draw": "remis",
     "no_data": "brak danych",
     "none": "brak",
-    "no_row": "brak wiersza",
     "start": "Początek",
     "open": "otwarcie",
     "close": "zamknięcie",
@@ -489,6 +469,7 @@ CUP_DAY = "{cup} gra {days}."
 CUPS_ONE_TIME = "Wszystkie mecze zaczynają się o {time} czasu polskiego."
 CUPS_TIMES = "Mecze zaczynają się o {times} czasu polskiego."
 CUPS_KNOWN_TIMES = "Znane godziny (czas polski): {times} ({without})."
+CUPS_NO_KNOWN_TIMES = "Godziny: brak danych ({without})."
 CUPS_NO_TIMES = "Godziny i kursy: brak danych soccer-rating dla tych meczów."
 # The count of matches whose kickoff the inputs do not have
 WITHOUT_TIME = "{matches} bez godziny"

@@ -84,11 +84,14 @@ def test_sr_rows_map_an_empty_href_to_none(ranking: pd.DataFrame) -> None:
     assert (row.sr.home_href, row.sr.away_href) == (None, "/Beta-United/202/")
 
 
-def test_sr_rows_map_missing_facts_to_zero(ranking: pd.DataFrame) -> None:
-    row = next(row for row in sr_match_rows(ranking) if row.home == "ID_999")
+def test_sr_rows_leave_a_missing_steam_empty(ranking: pd.DataFrame) -> None:
+    rows = {row.home: row for row in sr_match_rows(ranking)}
 
-    assert row.sr is not None
-    assert (row.sr.steam, row.sr.ao, row.sr.quality) == (0.0, -40.0, 0.0)
+    # ID_999 has no odds movement (NaN): no value, not a zero
+    assert rows["ID_999"].sr is not None
+    assert (rows["ID_999"].sr.steam, rows["ID_999"].sr.ao, rows["ID_999"].sr.quality) == (None, -40.0, 0.0)
+    assert rows["Alpha FC"].sr is not None
+    assert rows["Alpha FC"].sr.steam == pytest.approx(0.12)
 
 
 def test_sr_rows_round_the_score_as_the_report_shows_it(ranking: pd.DataFrame) -> None:
@@ -116,6 +119,7 @@ def _team_row(match_index: int, is_home: bool, **values: object) -> dict[str, ob
         "ValFinal": 30.0,
         "expertScore": 0.0,
         "SR_edge": 0.0,
+        "sr_quality": 0.0,
         "Close": np.nan,
         "recommendation": "NEUTRAL",
         "reason": "-",
@@ -160,7 +164,6 @@ def test_cup_rows_order_by_level_then_value(el_frames: tuple[pd.DataFrame, pd.Da
     for row in rows:
         assert row.cup is not None
         picked = row.cup.home if row.pick == "1" else row.cup.away
-        assert picked is not None
         keys.append((list(LEVEL_NAMES).index(row.level), -picked.value))
     assert keys == sorted(keys)
 
@@ -193,7 +196,6 @@ def test_cup_rows_carry_both_teams(el_frames: tuple[pd.DataFrame, pd.DataFrame])
         reason=reason_o,
         close=1.65,
     )
-    assert team_o.cup.away is not None
     assert (team_o.cup.away.team, team_o.cup.away.level, team_o.cup.away.close) == ("Team P", "neutral", 5.2)
 
 
@@ -206,7 +208,6 @@ def test_cup_rows_of_matches_without_odds_or_kickoff(el_frames: tuple[pd.DataFra
     assert (team_c.day, team_c.kickoff) == (None, None)
     assert team_c.odds == PickOdds(open=None, close=None, fair=None)
     assert team_c.cup is not None
-    assert team_c.cup.home is not None
     assert team_c.cup.home.close is None
 
 
@@ -239,8 +240,9 @@ def test_cup_rows_without_soccer_rating_have_no_odds() -> None:
     assert (row.day, row.kickoff) == (None, None)
     assert row.cup is not None
     assert (row.cup.home_win_pct, row.cup.draw_pct, row.cup.away_win_pct) == (40.0, 25.0, 35.0)
-    assert row.cup.away is not None
     assert (row.cup.away.team, row.cup.away.close) == ("Away FC", None)
+    # Without soccer-rating data a team has no score or edge, not a zero
+    assert (row.cup.home.score, row.cup.home.edge, row.score) == (None, None, None)
 
 
 def test_cup_section_without_data_is_empty() -> None:

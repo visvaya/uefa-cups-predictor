@@ -26,7 +26,7 @@ class SrFacts:
     """Soccer-rating details of a match; the hrefs are site paths of the clubs' pages."""
 
     edge: float
-    steam: float
+    steam: float | None
     ao: float
     quality: float
     home_href: str | None
@@ -43,8 +43,8 @@ class TeamFacts:
     status: str
     rotation: float
     value: float
-    score: float
-    edge: float
+    score: float | None
+    edge: float | None
     level: Level
     reason: str
     close: float | None
@@ -52,13 +52,13 @@ class TeamFacts:
 
 @dataclass(frozen=True)
 class CupFacts:
-    """The match's 1/X/2 chances and both teams' rows (None when the report has no row for a team)."""
+    """The match's 1/X/2 chances and both teams' rows."""
 
     home_win_pct: float
     draw_pct: float
     away_win_pct: float
-    home: TeamFacts | None
-    away: TeamFacts | None
+    home: TeamFacts
+    away: TeamFacts
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class MatchRow:
     group: str
     group_name: str
     odds: PickOdds
-    score: float
+    score: float | None
     sr: SrFacts | None
     cup: CupFacts | None
 

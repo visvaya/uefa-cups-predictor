@@ -194,11 +194,20 @@ def test_render_cups_intro_counts_matches_without_a_day() -> None:
     assert f"{CUP_NAMES['el']} gra w środę 04.03.2026 (1 mecz bez daty)." in text
 
 
-def test_render_cups_without_kickoffs() -> None:
+def test_render_cups_without_kickoffs_but_with_odds() -> None:
     text = text_of(render_page(page_data((), (el_section(replace(CUP_ROW, kickoff=None)),)), TEMPLATE))
 
-    assert "Godziny i kursy: brak danych soccer-rating dla tych meczów." in text
+    assert "Godziny: brak danych (1 mecz bez godziny)." in text
+    assert "Godziny i kursy" not in text
     assert "Znane godziny" not in text
+
+
+def test_render_cups_without_kickoffs_or_odds() -> None:
+    row = replace(CUP_ROW, kickoff=None, odds=PickOdds(None, None, None))
+
+    text = text_of(render_page(page_data((), (el_section(row),)), TEMPLATE))
+
+    assert "Godziny i kursy: brak danych soccer-rating dla tych meczów." in text
 
 
 def test_render_without_rows_shows_the_no_data_notices() -> None:
@@ -312,7 +321,14 @@ WORST_CUPS = (
         day=None,
         kickoff=None,
         odds=PickOdds(None, None, None),
-        cup=replace(CUP_FACTS, home=replace(TEAM, team="Lokomotiv Płowdiw", level="avoid", close=None), away=None),
+        # A match without soccer-rating data: no odds, score or edge for either team
+        cup=CupFacts(
+            12.0,
+            18.0,
+            70.0,
+            replace(TEAM, team="Lokomotiv Płowdiw", level="avoid", status="OUT", close=None, score=None, edge=None),
+            replace(TEAM, team="Away FC", level="neutral", win_pct=70.0, close=None, score=None, edge=None),
+        ),
     ),
 )
 
@@ -383,3 +399,15 @@ def test_render_binds_short_words_in_the_explanations() -> None:
 
     assert f"co najmniej 50 i{NBSP}jest" in page
     assert f"Zakładka „Soccer-{WORD_JOINER}rating”" in page
+
+
+def test_render_shows_missing_soccer_rating_values_as_missing() -> None:
+    # Home has soccer-rating data with a real zero score and edge; away has none
+    facts = replace(CUP_FACTS, home=replace(TEAM, score=0.0, edge=0.0), away=replace(TEAM, score=None, edge=None))
+    sr_row = replace(SR_ROW, sr=replace(SR_FACTS, steam=None))
+
+    text = text_of(render_page(page_data((sr_row,), (el_section(replace(CUP_ROW, cup=facts)),)), TEMPLATE))
+
+    assert '<span role="cell">0,00</span><span role="cell">brak danych</span>' in text
+    assert '<span role="cell">+0 pp</span><span role="cell">brak danych</span>' in text
+    assert "Ruch kursu</button></dt> <dd>brak danych</dd>" in text

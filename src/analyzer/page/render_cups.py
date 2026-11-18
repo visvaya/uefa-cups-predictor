@@ -43,6 +43,7 @@ from analyzer.page.texts import (
     CUP_NO_DATA,
     CUPS_COUNT,
     CUPS_KNOWN_TIMES,
+    CUPS_NO_KNOWN_TIMES,
     CUPS_NO_TIMES,
     CUPS_ONE_TIME,
     CUPS_SOURCES,
@@ -83,9 +84,8 @@ _TEAM_LINES: tuple[tuple[str, Callable[[TeamFacts], str]], ...] = (
     (term("status", LABELS["status"]), lambda team: escape(STATUS_NAMES.get(team.status, team.status))),
     (term("rotation", LABELS["rotation"]), lambda team: pl_number(team.rotation, 2)),
     (term("value", HEADS["value"]), lambda team: pl_number(team.value, 1)),
-    # A score of 0 means the team has no soccer-rating data
-    (term("score", HEADS["ocena"]), lambda team: pl_number(team.score) if team.score else LABELS["no_data"]),
-    (term("edgeval", LABELS["edge"]), lambda team: edge_text(team.edge)),
+    (term("score", HEADS["ocena"]), lambda team: number_or(team.score, LABELS["no_data"])),
+    (term("edgeval", LABELS["edge"]), lambda team: number_or(team.edge, LABELS["no_data"], edge_text)),
     (term("levels", HEADS["level"]), lambda team: LEVEL_NAMES[team.level]),
 )
 
@@ -93,10 +93,9 @@ _TEAM_LINES: tuple[tuple[str, Callable[[TeamFacts], str]], ...] = (
 def _picked(row: MatchRow) -> tuple[CupFacts, TeamFacts]:
     """The match's cup facts and the picked team's row."""
     cup = row.cup
-    team = None if cup is None else (cup.away if row.pick == "2" else cup.home)
-    if cup is None or team is None:
-        raise ValueError(f"A cup row without its picked team's facts: {row.home} - {row.away}")
-    return cup, team
+    if cup is None:
+        raise ValueError(f"A cup row without its cup facts: {row.home} - {row.away}")
+    return cup, cup.away if row.pick == "2" else cup.home
 
 
 def _shown_motivation(motivation: float) -> float:
@@ -129,10 +128,12 @@ def _times_sentence(rows: tuple[MatchRow, ...]) -> str:
     """The kickoff times; "all matches start at" only when every match has a known kickoff."""
     times = _times(rows)
     untimed = sum(row.kickoff is None for row in rows)
+    without = WITHOUT_TIME.format(matches=matches_phrase(untimed))
     if not times:
-        return CUPS_NO_TIMES
+        # "No soccer-rating data" only when no match has odds either
+        has_odds = any(row.odds.close is not None for row in rows)
+        return CUPS_NO_KNOWN_TIMES.format(without=without) if has_odds else CUPS_NO_TIMES
     if untimed:
-        without = WITHOUT_TIME.format(matches=matches_phrase(untimed))
         return CUPS_KNOWN_TIMES.format(times=and_list(times), without=without)
     if len(times) == 1:
         return CUPS_ONE_TIME.format(time=times[0])
@@ -158,10 +159,6 @@ def _match_facts(row: MatchRow, cup: CupFacts) -> list[tuple[str, str]]:
     ]
 
 
-def _team_cell(team: TeamFacts | None, value: Callable[[TeamFacts], str]) -> str:
-    return value(team) if team else LABELS["no_row"]
-
-
 def _team_head(name: str, picked: bool) -> str:
     tag = "b" if picked else "span"
     return f'<{tag} role="columnheader" translate="no">{escape(name)}</{tag}>'
@@ -170,7 +167,7 @@ def _team_head(name: str, picked: bool) -> str:
 def _both_teams(row: MatchRow, cup: CupFacts, picked: TeamFacts) -> str:
     """The match and both teams side by side, home left and away right (a grid with table roles)."""
     other = cup.home if row.pick == "2" else cup.away
-    sigs = signals_term([picked.reason, other.reason if other else ""])
+    sigs = signals_term([picked.reason, other.reason])
     lines = [*_TEAM_LINES, (sigs, lambda team: signals(team.reason) or LABELS["none"])]
     facts = "".join(
         f'<div role="row"><span role="rowheader">{label}</span><span role="cell" class="wide" aria-colspan="2">'
@@ -182,8 +179,8 @@ def _both_teams(row: MatchRow, cup: CupFacts, picked: TeamFacts) -> str:
         f"{_team_head(row.home, row.pick != '2')}{_team_head(row.away, row.pick == '2')}</div>"
     )
     body = "".join(
-        f'<div role="row"><span role="rowheader">{label}</span><span role="cell">{_team_cell(cup.home, value)}</span>'
-        f'<span role="cell">{_team_cell(cup.away, value)}</span></div>'
+        f'<div role="row"><span role="rowheader">{label}</span><span role="cell">{value(cup.home)}</span>'
+        f'<span role="cell">{value(cup.away)}</span></div>'
         for label, value in lines
     )
     return f'<div class="both" role="table" aria-label="{LABELS["both_teams"]}">{facts}{head}{body}</div>'

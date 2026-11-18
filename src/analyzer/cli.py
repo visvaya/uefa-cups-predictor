@@ -207,8 +207,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--page", type=Path, metavar="PATH", help="Write the results page (one HTML file) instead of the CSV reports"
     )
     args = parser.parse_args(argv)
-    if args.page and args.sr_only:
-        parser.error("--page cannot be combined with --sr-only")
+    # The page writes no CSV reports, so the report options have nothing to apply to
+    options = {"--sr-only": args.sr_only, "--excel-pl": args.excel_pl, "--output-dir": args.output_dir}
+    report_options = [name for name, given in options.items() if given]
+    if args.page and report_options:
+        parser.error(f"--page cannot be combined with {', '.join(report_options)}")
     return args
 
 

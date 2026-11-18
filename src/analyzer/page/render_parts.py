@@ -6,7 +6,7 @@ trusted page markup.
 
 import math
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from html import escape
 
@@ -19,10 +19,10 @@ from analyzer.page.texts import (
     LEVEL_NAMES,
     LEVEL_RANKS,
     MINUS,
-    SIGNAL_NAMES,
     SIGNAL_SHORT,
     SIGNAL_TERMS,
     SORT_NAMES,
+    TERMS,
     WEEKDAYS,
     WORD_JOINER,
     fold,
@@ -125,9 +125,9 @@ def signals_term(reasons: list[str]) -> str:
     )
 
 
-def number_or(value: float | None, missing: str) -> str:
-    """A number with two decimals as Polish text writes it, or `missing` when the inputs have none."""
-    return missing if value is None else pl_number(value)
+def number_or(value: float | None, missing: str, shown: Callable[[float], str] = pl_number) -> str:
+    """A number as `shown` writes it (two decimals by default), or `missing` when the inputs have none."""
+    return missing if value is None else shown(value)
 
 
 def edge_text(edge: float) -> str:
@@ -288,7 +288,7 @@ def signal_box(rows: tuple[MatchRow, ...]) -> str:
     counts = counted((key, key) for row in rows for key in dict.fromkeys(signal_keys(row.reason)))
     checks = "\n".join(
         f'<label><input type="checkbox" name="signal" value="{key}"><span><span translate="no">'
-        f"{escape(SIGNAL_NAMES[key])}</span> ({n})</span></label>"
+        f"{escape(TERMS[key][0])}</span> ({n})</span></label>"
         for key, (_, n) in sorted(counts.items(), key=lambda item: -item[1][1])
     )
     return f"""<fieldset data-any="signal">

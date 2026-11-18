@@ -73,6 +73,10 @@ def sr_days(rows: tuple[MatchRow, ...]) -> tuple[date, date] | None:
     return (min(days), max(days)) if days else None
 
 
+def _signed(value: float) -> str:
+    return pl_number(value, sign=True)
+
+
 def _facts(row: MatchRow) -> SrFacts:
     if row.sr is None:
         raise ValueError(f"A soccer-rating row without its soccer-rating facts: {row.home} - {row.away}")
@@ -99,7 +103,7 @@ def _details(row: MatchRow, sr: SrFacts) -> str:
             (term("oddsmove", HEADS["odds"]), odds_move(row.odds, ", ")),
             (term("fair", LABELS["fair"]), number_or(row.odds.fair, LABELS["no_data"])),
             (term("edgeval", LABELS["edge"]), edge_text(sr.edge)),
-            (term("steamval", LABELS["steam"]), pl_number(sr.steam, sign=True)),
+            (term("steamval", LABELS["steam"]), number_or(sr.steam, LABELS["no_data"], _signed)),
             (term("aoval", LABELS["ao"]), LABELS["none"] if sr.ao == 0 else pl_number(sr.ao, 0, sign=True)),
             (term("quality", LABELS["quality"]), pl_number(sr.quality, 1)),
             (LABELS["clubs"], f"{club_link(row.home, sr.home_href)}, {club_link(row.away, sr.away_href)}"),
@@ -111,7 +115,7 @@ def _row(index: int, row: MatchRow) -> str:
     sr = _facts(row)
     pick = _pick(row, sr)
     close = number_or(row.odds.close, EN_DASH)
-    score = pl_number(row.score)
+    score = number_or(row.score, EN_DASH)
     kickoff = row.kickoff
     tag = row_open(
         row,
@@ -179,7 +183,7 @@ aria-label="{LABELS["search_competition"]}"></p>
 {group_checks("pick", picks)}
 </fieldset>
 {range_field(ODDS_RANGE, closes)}
-{range_field(_SCORE_RANGE, [row.score for row in rows])}
+{range_field(_SCORE_RANGE, [row.score for row in rows if row.score is not None])}
 {signal_box(rows)}
 <fieldset>
 <legend>{LABELS["time"]}</legend>
