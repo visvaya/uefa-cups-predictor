@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from analyzer.cli import main
+from analyzer.cli import league_frames, main
 from analyzer.config import ROTATION_RISK_MAX, STRANGE_ODDS_ROTATION_FACTOR
 from analyzer.data import (
     ODDS_NUMERIC_COLUMNS,
@@ -398,6 +398,37 @@ def test_sr_only_ranking_keeps_the_match_columns() -> None:
     assert alpha["close_1"] == pytest.approx(1.6)
     assert alpha[["home_href", "league_name"]].tolist() == ["/Alpha-FC/201/", "Synthetic League"]
     assert ranking.loc["2026-01-28_XX1_203_204", "home_href"] == ""
+
+
+def _el_base_dir(tmp_path: Path) -> Path:
+    """A base dir holding the EL example inputs under their real names and the fixture soccer-rating files."""
+    league = tmp_path / "data" / "theanalyst" / "europa-league"
+    league.mkdir(parents=True)
+    for kind in ("fixtures", "table_predicted"):
+        shutil.copy(
+            REPO_DIR / "data" / "theanalyst" / "europa-league" / f"el_{kind}_example.csv", league / f"el_{kind}.csv"
+        )
+    shutil.copytree(SR_FIXTURES_DIR, tmp_path / "data" / "soccer-rating")
+    return tmp_path
+
+
+def test_league_ranking_links_team_rows_to_their_match(tmp_path: Path) -> None:
+    f, ranking, _ = league_frames(_el_base_dir(tmp_path), "el")
+
+    assert len(ranking) == 2 * len(f)
+    for row in ranking.itertuples():
+        match = f.loc[row.match_index]
+        assert row.Team == (match["HomeTeamName"] if row.is_home else match["AwayTeamName"])
+
+
+def test_league_frames_keep_kickoff_and_odds(tmp_path: Path) -> None:
+    f, _, lines = league_frames(_el_base_dir(tmp_path), "el")
+
+    assert {"snapshot_date", "open_1", "close_x", "fair_2", "HomeTeam", "AwayTeam", "Draw%"} <= set(f.columns)
+    team_o = f.set_index("HomeTeam").loc["Team O"]
+    assert team_o["time_local"] == "18:45"
+    assert team_o["close_x"] == pytest.approx(3.9)
+    assert any(line.startswith("INFO: Soccer-rating coverage") for line in lines)
 
 
 def test_sr_only_report_falls_back_to_the_club_name_for_an_empty_today_name(tmp_path: Path) -> None:

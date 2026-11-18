@@ -133,13 +133,25 @@ def latest_snapshots(sr: pd.DataFrame) -> pd.DataFrame:
     return cast_numeric(sr, ODDS_NUMERIC_COLUMNS)
 
 
-def with_lineups(sr: pd.DataFrame, today: pd.DataFrame) -> pd.DataFrame:
-    """Adds today's lineup ratings and type (today_matches.csv) by match_id; empty lineups without a match_id."""
+def with_today_columns(sr: pd.DataFrame, today: pd.DataFrame) -> pd.DataFrame:
+    """Adds today's kickoff, lineup ratings and type (today_matches.csv) by match_id; empty ones without a match_id."""
     today = cast_numeric(today, ["lineup_rating_home_today", "lineup_rating_away_today"])
     if "match_id" in sr.columns and "match_id" in today.columns:
-        lineup_cols = ["match_id", "lineup_rating_home_today", "lineup_rating_away_today", "lineup_type_today"]
-        return sr.merge(today[lineup_cols], on="match_id", how="left")
-    return sr.assign(lineup_rating_home_today=float("nan"), lineup_rating_away_today=float("nan"), lineup_type_today="")
+        today_cols = [
+            "match_id",
+            "time_local",
+            "lineup_rating_home_today",
+            "lineup_rating_away_today",
+            "lineup_type_today",
+        ]
+        # reindex: a today file from before the kickoff column still merges (NaN where a column is missing)
+        return sr.merge(today.reindex(columns=today_cols), on="match_id", how="left")
+    return sr.assign(
+        time_local="",
+        lineup_rating_home_today=float("nan"),
+        lineup_rating_away_today=float("nan"),
+        lineup_type_today="",
+    )
 
 
 def with_team_keys(sr: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
@@ -179,7 +191,7 @@ def load_soccer_rating(base_dir: Path, prefix: str) -> tuple[pd.DataFrame, list[
     else:
         today = pd.DataFrame()
         notes.append(f"WARNING: {today_path.name} not found: running without lineups")
-    sr = with_lineups(latest_snapshots(sr), today)
+    sr = with_today_columns(latest_snapshots(sr), today)
     return with_team_keys(sr, read_smart_csv(meta_path)), notes
 
 
