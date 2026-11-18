@@ -1,7 +1,9 @@
-"""The results page's Jinja2 environment: it loads the template files, so it lives outside the page logic that does
-no I/O and is passed to `render_page`."""
+"""The results page's Jinja2 environment: it reads every template file up front, so it lives outside the page logic
+that does no I/O, and `render_page` renders from memory."""
 
-from jinja2 import Environment, PackageLoader, StrictUndefined
+from importlib.resources import files
+
+from jinja2 import DictLoader, Environment, StrictUndefined
 
 from analyzer.page.render_parts import keep_last_words
 from analyzer.page.texts import (
@@ -24,10 +26,13 @@ def page_environment() -> Environment:
     """Autoescaping environment with the page's fixed texts as globals and a missing variable as an error.
 
     `trim_blocks` and `lstrip_blocks` let a block tag stand on its own line; the templates add `+` or `-` where the
-    page needs the whitespace the other way.
+    page needs the whitespace the other way. The templates are read here into a `DictLoader`, which never checks the
+    files again.
     """
+    folder = files("analyzer.page") / "templates"
+    sources = {item.name: item.read_text(encoding="utf-8") for item in folder.iterdir() if item.name.endswith(".j2")}
     env = Environment(
-        loader=PackageLoader("analyzer.page", "templates"),
+        loader=DictLoader(sources),
         autoescape=True,
         undefined=StrictUndefined,
         trim_blocks=True,

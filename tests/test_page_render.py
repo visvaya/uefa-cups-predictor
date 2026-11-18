@@ -127,6 +127,17 @@ def test_render_fails_on_a_missing_template_variable() -> None:
         ENV.get_template("sr.html.j2").render(view)
 
 
+def test_render_reads_no_files(monkeypatch: pytest.MonkeyPatch) -> None:
+    env = page_environment()
+
+    def no_open(*args: object) -> None:
+        raise AssertionError(f"render_page opened a file: {args}")
+
+    monkeypatch.setattr("builtins.open", no_open)
+
+    assert "<!doctype html>" in render_page(page_data((SR_ROW,), (el_section(CUP_ROW),)), env)
+
+
 def test_render_leaves_out_a_range_without_values() -> None:
     no_close = replace(TEAM, close=None)
     no_odds = replace(CUP_ROW, odds=PickOdds(None, None, None), cup=replace(CUP_FACTS, home=no_close, away=no_close))
