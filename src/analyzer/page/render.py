@@ -1,19 +1,18 @@
-"""The results page: both tabs, the explanations and tab titles for the page script, and the footer, in the template.
+"""The results page: both tabs, the explanations and tab titles for the page script, and the footer, in the templates.
 
-The template has four placeholders: `{{VIEWS}}`, `{{TERMS_JSON}}`, `{{TAB_TITLES_JSON}}` and `{{FOOTER}}`.
+`page.html.j2` is the skeleton; the tabs and the footer are rendered first, so their text can be typeset.
 """
 
 import json
+
+from jinja2 import Environment
+from markupsafe import Markup
 
 from analyzer.page.model import PageData
 from analyzer.page.render_cups import cups_view
 from analyzer.page.render_parts import typeset, typeset_html
 from analyzer.page.render_sr import sr_days, sr_view
 from analyzer.page.texts import (
-    FOOTER_GAMBLING,
-    FOOTER_INDEPENDENCE,
-    FOOTER_LICENCE,
-    FOOTER_TOP,
     GENERATED,
     NBSP,
     TAB_CUPS,
@@ -26,9 +25,14 @@ from analyzer.page.texts import (
 )
 
 
-def _script_json(value: object) -> str:
+def _markup(html: str) -> Markup:
+    """Text that is already page markup, so autoescape leaves it: rendered tabs, or JSON with its `</` escaped."""
+    return Markup(html)  # noqa: S704 (only rendered, escaped templates and escaped script JSON come here)
+
+
+def _script_json(value: object) -> Markup:
     """JSON for a script element: every `</` is escaped, so no text can close the element."""
-    return json.dumps(value, ensure_ascii=False).replace("</", "<" + chr(92) + "/")
+    return _markup(json.dumps(value, ensure_ascii=False).replace("</", "<" + chr(92) + "/"))
 
 
 def _tab_titles(data: PageData) -> dict[str, str]:
@@ -36,22 +40,18 @@ def _tab_titles(data: PageData) -> dict[str, str]:
     return {"sr": TAB_SR.format(days=short_date_span(*days)) if days else TAB_SR_EMPTY, "full": TAB_CUPS}
 
 
-def _footer(data: PageData) -> str:
-    sources = f"{footer_sources(data.scraped_at)} {GENERATED.format(stamp=stamp(data.generated_at))}"
-    small = "\n".join(
-        f"<p><small>{text}</small></p>" for text in (sources, FOOTER_GAMBLING, FOOTER_INDEPENDENCE, FOOTER_LICENCE)
+def render_page(data: PageData, env: Environment) -> str:
+    """The page as HTML, rendered with the templates of `env` (see `page_environment`)."""
+    sr = env.get_template("sr.html.j2").render(sr_view(data))
+    cups = env.get_template("cups.html.j2").render(cups_view(data.cups))
+    footer = env.get_template("footer.html.j2").render(
+        sources=footer_sources(data.scraped_at), generated=GENERATED.format(stamp=stamp(data.generated_at))
     )
-    return f"<p>{FOOTER_TOP}</p>\n{small}"
-
-
-def render_page(data: PageData, template: str) -> str:
-    """The page as HTML; the views go in last, so nothing in the inputs can fill another placeholder."""
-    views = typeset_html(f"{sr_view(data)}\n{cups_view(data.cups)}")
     # The page script shows the explanations as plain text, so they take the characters, not entities
     terms = {key: (typeset(title, NBSP), typeset(text, NBSP)) for key, (title, text) in TERMS.items()}
-    return (
-        template.replace("{{TERMS_JSON}}", _script_json(terms))
-        .replace("{{TAB_TITLES_JSON}}", _script_json(_tab_titles(data)))
-        .replace("{{FOOTER}}", typeset_html(_footer(data)))
-        .replace("{{VIEWS}}", views)
+    return env.get_template("page.html.j2").render(
+        views=_markup(typeset_html(sr + cups)),
+        footer=_markup(typeset_html(footer)),
+        terms_json=_script_json(terms),
+        tab_titles_json=_script_json(_tab_titles(data)),
     )

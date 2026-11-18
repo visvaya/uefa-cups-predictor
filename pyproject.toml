@@ -8,7 +8,9 @@ requires-python = ">=3.12"
 # Lower bounds exclude releases with known advisories; exact versions live in uv.lock.
 dependencies = [
     "beautifulsoup4>=4.14",
+    "jinja2>=3.1.6",
     "lxml>=6.1",
+    "markupsafe>=3.0.4",
     "numpy>=2.3",
     "pandas>=2.3",
     "requests>=2.33",

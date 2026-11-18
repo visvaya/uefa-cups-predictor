@@ -1,0 +1,103 @@
+{# Fragments both tabs share. The page keeps its exact whitespace: a macro ends where its last tag ends, and
+   `{{ ... -}}` at a call site marks a macro whose last line ends with its own newline. #}
+
+{% macro term(key, text, extra="") %}<button type="button" class="term{{ extra }}" data-term="{{ key }}" aria-controls="tip" aria-expanded="false">{{ text }}</button>{% endmacro %}
+
+{# A label that explains itself on tap when it has a key #}
+{% macro labelled(label, key) %}{% if key %}{{ term(key, label) }}{% else %}{{ label }}{% endif %}{% endmacro %}
+
+{% macro marker(level) %}{% if level != "neutral" %}<span class="mk mk-{{ level }}" aria-hidden="true"></span>{% endif %}{% endmacro %}
+
+{% macro signal_list(signals) %}{% for text in signals %}{% if not loop.first %}; {% endif %}<span class="sig" translate="no">{{ text }}</span>{% endfor %}{% endmacro %}
+
+{% macro signals_term(keys) %}<button type="button" class="term" data-term="signals" data-terms="{{ keys }}" aria-controls="tip" aria-expanded="false">{{ LABELS.signals }}</button>{% endmacro %}
+
+{% macro tr_open(r) %}<tr class="m {{ r.row.level }}"{% for name, value in r.attrs %} data-{{ name }}="{{ value }}"{% endfor %}>{% endmacro %}
+
+{% macro match_button(view, index, row) %}<button type="button" class="mt" aria-expanded="false" aria-controls="{{ view }}-d-{{ index }}" title="{{ LABELS.show_details }}"><span class="teams" translate="no">{% if row.pick == "1" %}<b>{{ row.home }}</b>{% else %}{{ row.home }}{% endif %} {{ EN_DASH }} {% if row.pick == "2" %}<b>{{ row.away }}</b>{% else %}{{ row.away }}{% endif %}</span></button>{% endmacro %}
+
+{# The recommendation column (signals under it) and the card's recommendation line #}
+{% macro level_cells(r) %}
+{% set level = term(r.row.level, LEVEL_NAMES[r.row.level], " lv") %}
+<td class="r">{{ level }}{% if r.signals %}<br><small><span class="lab">{{ signals_term(r.terms) }}:</span> {{ signal_list(r.signals) }}</small>{% endif %}</td>
+<td class="n1"><span class="lab">{{ HEADS.level }}:</span> {{ level }}</td>
+{%- endmacro %}
+
+{# The card layout's cell: the pick on its own line, the numbers in a strip, then the signals #}
+{% macro card_cell(r, pick, numbers) %}
+<td class="c"><dl class="strip">
+<div><dt>{{ HEADS.pick }}</dt><dd class="pk"><span>({{ r.row.pick }})</span> {{ pick }}</dd></div>
+{% for label, key, value in numbers %}
+<div class="num"><dt>{{ labelled(label, key) }}</dt><dd>{{ value }}</dd></div>
+{% endfor %}
+</dl>{% if r.signals %}<p class="sigs"><span class="lab">{{ signals_term(r.terms) }}:</span><span>{{ signal_list(r.signals) }}</span></p>{% endif %}</td>
+{%- endmacro %}
+
+{# The hidden row under a match that its name opens; the call body is its content #}
+{% macro detail_row(view, index, columns) %}<tr class="d" id="{{ view }}-d-{{ index }}" hidden><td colspan="{{ columns }}">{{ caller() }}</td></tr>{% endmacro %}
+
+{# A column head that sorts on click and explains itself on hover (where there is a mouse) #}
+{% macro sort_th(key, term_key, numeric=false) %}<th{% if numeric %} class="num"{% endif %} aria-sort="none"><button type="button" class="sort" data-key="{{ key }}"{% if term_key %} data-term="{{ term_key }}"{% endif %}>{{ HEADS[key] }}<span class="dir" aria-hidden="true"></span></button></th>{% endmacro %}
+
+{# The card layout's counterpart of the column heads; both tabs start with the best recommendation first #}
+{% macro sort_line(view, keys) %}
+<div class="sort-line" role="group" aria-labelledby="{{ view }}-sort-l"><span id="{{ view }}-sort-l">{{ LABELS.sorting }}</span> {% for key in keys %}{% if not loop.first %} {% endif %}<button type="button" class="sort" data-key="{{ key }}">{{ SORT_NAMES[key] }}<span class="dir" aria-hidden="true"></span></button>{% endfor +%}
+<input type="hidden" class="sort-by" value="level:asc" data-default="level:asc"></div>
+{%- endmacro %}
+
+{% macro search() %}
+<fieldset>
+<legend>{{ LABELS.search_team }}</legend>
+<label><input type="search" class="search" placeholder="{{ LABELS.search_team_example }}" autocomplete="off" aria-label="{{ LABELS.search_team }}"></label>
+</fieldset>
+{%- endmacro %}
+
+{% macro level_filter(levels) %}
+<fieldset>
+<legend>{{ term("levels", HEADS.level) }}</legend>
+{% for level, name, count in levels %}
+<label><input type="checkbox" name="level" value="{{ level }}" checked><span>{{ marker(level) }}{{ name }} ({{ count }})</span></label>
+{% endfor %}
+</fieldset>
+{%- endmacro %}
+
+{# Ticked boxes, one per code; the last one ends its line (see the note on top) #}
+{% macro group_checks(name, groups) %}
+{% for code, (label, n) in groups.items() %}
+<label><input type="checkbox" name="{{ name }}" value="{{ code }}" checked><span><span translate="no">{{ label }}</span> ({{ n }})</span></label>
+{% endfor %}
+{% endmacro %}
+
+{% macro spin_box(r, s) %}{% set name = r.name ~ " " ~ s.word %}<span class="spin"><button type="button" class="stp" data-dir="-1" aria-label="{{ name }}: {{ LABELS.less }}">{{ MINUS }}</button><input type="text" inputmode="decimal" class="rng" role="spinbutton" data-range="{{ r.key }}" data-bound="{{ s.bound }}" data-min="{{ r.low }}" data-max="{{ r.high }}" data-step="{{ r.step }}" data-digits="{{ r.digits }}" data-start="{{ s.start }}" value="{{ s.text }}" aria-valuemin="{{ r.low }}" aria-valuemax="{{ r.high }}" aria-valuenow="{{ s.start }}" aria-valuetext="{{ s.text }}" aria-label="{{ name }}" autocomplete="off"><button type="button" class="stp" data-dir="1" aria-label="{{ name }}: {{ LABELS.more }}">+</button></span>{% endmacro %}
+
+{# A from-to pair of spinbuttons; nothing without values #}
+{% macro range_field(r) %}
+{% if r %}
+<fieldset class="range">
+<legend>{{ term(r.term, r.label) }}</legend>
+{% for s in r.spins %}
+<span class="pair"><span class="w">{{ s.word }}</span> {{ spin_box(r, s) }}</span>
+{% endfor %}
+<small class="rng-msg" role="status"></small>
+<small class="edge-msg" role="status"></small>
+</fieldset>
+{%- endif %}
+{% endmacro %}
+
+{# Signals as an any-of filter: none ticked shows every match. Without signals the box keeps its blank line. #}
+{% macro signal_box(signals) %}
+<fieldset data-any="signal">
+<legend>{{ LABELS.signals }}</legend>
+<details class="lg-filter">
+<summary><span class="group-state"></span></summary>
+<div class="lg-pop">
+<p><small>{{ LABELS.signal_note }}</small></p>
+<p class="acts"><button type="button" class="act" data-none="signal">{{ LABELS.clear_choice }}</button></p>
+{% for key, title, n in signals %}
+<label><input type="checkbox" name="signal" value="{{ key }}"><span><span translate="no">{{ title }}</span> ({{ n }})</span></label>
+{% else +%}
+{% endfor %}
+</div>
+</details>
+</fieldset>
+{%- endmacro %}

@@ -8,26 +8,28 @@ import os
 import re
 from dataclasses import replace
 from datetime import UTC, date, datetime
-from html import escape
-from importlib.resources import files
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
+from jinja2 import UndefinedError
+from markupsafe import escape
 
 from analyzer.cli import league_frames
 from analyzer.config import PAGE_TIMEZONE
 from analyzer.league import league_ranking
 from analyzer.page.cup_rows import cup_section, cup_section_without_data
+from analyzer.page.environment import page_environment
 from analyzer.page.model import CupFacts, CupSection, MatchRow, PageData, Pick, PickOdds, SrFacts, TeamFacts
 from analyzer.page.render import render_page
+from analyzer.page.render_sr import sr_view
 from analyzer.page.sr_rows import sr_match_rows
 from analyzer.page.texts import ANALYST_SLUGS, CUP_NAMES, EN_DASH, SR_NO_DATA, TAB_SR_EMPTY
 from analyzer.sr_only import sr_only_ranking
 from tests.inputs import REPO_DIR, el_base_dir, fixture_sr_only, text_of, view_of
 
 GOLDEN_PAGE = REPO_DIR / "tests" / "golden" / "page" / "results.html"
-TEMPLATE = files("analyzer.page").joinpath("template.html").read_text(encoding="utf-8")
+ENV = page_environment()
 PAGE_ZONE = ZoneInfo(PAGE_TIMEZONE)
 DAY = date(2026, 3, 4)  # a Wednesday
 SR_FACTS = SrFacts(edge=0.05, steam=0.1, ao=0.0, quality=1.0, home_href="/Home-FC/1/", away_href="/Away-FC/2/")
@@ -89,7 +91,7 @@ def test_render_matches_golden(tmp_path: Path) -> None:
         generated_at=datetime(2026, 1, 28, 12, 0, tzinfo=PAGE_ZONE),
     )
 
-    page = render_page(data, TEMPLATE)
+    page = render_page(data, ENV)
 
     if os.environ.get("UPDATE_GOLDEN") == "1":
         GOLDEN_PAGE.parent.mkdir(exist_ok=True)
@@ -104,23 +106,43 @@ def test_render_matches_golden(tmp_path: Path) -> None:
 
 
 def test_render_escapes_team_names() -> None:
-    hostile = '<b>"A&B"'
+    hostile = "<b>" + '"A&B' + "'" + 'C"'
     sr = replace(SR_ROW, home=hostile, group_name=hostile, reason=hostile)
     cup_facts = replace(TEAM, team=hostile, status=hostile, reason=hostile)
     cup = replace(CUP_ROW, away=hostile, pick="2", reason=hostile, cup=replace(CUP_FACTS, away=cup_facts))
 
-    page = render_page(page_data((sr,), (el_section(cup),)), TEMPLATE)
+    page = render_page(page_data((sr,), (el_section(cup),)), ENV)
 
     assert hostile not in page
-    assert '"A&B"' not in page
+    assert '"A&B' not in page
     assert escape(hostile) in page
+    assert "A&amp;B&#39;C&#34;" in page
+
+
+def test_render_fails_on_a_missing_template_variable() -> None:
+    view = sr_view(page_data((SR_ROW,), ()))
+    del view["key"]
+
+    with pytest.raises(UndefinedError, match="'key' is undefined"):
+        ENV.get_template("sr.html.j2").render(view)
+
+
+def test_render_reads_no_files(monkeypatch: pytest.MonkeyPatch) -> None:
+    env = page_environment()
+
+    def no_open(*args: object) -> None:
+        raise AssertionError(f"render_page opened a file: {args}")
+
+    monkeypatch.setattr("builtins.open", no_open)
+
+    assert "<!doctype html>" in render_page(page_data((SR_ROW,), (el_section(CUP_ROW),)), env)
 
 
 def test_render_leaves_out_a_range_without_values() -> None:
     no_close = replace(TEAM, close=None)
     no_odds = replace(CUP_ROW, odds=PickOdds(None, None, None), cup=replace(CUP_FACTS, home=no_close, away=no_close))
 
-    page = render_page(page_data((), (el_section(no_odds),)), TEMPLATE)
+    page = render_page(page_data((), (el_section(no_odds),)), ENV)
 
     assert 'data-range="odds"' not in page
     assert 'data-range="win"' in page
@@ -135,7 +157,7 @@ def test_render_sorts_picks_one_draw_two() -> None:
         replace(SR_ROW, home="Bravo", away="Alpha", pick="2"),
     )
 
-    page = render_page(page_data(rows, ()), TEMPLATE)
+    page = render_page(page_data(rows, ()), ENV)
 
     values = re.findall('data-s-pick="([^"]*)"', page)
     assert values == ["0 zulu", "1 yankee", "2 alpha"]
@@ -143,7 +165,7 @@ def test_render_sorts_picks_one_draw_two() -> None:
 
 
 def test_render_has_no_fixed_mockup_dates() -> None:
-    page = render_page(page_data((SR_ROW,), (el_section(CUP_ROW),)), TEMPLATE)
+    page = render_page(page_data((SR_ROW,), (el_section(CUP_ROW),)), ENV)
 
     for fixed in ("16.11.2026", "28.01.2026", "17:57", "przykładowe"):
         assert fixed not in page
@@ -164,7 +186,7 @@ def test_render_cups_intro_says_which_kickoffs_are_known() -> None:
     thursday = kicking_off(CUP_ROW, date(2026, 3, 5), 18, 45)
     cups = (CupSection("cl", CUP_NAMES["cl"], (tuesday,)), el_section(thursday, replace(thursday, kickoff=None)))
 
-    text = text_of(render_page(page_data((), cups), TEMPLATE))
+    text = text_of(render_page(page_data((), cups), ENV))
 
     assert "Kolejka fazy ligowej: 3 mecze." in text
     assert f"{CUP_NAMES['cl']} gra we wtorek 03.03.2026." in text
@@ -179,7 +201,7 @@ def test_render_cups_intro_says_which_kickoffs_are_known() -> None:
 def test_render_cups_over_two_days() -> None:
     rows = (kicking_off(CUP_ROW, date(2026, 1, 20), 18, 45), kicking_off(CUP_ROW, date(2026, 1, 21), 21, 0))
 
-    text = text_of(render_page(page_data((), (el_section(*rows),)), TEMPLATE))
+    text = text_of(render_page(page_data((), (el_section(*rows),)), ENV))
 
     assert f"{CUP_NAMES['el']} gra we wtorek 20.01 i w środę 21.01.2026." in text
     assert "Mecze zaczynają się o 18:45 i 21:00 czasu polskiego." in text
@@ -189,13 +211,13 @@ def test_render_cups_over_two_days() -> None:
 def test_render_cups_intro_counts_matches_without_a_day() -> None:
     rows = (CUP_ROW, replace(CUP_ROW, home="Late FC"), replace(CUP_ROW, home="Open FC", day=None, kickoff=None))
 
-    text = text_of(render_page(page_data((), (el_section(*rows),)), TEMPLATE))
+    text = text_of(render_page(page_data((), (el_section(*rows),)), ENV))
 
     assert f"{CUP_NAMES['el']} gra w środę 04.03.2026 (1 mecz bez daty)." in text
 
 
 def test_render_cups_without_kickoffs_but_with_odds() -> None:
-    text = text_of(render_page(page_data((), (el_section(replace(CUP_ROW, kickoff=None)),)), TEMPLATE))
+    text = text_of(render_page(page_data((), (el_section(replace(CUP_ROW, kickoff=None)),)), ENV))
 
     assert "Godziny: brak danych (1 mecz bez godziny)." in text
     assert "Godziny i kursy" not in text
@@ -205,13 +227,13 @@ def test_render_cups_without_kickoffs_but_with_odds() -> None:
 def test_render_cups_without_kickoffs_or_odds() -> None:
     row = replace(CUP_ROW, kickoff=None, odds=PickOdds(None, None, None))
 
-    text = text_of(render_page(page_data((), (el_section(row),)), TEMPLATE))
+    text = text_of(render_page(page_data((), (el_section(row),)), ENV))
 
     assert "Godziny i kursy: brak danych soccer-rating dla tych meczów." in text
 
 
 def test_render_without_rows_shows_the_no_data_notices() -> None:
-    page = render_page(page_data((), tuple(cup_section_without_data(prefix) for prefix in CUP_NAMES)), TEMPLATE)
+    page = render_page(page_data((), tuple(cup_section_without_data(prefix) for prefix in CUP_NAMES)), ENV)
 
     assert SR_NO_DATA in text_of(page)
     for slug in ANALYST_SLUGS.values():
@@ -225,7 +247,7 @@ def test_render_without_rows_shows_the_no_data_notices() -> None:
 def test_render_bolds_the_picked_cup_team(pick: Pick) -> None:
     row = replace(CUP_ROW, pick=pick)
 
-    page = render_page(page_data((), (el_section(row),)), TEMPLATE)
+    page = render_page(page_data((), (el_section(row),)), ENV)
 
     picked, other = ("Home FC", "Away FC") if pick == "1" else ("Away FC", "Home FC")
     assert f"<b>{picked}</b>" in page
@@ -235,7 +257,7 @@ def test_render_bolds_the_picked_cup_team(pick: Pick) -> None:
 def test_render_sr_intro_without_kickoffs_or_scrape_time() -> None:
     data = replace(page_data((replace(SR_ROW, kickoff=None),), ()), scraped_at=None)
 
-    text = text_of(render_page(data, TEMPLATE))
+    text = text_of(render_page(data, ENV))
 
     assert "<p>1 mecz z soccer-rating.com. 1 mecz bez godziny.</p>" in text
     assert 'class="t">' + EN_DASH + "</td>" in text
@@ -247,7 +269,7 @@ def test_render_sr_intro_without_kickoffs_or_scrape_time() -> None:
 )
 def test_render_refuses_rows_without_their_facts(sr_rows: tuple[MatchRow, ...], cups: tuple[CupSection, ...]) -> None:
     with pytest.raises(ValueError, match="Home FC - Away FC"):
-        render_page(page_data(sr_rows, cups), TEMPLATE)
+        render_page(page_data(sr_rows, cups), ENV)
 
 
 def test_render_sr_intro_with_some_kickoffs_unknown() -> None:
@@ -258,7 +280,7 @@ def test_render_sr_intro_with_some_kickoffs_unknown() -> None:
         replace(SR_ROW, home="Quiet FC", kickoff=None, odds=PickOdds(None, None, None)),
     )
 
-    page = render_page(page_data(rows, ()), TEMPLATE)
+    page = render_page(page_data(rows, ()), ENV)
 
     assert (
         "4 mecze z soccer-rating.com. Pierwszy zaczyna się: środa 4.03.2026, 21:00. Ostatni: środa 4.03.2026, 22:30. "
@@ -338,7 +360,7 @@ def filter_counts(section: str, name: str) -> list[int]:
 
 
 def test_render_worst_case() -> None:
-    page = render_page(page_data(WORST_SR, (el_section(*WORST_CUPS),)), TEMPLATE)
+    page = render_page(page_data(WORST_SR, (el_section(*WORST_CUPS),)), ENV)
 
     for key, rows, names in (
         ("sr", WORST_SR, ("level", "league", "pick")),
@@ -362,7 +384,7 @@ NBSP = chr(0xA0)
 
 def test_render_joins_the_last_two_words_of_headings_only_when_short() -> None:
     monday = replace(SR_ROW, day=date(2026, 3, 2), kickoff=None)
-    page = render_page(page_data((SR_ROW, monday), (el_section(CUP_ROW), cup_section_without_data("ecl"))), TEMPLATE)
+    page = render_page(page_data((SR_ROW, monday), (el_section(CUP_ROW), cup_section_without_data("ecl"))), ENV)
 
     assert "<h1>Europejskie puchary: faza&nbsp;ligowa</h1>" in page
     # A heading with markup keeps its own no-break span
@@ -382,7 +404,7 @@ def test_render_joins_hyphens_in_shown_names_only() -> None:
         sr=replace(SR_FACTS, home_href="/Bosnia-Herzegovina/1/"),
     )
 
-    page = render_page(page_data((row,), ()), TEMPLATE)
+    page = render_page(page_data((row,), ()), ENV)
 
     assert f"<b>Bosnia-{WORD_JOINER}Herzegovina</b>" in page
     assert f'translate="no">Bosnia-{WORD_JOINER}Herzegovina</a>' in page
@@ -395,7 +417,7 @@ def test_render_joins_hyphens_in_shown_names_only() -> None:
 
 
 def test_render_binds_short_words_in_the_explanations() -> None:
-    page = render_page(page_data((SR_ROW,), ()), TEMPLATE)
+    page = render_page(page_data((SR_ROW,), ()), ENV)
 
     assert f"co najmniej 50 i{NBSP}jest" in page
     assert f"Zakładka „Soccer-{WORD_JOINER}rating”" in page
@@ -406,7 +428,7 @@ def test_render_shows_missing_soccer_rating_values_as_missing() -> None:
     facts = replace(CUP_FACTS, home=replace(TEAM, score=0.0, edge=0.0), away=replace(TEAM, score=None, edge=None))
     sr_row = replace(SR_ROW, sr=replace(SR_FACTS, steam=None))
 
-    text = text_of(render_page(page_data((sr_row,), (el_section(replace(CUP_ROW, cup=facts)),)), TEMPLATE))
+    text = text_of(render_page(page_data((sr_row,), (el_section(replace(CUP_ROW, cup=facts)),)), ENV))
 
     assert '<span role="cell">0,00</span><span role="cell">brak danych</span>' in text
     assert '<span role="cell">+0 pp</span><span role="cell">brak danych</span>' in text
@@ -416,7 +438,7 @@ def test_render_shows_missing_soccer_rating_values_as_missing() -> None:
 def test_render_shows_a_match_without_soccer_rating_quality_as_missing() -> None:
     row = replace(SR_ROW, odds=PickOdds(3.3, 3.3, None), sr=replace(SR_FACTS, edge=None, quality=0.0))
 
-    text = text_of(render_page(page_data((row,), ()), TEMPLATE))
+    text = text_of(render_page(page_data((row,), ()), ENV))
 
     assert "Przewaga modelu</button></dt> <dd>brak danych</dd>" in text
     assert "Kurs uczciwy</button></dt> <dd>brak danych</dd>" in text
@@ -427,7 +449,7 @@ def test_render_filters_on_the_shown_values() -> None:
     cup = replace(CUP_ROW, odds=PickOdds(1.8, 1.604, 1.5), cup=replace(CUP_FACTS, home=team))
     sr = replace(SR_ROW, score=0.704, odds=PickOdds(1.8, 1.604, 1.5))
 
-    page = render_page(page_data((sr,), (el_section(cup),)), TEMPLATE)
+    page = render_page(page_data((sr,), (el_section(cup),)), ENV)
 
     # 54,96 is shown as 55,0, so a minimum of 55 keeps the row
     assert 'data-win="55.0"' in page

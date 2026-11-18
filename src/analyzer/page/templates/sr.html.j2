@@ -1,0 +1,57 @@
+{% extends "view.html.j2" %}
+{% from "macros.html.j2" import card_cell, detail_row, group_checks, labelled, level_cells, level_filter, match_button, range_field, search, signal_box, sort_th, term, tr_open %}
+
+{% block filters %}
+{{ search() }}
+{{ level_filter(filters.levels) }}
+<fieldset data-group="league">
+<legend>{{ LABELS.competitions }}</legend>
+<details class="lg-filter">
+<summary><span class="group-state"></span></summary>
+<div class="lg-pop">
+<p><input type="search" class="lg-search" placeholder="{{ LABELS.search_competition_example }}" autocomplete="off" aria-label="{{ LABELS.search_competition }}"></p>
+<p class="lg-none" hidden><small>{{ LABELS.no_competition }}</small></p>
+<p class="acts">{{ LABELS.choose }} <button type="button" class="act" data-all="league">{{ LABELS.all }}</button> · <button type="button" class="act" data-none="league">{{ LABELS.no_option }}</button></p>
+{{ group_checks("league", filters.leagues) -}}
+</div>
+</details>
+</fieldset>
+<fieldset>
+<legend>{{ term("pick", HEADS.pick) }}</legend>
+{{ group_checks("pick", filters.picks) -}}
+</fieldset>
+{{ range_field(filters.odds) }}
+{{ range_field(filters.score) }}
+{{ signal_box(filters.signals) }}
+<fieldset>
+<legend>{{ LABELS.time }}</legend>
+<label><input type="checkbox" class="upcoming"><span>{{ LABELS.hide_started }}</span></label>
+</fieldset>
+{% endblock %}
+
+{% block cols %}<col class="c-t"><col class="c-g"><col class="c-p"><col class="c-k"><col class="c-s"><col class="c-r">{% endblock %}
+
+{% block head %}<tr>{{ sort_th("time", none) }}{{ sort_th("match", none) }}{{ sort_th("pick", "pick") }}{{ sort_th("odds", "odds", true) }}{{ sort_th("ocena", "score", true) }}{{ sort_th("level", "levels") }}</tr>{% endblock %}
+
+{% block row scoped %}
+{{ tr_open(r) }}
+<td class="t">{{ r.time }}</td>
+<td class="g">{{ match_button(key, r.index, r.row) }}<br><small translate="no">{{ r.league }}</small></td>
+<td class="p">({{ r.row.pick }}) {{ r.pick }}</td>
+<td class="k num">{{ r.close }}</td>
+<td class="s num">{{ r.score }}</td>
+{{ level_cells(r) }}
+{{ card_cell(r, r.pick, r.numbers) }}
+</tr>
+{% call detail_row(key, r.index, 6) -%}
+<dl class="det">
+{%- for label, term_key, value in r.details -%}
+<div><dt>{{ labelled(label, term_key) }}</dt> <dd>{{ value }}</dd></div>
+{%- endfor -%}
+<div><dt>{{ LABELS.clubs }}</dt> <dd>{{ r.home }}, {{ r.away }}</dd></div></dl>
+{%- endcall +%}
+{% endblock %}
+
+{% block empty %}
+<p>{{ SR_NO_DATA }}</p>
+{% endblock %}

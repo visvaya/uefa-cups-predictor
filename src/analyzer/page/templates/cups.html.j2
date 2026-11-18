@@ -1,0 +1,60 @@
+{% extends "view.html.j2" %}
+{% from "macros.html.j2" import card_cell, detail_row, group_checks, labelled, level_cells, level_filter, match_button, range_field, search, signal_box, signal_list, signals_term, sort_th, term, tr_open %}
+
+{# The match and both teams side by side, home left and away right (a grid with table roles) #}
+{% macro team_head(name, picked) %}{% set tag = "b" if picked else "span" %}<{{ tag }} role="columnheader" translate="no">{{ name }}</{{ tag }}>{% endmacro %}
+
+{% macro both_teams(r) -%}
+<div class="both" role="table" aria-label="{{ LABELS.both_teams }}">
+{%- for label, term_key, value in r.both.facts -%}
+<div role="row"><span role="rowheader">{{ labelled(label, term_key) }}</span><span role="cell" class="wide" aria-colspan="2">{{ value }}</span></div>
+{%- endfor -%}
+<div role="row" class="teams-row"><span role="columnheader">{{ LABELS.indicator }}</span>{{ team_head(r.row.home, r.row.pick != "2") }}{{ team_head(r.row.away, r.row.pick == "2") }}</div>
+{%- for label, term_key, home, away in r.both.lines -%}
+<div role="row"><span role="rowheader">{{ labelled(label, term_key) }}</span><span role="cell">{{ home }}</span><span role="cell">{{ away }}</span></div>
+{%- endfor -%}
+<div role="row"><span role="rowheader">{{ signals_term(r.both.terms) }}</span><span role="cell">{% if r.both.home_signals %}{{ signal_list(r.both.home_signals) }}{% else %}{{ LABELS.none }}{% endif %}</span><span role="cell">{% if r.both.away_signals %}{{ signal_list(r.both.away_signals) }}{% else %}{{ LABELS.none }}{% endif %}</span></div></div>
+{%- endmacro %}
+
+{% block filters %}
+{{ search() }}
+{{ level_filter(filters.levels) }}
+<fieldset>
+<legend>{{ LABELS.competitions }}</legend>
+{{ group_checks("league", filters.cups) -}}
+</fieldset>
+<fieldset>
+<legend>{{ term("status", LABELS.status_filter) }}</legend>
+{{ group_checks("status", filters.statuses) -}}
+</fieldset>
+{{ range_field(filters.odds) }}
+{{ range_field(filters.win) }}
+{{ range_field(filters.mot) }}
+{{ range_field(filters.value) }}
+{{ signal_box(filters.signals) }}
+{% endblock %}
+
+{% block cols %}<col class="f-g"><col class="f-p"><col class="f-k"><col class="f-w"><col class="f-m"><col class="f-s"><col class="f-r">{% endblock %}
+
+{% block head %}<tr>{{ sort_th("match", none) }}{{ sort_th("pick", "pick") }}{{ sort_th("odds", "odds", true) }}{{ sort_th("win", "winprob", true) }}{{ sort_th("mot", "motivation", true) }}{{ sort_th("value", "value", true) }}{{ sort_th("level", "levels") }}</tr>{% endblock %}
+
+{% block row scoped %}
+{% set pick %}<span translate="no">{{ r.pick }}</span>{% endset %}
+{{ tr_open(r) }}
+<td class="g">{{ match_button(key, r.index, r.row) }}</td>
+<td class="p">({{ r.row.pick }}) {{ pick }}</td>
+<td class="k num">{{ r.close }}</td>
+<td class="w num">{{ r.win }}</td>
+<td class="mo num">{{ r.motivation }}</td>
+<td class="s num">{{ r.value }}</td>
+{{ level_cells(r) }}
+{{ card_cell(r, pick, r.numbers) }}
+</tr>
+{% call detail_row(key, r.index, 7) -%}
+{{ both_teams(r) }}
+{%- endcall +%}
+{% endblock %}
+
+{# Without any cup the tab keeps the blank line it has always had #}
+{% block empty +%}
+{% endblock %}

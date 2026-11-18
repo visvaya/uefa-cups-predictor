@@ -2,40 +2,21 @@
 
 from collections.abc import Callable
 from datetime import date
-from html import escape
 
 from analyzer.page.model import CupFacts, CupSection, MatchRow, TeamFacts
 from analyzer.page.render_parts import (
-    SEARCH,
     Group,
     RangeSpec,
-    TableShape,
-    ViewParts,
-    card_cell,
+    common_filters,
     counted,
-    detail_row,
     edge_text,
-    group_checks,
-    keep_last_words,
-    key_points,
     kickoff_text,
-    level_cells,
-    level_filter,
-    match_button,
     number_or,
     odds_move,
-    odds_range,
     range_field,
-    row_open,
-    section,
-    signal_box,
-    signals,
-    signals_term,
-    sort_buttons,
-    sort_th,
-    term,
-    view_block,
-    view_section,
+    row_context,
+    signal_terms,
+    signal_texts,
 )
 from analyzer.page.texts import (
     ANALYST_SLUGS,
@@ -64,29 +45,21 @@ from analyzer.page.texts import (
     pl_number,
 )
 
-_SHAPE = TableShape(
-    "full",
-    '<col class="f-g"><col class="f-p"><col class="f-k"><col class="f-w"><col class="f-m"><col class="f-s">'
-    '<col class="f-r">',
-    f"<tr>{sort_th('match', None)}{sort_th('pick', 'pick')}{sort_th('odds', 'odds', True)}"
-    f"{sort_th('win', 'winprob', True)}{sort_th('mot', 'motivation', True)}{sort_th('value', 'value', True)}"
-    f"{sort_th('level', 'levels')}</tr>",
-)
 _SORTS = ("match", "pick", "odds", "win", "mot", "value", "level")
 _WIN_RANGE = RangeSpec("win", "winprob", LABELS["win_pct"], HEADS["win"], 1, 0)
 _MOT_RANGE = RangeSpec("mot", "motivation", LABELS["motivation"], LABELS["motivation"], 5, 0)
 _VALUE_RANGE = RangeSpec("value", "value", HEADS["value"], HEADS["value"], 1, 0)
-# The details' lines for both teams: label, then the value of one team's row
-_TEAM_LINES: tuple[tuple[str, Callable[[TeamFacts], str]], ...] = (
-    (term("odds", HEADS["odds"]), lambda team: number_or(team.close, LABELS["no_data"])),
-    (term("winprob", LABELS["win_prob"]), lambda team: f"{pl_number(team.win_pct, 1)}%"),
-    (term("motivation", LABELS["motivation"]), lambda team: pl_number(team.motivation, 0)),
-    (term("status", LABELS["status"]), lambda team: escape(STATUS_NAMES.get(team.status, team.status))),
-    (term("rotation", LABELS["rotation"]), lambda team: pl_number(team.rotation, 2)),
-    (term("value", HEADS["value"]), lambda team: pl_number(team.value, 1)),
-    (term("score", HEADS["ocena"]), lambda team: number_or(team.score, LABELS["no_data"])),
-    (term("edgeval", LABELS["edge"]), lambda team: number_or(team.edge, LABELS["no_data"], edge_text)),
-    (term("levels", HEADS["level"]), lambda team: LEVEL_NAMES[team.level]),
+# The details' lines for both teams: label, key of its explanation, then the value of one team's row
+_TEAM_LINES: tuple[tuple[str, str, Callable[[TeamFacts], str]], ...] = (
+    (HEADS["odds"], "odds", lambda team: number_or(team.close, LABELS["no_data"])),
+    (LABELS["win_prob"], "winprob", lambda team: f"{pl_number(team.win_pct, 1)}%"),
+    (LABELS["motivation"], "motivation", lambda team: pl_number(team.motivation, 0)),
+    (LABELS["status"], "status", lambda team: STATUS_NAMES.get(team.status, team.status)),
+    (LABELS["rotation"], "rotation", lambda team: pl_number(team.rotation, 2)),
+    (HEADS["value"], "value", lambda team: pl_number(team.value, 1)),
+    (HEADS["ocena"], "score", lambda team: number_or(team.score, LABELS["no_data"])),
+    (LABELS["edge"], "edgeval", lambda team: number_or(team.edge, LABELS["no_data"], edge_text)),
+    (HEADS["level"], "levels", lambda team: LEVEL_NAMES[team.level]),
 )
 
 
@@ -145,145 +118,121 @@ def _times(rows: tuple[MatchRow, ...]) -> list[str]:
     return sorted({f"{row.kickoff:%H:%M}" for row in rows if row.kickoff is not None})
 
 
-def _match_facts(row: MatchRow, cup: CupFacts) -> list[tuple[str, str]]:
-    """Kickoff, the 1/X/2 chances, the pick's odds movement and fair odds."""
+def _match_facts(row: MatchRow, cup: CupFacts) -> list[tuple[str, str | None, str]]:
+    """Kickoff, the 1/X/2 chances, the pick's odds movement and fair odds: label, key of its explanation, value."""
     chances = (
         f"1: {pl_number(cup.home_win_pct, 1)}% · X: {pl_number(cup.draw_pct, 1)}% · "
         f"2: {pl_number(cup.away_win_pct, 1)}%"
     )
     return [
-        (LABELS["start"], kickoff_text(row)),
-        (term("winprob", LABELS["chances"]), chances),
-        (term("oddsmove", LABELS["pick_odds"]), odds_move(row.odds, " · ")),
-        (term("fair", LABELS["fair"]), number_or(row.odds.fair, LABELS["no_data"])),
+        (LABELS["start"], None, kickoff_text(row)),
+        (LABELS["chances"], "winprob", chances),
+        (LABELS["pick_odds"], "oddsmove", odds_move(row.odds, " · ")),
+        (LABELS["fair"], "fair", number_or(row.odds.fair, LABELS["no_data"])),
     ]
 
 
-def _team_head(name: str, picked: bool) -> str:
-    tag = "b" if picked else "span"
-    return f'<{tag} role="columnheader" translate="no">{escape(name)}</{tag}>'
-
-
-def _both_teams(row: MatchRow, cup: CupFacts, picked: TeamFacts) -> str:
-    """The match and both teams side by side, home left and away right (a grid with table roles)."""
+def _both_teams(row: MatchRow, cup: CupFacts, picked: TeamFacts) -> dict[str, object]:
+    """The match and both teams side by side: its facts, one line per indicator and the signals of each team."""
     other = cup.home if row.pick == "2" else cup.away
-    sigs = signals_term([picked.reason, other.reason])
-    lines = [*_TEAM_LINES, (sigs, lambda team: signals(team.reason) or LABELS["none"])]
-    facts = "".join(
-        f'<div role="row"><span role="rowheader">{label}</span><span role="cell" class="wide" aria-colspan="2">'
-        f"{value}</span></div>"
-        for label, value in _match_facts(row, cup)
-    )
-    head = (
-        f'<div role="row" class="teams-row"><span role="columnheader">{LABELS["indicator"]}</span>'
-        f"{_team_head(row.home, row.pick != '2')}{_team_head(row.away, row.pick == '2')}</div>"
-    )
-    body = "".join(
-        f'<div role="row"><span role="rowheader">{label}</span><span role="cell">{value(cup.home)}</span>'
-        f'<span role="cell">{value(cup.away)}</span></div>'
-        for label, value in lines
-    )
-    return f'<div class="both" role="table" aria-label="{LABELS["both_teams"]}">{facts}{head}{body}</div>'
+    return {
+        "facts": _match_facts(row, cup),
+        "lines": [(label, key, value(cup.home), value(cup.away)) for label, key, value in _TEAM_LINES],
+        "terms": signal_terms([picked.reason, other.reason]),
+        "home_signals": signal_texts(cup.home.reason),
+        "away_signals": signal_texts(cup.away.reason),
+    }
 
 
-def _row(index: int, row: MatchRow) -> str:
+def _row(index: int, row: MatchRow) -> dict[str, object]:
     cup, team = _picked(row)
     close = number_or(row.odds.close, EN_DASH)
-    pick = f'<span translate="no">{escape(team.team)}</span>'
     win, motivation, value = f"{pl_number(team.win_pct, 1)}%", pl_number(team.motivation, 0), pl_number(team.value, 1)
-    tag = row_open(
-        row,
-        [
-            ("s-win", team.win_pct),
-            ("s-mot", team.motivation),
-            ("s-value", team.value),
-            ("status", team.status),
-            ("win", round(team.win_pct, 1)),
-            ("mot", _shown_motivation(team.motivation)),
-            ("value", round(team.value, 1)),
-        ],
-    )
-    numbers = [
-        (HEADS["odds"], close),
-        (term("winprob", HEADS["win"]), win),
-        (term("motivation", HEADS["mot"]), motivation),
-        (term("value", LABELS["value_short"]), value),
+    own = [
+        ("s-win", team.win_pct),
+        ("s-mot", team.motivation),
+        ("s-value", team.value),
+        ("status", team.status),
+        ("win", round(team.win_pct, 1)),
+        ("mot", _shown_motivation(team.motivation)),
+        ("value", round(team.value, 1)),
     ]
-    return f"""{tag}
-<td class="g">{match_button("full", index, row)}</td>
-<td class="p">({row.pick}) {pick}</td>
-<td class="k num">{close}</td>
-<td class="w num">{win}</td>
-<td class="mo num">{motivation}</td>
-<td class="s num">{value}</td>
-{level_cells(row)}
-{card_cell(row, pick, numbers)}
-</tr>
-{detail_row("full", index, 7, _both_teams(row, cup, team))}"""
+    return {
+        **row_context(index, row, own),
+        "pick": team.team,
+        "close": close,
+        "win": win,
+        "motivation": motivation,
+        "value": value,
+        "numbers": [
+            (HEADS["odds"], None, close),
+            (HEADS["win"], "winprob", win),
+            (HEADS["mot"], "motivation", motivation),
+            (LABELS["value_short"], "value", value),
+        ],
+        "both": _both_teams(row, cup, team),
+    }
 
 
-def _section(index: int, cup: CupSection, first_row: int) -> str:
+def _group(index: int, cup: CupSection, first_row: int) -> Group:
     """A cup's matches under its name and days; without rows its no-data notice with a link to the data."""
     if not cup.rows:
-        notice = CUP_NO_DATA.format(slug=ANALYST_SLUGS[cup.prefix])
-        return f'<section class="day-sec"><h2 class="nodata">{keep_last_words(cup.name)}</h2><p>{notice}</p></section>'
+        return Group(index, cup.name, "", [], CUP_NO_DATA.format(slug=ANALYST_SLUGS[cup.prefix]))
     days = _days(cup.rows)
     timed = all(row.kickoff is not None for row in cup.rows)
-    return section(
-        _SHAPE,
-        Group(
-            index,
-            f"{cup.name}, {day_month_span(days[0], days[-1])}" if days else cup.name,
-            # A round of the league phase has a fixed count of matches, so the bar gives the kickoff times when
-            # every match has one, and the count of shown matches otherwise
-            f"· {and_list(_times(cup.rows))}" if timed else "",
-            "\n".join(_row(first_row + n, row) for n, row in enumerate(cup.rows)),
-        ),
+    return Group(
+        index,
+        f"{cup.name}, {day_month_span(days[0], days[-1])}" if days else cup.name,
+        # A round of the league phase has a fixed count of matches, so the bar gives the kickoff times when
+        # every match has one, and the count of shown matches otherwise
+        f"· {and_list(_times(cup.rows))}" if timed else "",
+        [_row(first_row + n, row) for n, row in enumerate(cup.rows)],
     )
 
 
-def _sections(cups: tuple[CupSection, ...]) -> str:
-    parts, first_row = [], 0
+def _groups(cups: tuple[CupSection, ...]) -> list[Group]:
+    groups, first_row = [], 0
     for index, cup in enumerate(cups):
-        parts.append(_section(index, cup, first_row))
+        groups.append(_group(index, cup, first_row))
         first_row += len(cup.rows)
-    return "\n".join(parts)
+    return groups
 
 
-def _intro(cups: tuple[CupSection, ...], rows: tuple[MatchRow, ...]) -> str:
+def _intro(cups: tuple[CupSection, ...], rows: tuple[MatchRow, ...]) -> list[str]:
     sentences = [CUPS_COUNT.format(matches=matches_phrase(len(rows)))]
     sentences += [sentence for sentence in map(_cup_days, cups) if sentence is not None]
     sentences.append(_times_sentence(rows))
-    return f"{key_points(KEY_POINTS_FULL)}<p>{' '.join(sentences)}</p><p>{CUPS_SOURCES}</p>"
+    return [" ".join(sentences), CUPS_SOURCES]
 
 
-def _filters(rows: tuple[MatchRow, ...]) -> str:
+def _filters(rows: tuple[MatchRow, ...]) -> dict[str, object]:
     teams = [_picked(row)[1] for row in rows]
-    cups = counted((row.group, row.group_name) for row in rows)
-    statuses = counted((team.status, STATUS_NAMES.get(team.status, team.status)) for team in teams)
-    return f"""{SEARCH}
-{level_filter(rows)}
-<fieldset>
-<legend>{LABELS["competitions"]}</legend>
-{group_checks("league", cups)}
-</fieldset>
-<fieldset>
-<legend>{term("status", LABELS["status_filter"])}</legend>
-{group_checks("status", statuses)}
-</fieldset>
-{odds_range(rows)}
-{range_field(_WIN_RANGE, [round(team.win_pct, 1) for team in teams])}
-{range_field(_MOT_RANGE, [_shown_motivation(team.motivation) for team in teams])}
-{range_field(_VALUE_RANGE, [round(team.value, 1) for team in teams])}
-{signal_box(rows)}
-"""
+    return {
+        **common_filters(rows),
+        "cups": counted((row.group, row.group_name) for row in rows),
+        "statuses": counted((team.status, STATUS_NAMES.get(team.status, team.status)) for team in teams),
+        "win": range_field(_WIN_RANGE, [round(team.win_pct, 1) for team in teams]),
+        "mot": range_field(_MOT_RANGE, [_shown_motivation(team.motivation) for team in teams]),
+        "value": range_field(_VALUE_RANGE, [round(team.value, 1) for team in teams]),
+    }
 
 
-def cups_view(cups: tuple[CupSection, ...]) -> str:
-    """The cups tab; without matches in any cup only its heading and each cup's no-data notice."""
+def cups_view(cups: tuple[CupSection, ...]) -> dict[str, object]:
+    """What the cups tab's template needs; without matches in any cup only its heading and each cup's notice."""
     rows = tuple(row for cup in cups for row in cup.rows)
+    view: dict[str, object] = {
+        "key": "full",
+        "title": CUPS_TITLE,
+        "title_date": None,
+        "has_matches": bool(rows),
+        "groups": _groups(cups),
+    }
     if not rows:
-        return view_section("full", CUPS_TITLE, _sections(cups))
-    return view_block(
-        ViewParts("full", CUPS_TITLE, _intro(cups, rows), _filters(rows), _sections(cups), sort_buttons("full", _SORTS))
-    )
+        return view
+    return {
+        **view,
+        "key_points": KEY_POINTS_FULL,
+        "intro": _intro(cups, rows),
+        "filters": _filters(rows),
+        "sort_keys": _SORTS,
+    }

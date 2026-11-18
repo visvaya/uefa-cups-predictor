@@ -4,7 +4,6 @@ import argparse
 import re
 import sys
 from datetime import datetime
-from importlib.resources import files
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -27,6 +26,7 @@ from analyzer.errors import AnalyzerInputError
 from analyzer.league import LEAGUE_NAMES, league_ranking, league_report, match_frame, validated_inputs
 from analyzer.model import calculate_values, enrich_table, integrity_report, with_strange_odds_rotation
 from analyzer.page.cup_rows import cup_section, cup_section_without_data
+from analyzer.page.environment import page_environment
 from analyzer.page.model import CupSection, MatchRow, PageData
 from analyzer.page.render import render_page
 from analyzer.page.sr_rows import latest_scrape, sr_match_rows
@@ -178,8 +178,7 @@ def run_page(base_dir: Path, input_file: Path | None, prefixes: list[str], out: 
     sr_rows, scraped_at = page_sr_rows(base_dir, input_file)
     cups = tuple(page_cup(base_dir, prefix) for prefix in prefixes)
     data = PageData(sr_rows, cups, scraped_at, datetime.now(ZoneInfo(PAGE_TIMEZONE)))
-    template = files("analyzer.page").joinpath("template.html").read_text(encoding="utf-8")
-    page = render_page(data, template)
+    page = render_page(data, page_environment())
     try:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(page, encoding="utf-8", newline="")
