@@ -1,31 +1,31 @@
 team,opp,teamWinProb%,teamRotRisk,teamMot,teamValue,oppMot,teamStatus,oppStatus,expertScore,srCompleteness,srEdge,srDropping,strangeOdds,recommendation,reason
-Team O,Team P,70.0,1.1,100.0,63.6,99.0,IN_PLAY,IN_PLAY,1.24,1.0,0.05,0.13,35.0,🟢 STRONG BUY,Sure Bet Pattern; Good Value; Positive Signal; Steam (+); Strange Odds (35); SR Edge
-Team W,Team X,55.0,1.0,86.6,52.1,84.3,IN_PLAY,IN_PLAY,1.72,1.0,0.03,0.21,0.0,🟢 STRONG BUY,Good Value; Strong Expert Signal; Steam (+)
-Team R,Team Q,70.0,1.0,95.7,68.8,96.8,IN_PLAY,IN_PLAY,0.76,0.5,0.04,0.0,0.0,🟡 CONSIDER,Good Value; Positive Signal
+Team W,Team X,55.0,1.0,87.0,52.2,84.4,IN_PLAY,IN_PLAY,1.72,1.0,0.03,0.21,0.0,🟢 STRONG BUY,Good Value; Strong Expert Signal; Steam (+)
+Team R,Team Q,70.0,1.0,100.0,70.0,100.0,IN_PLAY,IN_PLAY,0.76,0.5,0.04,0.0,0.0,🟡 CONSIDER,High Value; Positive Signal; Close(1.65) > Fair(1.55)
+Team O,Team P,70.0,1.1,98.1,63.2,100.0,IN_PLAY,IN_PLAY,1.24,1.0,0.05,0.13,35.0,🟡 CONSIDER,Good Value; Positive Signal; Steam (+); Strange Odds (35); SR Edge
 Team C,Team D,60.5,1.1,81.7,51.0,84.3,IN_PLAY,IN_PLAY,1.62,0.5,0.02,-0.08,-36.0,🟡 CONSIDER,Good Value; Strong Expert Signal; (Risk: Rising Odds); Steam (-); Strange Odds (-36)
-Team I,Team J,40.0,1.0,71.4,35.5,83.2,IN_PLAY,IN_PLAY,0.2,1.0,0.12,0.0,0.0,🟡 CONSIDER,SR Edge
+Team I,Team J,40.0,1.0,61.7,34.1,69.7,IN_PLAY,IN_PLAY,0.2,1.0,0.12,0.0,0.0,🟡 CONSIDER,SR Edge
 Team AA,Team BB,65.0,1.0,47.7,68.7,40.0,IN_PLAY,OUT,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,Good Value
 Team F,Team E,55.0,1.0,88.7,52.6,86.6,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,Good Value
-Team N,Team M,50.0,1.0,100.0,50.0,100.0,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,Good Value
-Team K,Team L,50.0,1.0,92.6,48.5,100.0,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team U,Team V,45.0,1.0,90.6,43.3,88.7,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team V,Team U,45.0,1.0,88.7,43.0,90.6,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team N,Team M,50.0,1.0,94.0,48.8,88.8,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team K,Team L,50.0,1.0,76.2,45.3,83.2,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team U,Team V,45.0,1.0,92.5,43.7,89.6,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team V,Team U,45.0,1.0,89.6,43.1,92.5,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
 Team A,Team B,45.0,1.0,74.6,40.5,78.5,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team S,Team T,35.0,1.0,94.0,34.2,92.4,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team T,Team S,35.0,1.0,92.4,33.9,94.0,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team S,Team T,35.0,1.0,100.0,35.0,96.0,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team T,Team S,35.0,1.0,96.0,34.4,100.0,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
 Team Z,Team Y,40.0,1.0,55.6,33.2,69.1,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team J,Team I,35.0,1.0,83.2,32.9,71.4,IN_PLAY,IN_PLAY,-0.2,1.0,-0.08,0.0,0.0,⚪ NEUTRAL,Market Confidence
-Team H,Team G,33.4,1.0,92.4,32.4,90.6,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team G,Team H,33.3,1.0,90.6,32.1,92.4,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team L,Team K,30.0,1.0,100.0,30.0,92.6,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team H,Team G,33.4,1.0,92.5,32.4,90.6,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team G,Team H,33.3,1.0,90.6,32.1,92.5,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team J,Team I,35.0,1.0,69.7,31.4,61.7,IN_PLAY,IN_PLAY,-0.2,1.0,-0.08,0.0,0.0,⚪ NEUTRAL,Market Confidence
+Team L,Team K,30.0,1.0,83.2,28.1,76.2,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
 Team B,Team A,30.0,1.0,78.5,27.5,74.6,IN_PLAY,IN_PLAY,-0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
 Team Y,Team Z,30.0,1.0,69.1,27.3,55.6,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team M,Team N,25.0,1.0,100.0,25.0,100.0,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team X,Team W,20.0,1.0,84.3,18.8,86.6,IN_PLAY,IN_PLAY,-1.72,1.0,-0.03,-0.18,0.0,⚪ NEUTRAL,Steam (-)
+Team M,Team N,25.0,1.0,88.8,23.9,94.0,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
+Team X,Team W,20.0,1.0,84.4,18.8,87.0,IN_PLAY,IN_PLAY,-1.72,1.0,-0.03,-0.18,0.0,⚪ NEUTRAL,Steam (-)
 Team D,Team C,19.5,1.1,84.3,16.6,81.7,IN_PLAY,IN_PLAY,-1.62,0.5,-0.0,0.21,-36.0,⚪ NEUTRAL,Steam (+); Strange Odds (-36)
 Team E,Team F,15.0,1.0,86.6,14.2,88.7,IN_PLAY,IN_PLAY,0.0,0.0,0.0,0.0,0.0,⚪ NEUTRAL,-
-Team P,Team O,15.0,1.1,99.0,13.6,100.0,IN_PLAY,IN_PLAY,-1.24,1.0,-0.03,-0.17,35.0,⚪ NEUTRAL,Steam (-); Strange Odds (35)
-Team Q,Team R,10.0,1.0,96.8,9.9,95.7,IN_PLAY,IN_PLAY,-0.76,0.5,-0.02,0.0,0.0,⚪ NEUTRAL,-
+Team P,Team O,15.0,1.1,100.0,13.6,98.1,IN_PLAY,IN_PLAY,-1.24,1.0,-0.03,-0.17,35.0,⚪ NEUTRAL,Steam (-); Strange Odds (35)
+Team Q,Team R,10.0,1.0,100.0,10.0,100.0,IN_PLAY,IN_PLAY,-0.76,0.5,-0.02,0.0,0.0,⚪ NEUTRAL,-
 Team DD,Team CC,60.0,2.05,28.0,28.1,33.1,OUT,OUT,-0.0,0.0,0.0,0.0,0.0,🔴 AVOID,Out of contention; High rotation risk
 Team GG,Team HH,50.0,2.16,12.0,20.2,12.0,OUT,OUT,0.0,0.0,0.0,0.0,0.0,🔴 AVOID,Out of contention; High rotation risk
 Team EE,Team FF,40.0,2.08,24.5,18.2,21.4,OUT,OUT,0.0,0.0,0.0,0.0,0.0,🔴 AVOID,Out of contention; High rotation risk

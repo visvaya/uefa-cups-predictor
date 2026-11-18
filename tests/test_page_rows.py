@@ -146,7 +146,7 @@ def test_cup_pick_is_the_better_rated_side(el_frames: tuple[pd.DataFrame, pd.Dat
     section = cup_section("el", f, ranking)
     rows = {row.home: row for row in section.rows}
 
-    assert (rows["Team O"].pick, rows["Team O"].level) == ("1", "strong")
+    assert (rows["Team O"].pick, rows["Team O"].level) == ("1", "consider")
     # Both sides neutral: Team R (away) has the higher value
     assert (rows["Team Q"].pick, rows["Team Q"].level) == ("2", "neutral")
     assert rows["Team Q"].reason == ranking.loc[ranking["Team"] == "Team R", "reason"].item()
@@ -159,7 +159,7 @@ def test_cup_pick_is_the_better_rated_side(el_frames: tuple[pd.DataFrame, pd.Dat
 def test_cup_rows_order_by_level_then_value(el_frames: tuple[pd.DataFrame, pd.DataFrame]) -> None:
     rows = cup_section("el", *el_frames).rows
 
-    assert [row.home for row in rows[:4]] == ["Team O", "Team W", "Team K", "Team A"]
+    assert [row.home for row in rows[:4]] == ["Team W", "Team O", "Team A", "Team Q"]
     keys = []
     for row in rows:
         assert row.cup is not None
@@ -192,7 +192,7 @@ def test_cup_rows_carry_both_teams(el_frames: tuple[pd.DataFrame, pd.DataFrame])
         value=60.0,
         score=0.9,
         edge=0.04,
-        level="strong",
+        level="consider",
         reason=reason_o,
         close=1.65,
     )

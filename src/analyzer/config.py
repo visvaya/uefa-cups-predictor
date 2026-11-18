@@ -24,16 +24,14 @@ STATUS_BONUSES: dict[str, float] = {"OUT": 0.22, "LOCKED_DIRECT_RO16": 0.12, "LO
 # Rotation risk factor added to 1.0 for a team with this status
 ROTATION_STATUS_BONUSES: dict[str, float] = {"OUT": 0.95, "LOCKED_DIRECT_RO16": 0.65, "LOCKED_PLAYOFFS": 0.38}
 
-# Motivation index (0..100): base plus pressure at the survival and top 8 thresholds plus a playoff seeding bonus
+# Motivation index (0..100): base plus pressure at the survival and top 8 thresholds plus a play-off seeding bonus,
+# scaled by the KO play-off probability (seeding matters only to a team that plays the play-offs)
 MOTIVATION_BASE = 12
 MOTIVATION_SURVIVAL_WEIGHT = 65
 MOTIVATION_TOP8_WEIGHT = 45
 MOTIVATION_SEED_WEIGHT = 22
-SEED_PEAK_XPOS = 12.5  # expected position where the seeding bonus peaks (Gaussian centre)
+SEED_PEAK_XPOS = 16.5  # position where the seeding bonus peaks: the line between seeded 9-16 and unseeded 17-24
 SEED_WIDTH_XPOS = 4.0  # width of that Gaussian in positions
-SEED_MIN_XPOS = 7  # the bonus applies from this expected position...
-SEED_MAX_XPOS = 18  # ...to this one
-SEED_MIN_PLAYOFF_PROB = 0.4  # and only with a KO play-off probability above this
 
 # Rotation risk: (1.0 + status bonus) * (ROTATION_BASE - ROTATION_MOTIVATION_RELIEF * motivation / 100), capped
 ROTATION_BASE = 1.15

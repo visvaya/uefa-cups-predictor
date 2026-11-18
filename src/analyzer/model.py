@@ -22,9 +22,6 @@ from analyzer.config import (
     ROTATION_MOTIVATION_RELIEF,
     ROTATION_RISK_MAX,
     ROTATION_STATUS_BONUSES,
-    SEED_MAX_XPOS,
-    SEED_MIN_PLAYOFF_PROB,
-    SEED_MIN_XPOS,
     SEED_PEAK_XPOS,
     SEED_WIDTH_XPOS,
     STATUS_BONUSES,
@@ -128,8 +125,7 @@ def enrich_table(table: pd.DataFrame) -> pd.DataFrame:
     m_surv = MOTIVATION_SURVIVAL_WEIGHT * pressure_vector(p_surv)
     m_t8 = MOTIVATION_TOP8_WEIGHT * pressure_vector(p_top8)
     seed_p = np.exp(-(((df["XPOS"] - SEED_PEAK_XPOS) / SEED_WIDTH_XPOS) ** 2))
-    in_seed_range = (df["XPOS"] >= SEED_MIN_XPOS) & (df["XPOS"] <= SEED_MAX_XPOS) & (kpo > SEED_MIN_PLAYOFF_PROB)
-    m_seed = np.where(in_seed_range, MOTIVATION_SEED_WEIGHT * seed_p, 0.0)
+    m_seed = MOTIVATION_SEED_WEIGHT * kpo * seed_p
 
     df["Motivation"] = (MOTIVATION_BASE + m_surv + m_t8 + m_seed).clip(0, 100)
 
