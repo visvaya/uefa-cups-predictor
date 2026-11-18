@@ -24,12 +24,13 @@ from analyzer.page.render import render_page
 from analyzer.page.sr_rows import sr_match_rows
 from analyzer.page.texts import ANALYST_SLUGS, CUP_NAMES, EN_DASH, SR_NO_DATA, TAB_SR_EMPTY
 from analyzer.sr_only import sr_only_ranking
-from tests.inputs import REPO_DIR, el_base_dir, fixture_sr_only, view_of
+from tests.inputs import REPO_DIR, el_base_dir, fixture_sr_only, text_of, view_of
 
 GOLDEN_PAGE = REPO_DIR / "tests" / "golden" / "page" / "results.html"
 TEMPLATE = files("analyzer.page").joinpath("template.html").read_text(encoding="utf-8")
 PAGE_ZONE = ZoneInfo(PAGE_TIMEZONE)
 DAY = date(2026, 3, 4)  # a Wednesday
+SR_FACTS = SrFacts(edge=0.05, steam=0.1, ao=0.0, quality=1.0, home_href="/Home-FC/1/", away_href="/Away-FC/2/")
 SR_ROW = MatchRow(
     home="Home FC",
     away="Away FC",
@@ -42,7 +43,7 @@ SR_ROW = MatchRow(
     group_name="League",
     odds=PickOdds(open=1.8, close=1.6, fair=1.5),
     score=0.7,
-    sr=SrFacts(edge=0.05, steam=0.1, ao=0.0, quality=1.0, home_href="/Home-FC/1/", away_href="/Away-FC/2/"),
+    sr=SR_FACTS,
     cup=None,
 )
 TEAM = TeamFacts(
@@ -73,11 +74,6 @@ def page_data(sr_rows: tuple[MatchRow, ...], cups: tuple[CupSection, ...]) -> Pa
 
 def el_section(*rows: MatchRow) -> CupSection:
     return CupSection("el", CUP_NAMES["el"], rows)
-
-
-def text_of(page: str) -> str:
-    """The page with the no-break spaces of short words turned back into spaces, for matching sentences."""
-    return page.replace("&nbsp;", " ")
 
 
 def test_render_matches_golden(tmp_path: Path) -> None:
@@ -151,7 +147,7 @@ def test_render_has_no_fixed_mockup_dates() -> None:
 
     for fixed in ("16.11.2026", "28.01.2026", "17:57", "przykładowe"):
         assert fixed not in page
-    assert 'Soccer-rating: typy na <span class="nw">4 marca 2026</span>' in page
+    assert 'Soccer-rating: typy na <span class="nw">4 marca 2026</span>' in text_of(page)
     assert "Dane pobrano 04.03.2026 o 10:00." in text_of(page)
     assert "Strona wygenerowana 04.03.2026 o 12:00." in text_of(page)
     assert '"sr": "Soccer-rating 4.03.2026' in page
@@ -342,3 +338,44 @@ def test_render_worst_case() -> None:
     assert escape(LONG_AWAY) in page
     if snapshot_dir := os.environ.get("PAGE_SNAPSHOT_DIR"):
         Path(snapshot_dir).joinpath("page-worst.html").write_text(page, encoding="utf-8", newline="")
+
+
+WORD_JOINER = chr(0x2060)
+NBSP = chr(0xA0)
+
+
+def test_render_keeps_the_last_two_words_of_headings_together() -> None:
+    page = render_page(page_data((SR_ROW,), (el_section(CUP_ROW), cup_section_without_data("ecl"))), TEMPLATE)
+
+    assert "europejskich&nbsp;pucharów</h1>" in page
+    assert 'typy na&nbsp;<span class="nw">' in page
+    assert "Środa,&nbsp;4.03 <small" in page
+    assert "Liga Europy,&nbsp;4.03 <small" in page
+    assert '<h2 class="nodata">Liga&nbsp;Konferencji</h2>' in page
+
+
+def test_render_joins_hyphens_in_shown_names_only() -> None:
+    row = replace(
+        SR_ROW,
+        home="Bosnia-Herzegovina",
+        group_name="Premijer-Liga",
+        sr=replace(SR_FACTS, home_href="/Bosnia-Herzegovina/1/"),
+    )
+
+    page = render_page(page_data((row,), ()), TEMPLATE)
+
+    assert f"<b>Bosnia-{WORD_JOINER}Herzegovina</b>" in page
+    assert f'translate="no">Bosnia-{WORD_JOINER}Herzegovina</a>' in page
+    assert f"Premijer-{WORD_JOINER}Liga" in page
+    assert f"z soccer-{WORD_JOINER}rating.com" in page.replace("&nbsp;", " ")
+    assert 'data-teams="bosnia-herzegovina away fc"' in page
+    assert 'href="https://www.soccer-rating.com/Bosnia-Herzegovina/1/"' in page
+    # No joiner in any tag: attributes, data values and URLs stay as they are
+    assert not [tag for tag in re.findall("<[^>]*>", page) if WORD_JOINER in tag]
+
+
+def test_render_binds_short_words_in_the_explanations() -> None:
+    page = render_page(page_data((SR_ROW,), ()), TEMPLATE)
+
+    assert f"co najmniej 50 i{NBSP}jest" in page
+    assert f"Zakładka „Soccer-{WORD_JOINER}rating”" in page

@@ -24,6 +24,7 @@ from analyzer.page.texts import (
     SIGNAL_TERMS,
     SORT_NAMES,
     WEEKDAYS,
+    WORD_JOINER,
     fold,
     pl_number,
 )
@@ -32,6 +33,7 @@ from analyzer.page.texts import (
 DEFAULT_SORT = "level:asc"
 # One letter words that must not end a line, after a space or an opening parenthesis (Polish typesetting)
 _SHORT_WORD = re.compile(r"(?<=[\s(])([aiouwzAIOUWZ]) ")
+# Text between tags: attributes, data values and URLs are inside tags and stay as they are
 _TEXT = re.compile(r">[^<]*")
 
 
@@ -328,7 +330,7 @@ def section(shape: TableShape, group: Group) -> str:
     after = f"<small>{group.note}</small>" if group.note else '<small class="day-count"></small>'
     target = f"{shape.view}-g-{group.index}"
     return f"""<section class="day-sec"><h2><button type="button" class="day" aria-expanded="true" \
-aria-controls="{target}">{group.title} {after}</button></h2>
+aria-controls="{target}">{keep_last_words(group.title)} {after}</button></h2>
 <div class="wrap" id="{target}"><table class="t-{shape.view}">
 <colgroup>{shape.cols}</colgroup>
 <thead>{shape.head}</thead>
@@ -346,7 +348,8 @@ def key_points(lines: tuple[str, ...]) -> str:
 def view_section(key: str, title: str, body: str) -> str:
     """A tab's block; the cups tab is shown first, the page script switches between them."""
     hidden = " hidden" if key != "full" else ""
-    return f'<section class="view" id="view-{key}" data-view="{key}"{hidden}>\n<h1>{title}</h1>\n{body}\n</section>'
+    heading = f"<h1>{keep_last_words(title)}</h1>"
+    return f'<section class="view" id="view-{key}" data-view="{key}"{hidden}>\n{heading}\n{body}\n</section>'
 
 
 def view_block(view: ViewParts) -> str:
@@ -375,6 +378,23 @@ def view_block(view: ViewParts) -> str:
     )
 
 
-def bind_short_words(html: str) -> str:
-    """Binds one-letter words to the next word with a no-break space, in text only (not in tags)."""
-    return _TEXT.sub(lambda text: _SHORT_WORD.sub(r"\1&nbsp;", text.group()), html)
+def keep_last_words(title: str) -> str:
+    """A heading whose last line never holds one word: the last space before any markup becomes a no-break space."""
+    text, tag, markup = title.partition("<")
+    head, space, tail = text.rpartition(" ")
+    return f"{head}&nbsp;{tail}{tag}{markup}" if space else title
+
+
+def typeset(text: str, space: str) -> str:
+    """Text as the page sets it: a one-letter word joins the next with `space`, no line ends at a hyphen.
+
+    The joiner keeps hyphenated names whole (Bosnia-Herzegovina, soccer-rating). CSS has no property that stops a
+    break after a hyphen alone: `white-space: nowrap` would also stop a name wider than its column from wrapping,
+    which `overflow-wrap: anywhere` still allows with the joiner.
+    """
+    return _SHORT_WORD.sub(lambda word: word.group(1) + space, text).replace("-", "-" + WORD_JOINER)
+
+
+def typeset_html(html: str) -> str:
+    """`typeset` on the text between tags, with `&nbsp;`."""
+    return _TEXT.sub(lambda text: typeset(text.group(), "&nbsp;"), html)

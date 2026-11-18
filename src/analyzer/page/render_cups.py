@@ -17,6 +17,7 @@ from analyzer.page.render_parts import (
     detail_row,
     edge_text,
     group_checks,
+    keep_last_words,
     key_points,
     kickoff_text,
     level_cells,
@@ -228,7 +229,7 @@ def _section(index: int, cup: CupSection, first_row: int) -> str:
     """A cup's matches under its name and days; without rows its no-data notice with a link to the data."""
     if not cup.rows:
         notice = CUP_NO_DATA.format(slug=ANALYST_SLUGS[cup.prefix])
-        return f'<section class="day-sec"><h2 class="nodata">{cup.name}</h2><p>{notice}</p></section>'
+        return f'<section class="day-sec"><h2 class="nodata">{keep_last_words(cup.name)}</h2><p>{notice}</p></section>'
     days = _days(cup.rows)
     timed = all(row.kickoff is not None for row in cup.rows)
     return section(

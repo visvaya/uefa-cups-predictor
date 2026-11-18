@@ -17,6 +17,8 @@ from analyzer.page.model import Level
 # Characters ruff takes for look-alikes of ASCII ones (RUF001), so they are built from their code points
 MINUS = chr(0x2212)  # U+2212 MINUS SIGN
 EN_DASH = chr(0x2013)  # U+2013 EN DASH, for ranges of days
+NBSP = chr(0xA0)  # U+00A0 NO-BREAK SPACE, for texts the page script shows as plain text
+WORD_JOINER = chr(0x2060)  # U+2060 WORD JOINER: after a hyphen, no line break there
 _DOTLESS_I = chr(0x131)  # U+0131 LATIN SMALL LETTER DOTLESS I (Turkish names)
 # Weekdays from Monday, as `date.weekday()` counts them
 WEEKDAYS = ("poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela")

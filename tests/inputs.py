@@ -35,6 +35,11 @@ def el_base_dir(tmp_path: Path) -> Path:
     return tmp_path
 
 
+def text_of(page: str) -> str:
+    """The page as a reader sees its words: no-break spaces as spaces, without the joiners after hyphens."""
+    return page.replace("&nbsp;", " ").replace(chr(0x2060), "")
+
+
 def view_of(page: str, key: str) -> str:
     """One tab of a results page: the soccer-rating tab ends where the cups tab starts, which runs to the page's end."""
     sr, full = page.index('id="view-sr"'), page.index('id="view-full"')

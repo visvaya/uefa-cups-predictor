@@ -10,7 +10,7 @@ from analyzer.cli import main, run_page
 from analyzer.errors import AnalyzerInputError
 from analyzer.page.sr_rows import latest_scrape
 from analyzer.page.texts import ANALYST_SLUGS, SR_NO_DATA
-from tests.inputs import el_base_dir, view_of
+from tests.inputs import el_base_dir, text_of, view_of
 
 SNAPSHOT = Path("data") / "soccer-rating" / "match_odds_development_2026-01-28.csv"
 
@@ -41,7 +41,7 @@ def test_page_without_snapshot_shows_no_data(tmp_path: Path, capsys: pytest.Capt
     run_page(base_dir, None, ["cl", "el"], out)
 
     page = out.read_text(encoding="utf-8")
-    assert SR_NO_DATA in page.replace("&nbsp;", " ")
+    assert SR_NO_DATA in text_of(page)
     assert '<tr class="m ' not in view_of(page, "sr")
     # The CL inputs are missing too: its no-data notice, while the EL rows stay
     assert f"competition/{ANALYST_SLUGS['cl']}/predictions" in view_of(page, "full")
